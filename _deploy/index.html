@@ -1,0 +1,2132 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>光頭餐飲集團・營運中樞</title>
+<link rel="icon" type="image/png" href="logo.png">
+<link rel="apple-touch-icon" href="logo.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Noto+Sans+TC:wght@300;400;500;600;700;800&family=Fredoka:wght@500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#fff4e6;
+  --surface:#ffffff;
+  --surface-2:#fff0df;
+  --border:rgba(255,138,61,0.30);
+  --border-2:rgba(120,80,40,0.14);
+  --gold:#ff7a1a;
+  --gold-light:#ff9d3d;
+  --gold-dim:rgba(255,138,61,0.14);
+  --text:#3a2417;
+  --text-2:rgba(58,36,23,0.66);
+  --text-3:rgba(58,36,23,0.42);
+  --red:#ef5b5b;
+  --green:#3cba6e;
+  --blue:#3d96e0;
+  --radius:22px;
+  --radius-sm:16px;
+}
+html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--text);font-family:'Inter','Noto Sans TC',sans-serif;-webkit-font-smoothing:antialiased}
+
+/* ── BACKGROUND ── */
+.scene-bg{
+  position:fixed;inset:0;z-index:0;overflow:hidden;
+  background:var(--bg);
+  background-image:url('login-bg.jpg');
+  background-size:cover;background-position:center;
+}
+.scene-bg::after{
+  content:'';position:absolute;inset:0;
+  background:linear-gradient(135deg,rgba(8,8,16,0.88) 0%,rgba(8,8,16,0.72) 50%,rgba(8,8,16,0.88) 100%);
+}
+
+/* ── NOISE TEXTURE ── */
+.noise{
+  position:fixed;inset:0;z-index:1;opacity:0.03;pointer-events:none;
+  background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+
+/* ── AUTH SCREEN ── */
+#auth-screen{
+  position:fixed;inset:0;z-index:110;
+  display:flex;align-items:flex-start;justify-content:center;
+  overflow-y:auto;
+}
+#auth-screen.hidden{opacity:0;transform:scale(0.97);pointer-events:none}
+.auth-wrap{
+  width:100%;max-width:420px;
+  display:flex;flex-direction:column;gap:0;
+  margin:auto;padding-top:20px;
+}
+.brand-header{
+  text-align:center;margin-bottom:32px;padding-top:4px;
+}
+.brand-icon{
+  width:76px;height:76px;margin:0 auto 20px;
+  background:linear-gradient(145deg,rgba(30,20,8,0.9),rgba(12,8,3,0.95));
+  border:1.5px solid rgba(201,169,110,0.6);border-radius:22px;
+  display:flex;align-items:center;justify-content:center;
+  font-size:30px;
+  box-shadow:0 0 30px rgba(201,169,110,0.15),inset 0 1px 0 rgba(255,255,255,0.05);
+}
+.brand-name{
+  font-size:24px;font-weight:600;letter-spacing:0.12em;
+  background:linear-gradient(135deg,#e8d5a8 0%,var(--gold-light) 40%,var(--gold) 100%);
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;
+  background-clip:text;text-shadow:none;
+  margin-bottom:6px;
+}
+.brand-sub{font-size:11px;color:rgba(201,169,110,0.5);letter-spacing:0.22em;text-transform:uppercase;font-weight:400;}
+
+.glass-card{
+  background:rgba(10,8,16,0.75);
+  border:1px solid rgba(201,169,110,0.2);
+  border-radius:18px;
+  padding:36px;
+  backdrop-filter:blur(32px) saturate(1.2);
+  -webkit-backdrop-filter:blur(32px) saturate(1.2);
+  box-shadow:0 24px 60px rgba(0,0,0,0.5),0 0 0 0.5px rgba(255,255,255,0.04),inset 0 1px 0 rgba(255,255,255,0.06);
+}
+.glass-card::before{
+  content:'';position:absolute;top:0;left:0;right:0;height:1px;
+  background:linear-gradient(90deg,transparent,rgba(201,169,110,0.4),transparent);
+}
+
+.auth-tabs-row{
+  display:flex;gap:4px;background:rgba(0,0,0,0.3);
+  border-radius:10px;padding:4px;margin-bottom:28px;
+}
+.auth-tab-btn{
+  flex:1;padding:10px;border:none;background:transparent;
+  color:var(--text-2);font-size:13px;font-weight:500;cursor:pointer;
+  border-radius:8px;transition:all 0.2s;font-family:inherit;
+}
+.auth-tab-btn.active{
+  background:linear-gradient(135deg,rgba(201,169,110,0.2),rgba(201,169,110,0.08));
+  color:var(--gold-light);border:1px solid rgba(201,169,110,0.25);
+}
+
+.field-label{font-size:11px;font-weight:600;letter-spacing:0.12em;text-transform:uppercase;color:var(--text-3);margin-bottom:8px}
+.field-input{
+  width:100%;padding:13px 16px;
+  background:rgba(0,0,0,0.35);
+  border:1px solid var(--border-2);border-radius:var(--radius-sm);
+  color:var(--text);font-size:14px;font-family:inherit;
+  outline:none;transition:border-color 0.2s;margin-bottom:20px;
+}
+.field-input:focus{border-color:rgba(201,169,110,0.5);background:rgba(0,0,0,0.5)}
+.field-input::placeholder{color:var(--text-3)}
+select.field-input option{background:#1a1208;color:var(--text)}
+
+.btn-primary{
+  width:100%;padding:15px;border:none;cursor:pointer;
+  background:linear-gradient(135deg,#c9a96e,#9a7a4a);
+  color:#0a0806;font-size:14px;font-weight:700;font-family:inherit;
+  border-radius:var(--radius-sm);letter-spacing:0.06em;
+  transition:all 0.2s;position:relative;overflow:hidden;
+}
+.btn-primary::before{
+  content:'';position:absolute;inset:0;
+  background:linear-gradient(135deg,rgba(255,255,255,0.15),transparent);
+  opacity:0;transition:opacity 0.2s;
+}
+.btn-primary:hover::before{opacity:1}
+.btn-primary:active{transform:scale(0.98)}
+.msg{font-size:12px;padding:10px 14px;border-radius:8px;margin-top:12px;text-align:center;display:none}
+.msg.error{display:block;background:rgba(224,94,94,0.12);border:1px solid rgba(224,94,94,0.25);color:var(--red)}
+.msg.success{display:block;background:rgba(94,196,123,0.1);border:1px solid rgba(94,196,123,0.2);color:var(--green)}
+.auth-panel{display:none}.auth-panel.active{display:block}
+
+/* ── MAIN APP ── */
+#app{
+  position:fixed;inset:0;z-index:100;
+  display:flex;flex-direction:column;
+  opacity:0;transform:translateY(8px);
+  transition:opacity 0.5s ease,transform 0.5s ease;
+  pointer-events:none;
+}
+#app.visible{opacity:1;transform:none;pointer-events:all}
+
+/* Top bar */
+.topbar{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:14px 24px 0;flex-shrink:0;
+}
+.topbar-brand{
+  display:flex;align-items:center;gap:10px;
+}
+.topbar-icon{
+  width:36px;height:36px;background:linear-gradient(135deg,#1a1208,#2a1e0a);
+  border:1px solid var(--border);border-radius:10px;
+  display:flex;align-items:center;justify-content:center;font-size:16px;
+}
+.topbar-title{font-size:15px;font-weight:600;color:var(--gold-light);letter-spacing:0.04em;white-space:nowrap}
+.topbar-right{display:flex;align-items:center;gap:12px}
+.topbar-title,.role-tag,.btn-logout{white-space:nowrap!important;}
+.topbar-brand{flex-shrink:0;}
+.user-badge{
+  display:flex;align-items:center;gap:8px;
+  padding:6px 14px 6px 8px;
+  background:var(--surface);border:1px solid var(--border-2);border-radius:99px;
+}
+.user-avatar{
+  width:26px;height:26px;border-radius:50%;
+  background:linear-gradient(135deg,var(--gold),#7a5f35);
+  display:flex;align-items:center;justify-content:center;
+  font-size:11px;font-weight:700;color:#0a0806;
+}
+.user-name{font-size:12px;font-weight:500;color:var(--text-2)}
+.role-tag{
+  font-size:9px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;
+  padding:2px 7px;border-radius:99px;
+}
+.role-BOSS{background:rgba(201,169,110,0.2);color:var(--gold);border:1px solid rgba(201,169,110,0.3)}
+.role-MGR{background:rgba(110,168,224,0.15);color:var(--blue);border:1px solid rgba(110,168,224,0.25)}
+.role-EMP{background:rgba(94,196,123,0.12);color:var(--green);border:1px solid rgba(94,196,123,0.2)}
+.btn-logout{
+  padding:6px 14px;border:1px solid var(--border-2);background:transparent;
+  color:var(--text-3);font-size:11px;font-family:inherit;cursor:pointer;
+  border-radius:99px;transition:all 0.2s;letter-spacing:0.06em;
+}
+.btn-logout:hover{border-color:rgba(224,94,94,0.4);color:var(--red)}
+
+/* Nav tabs */
+.nav-bar{
+  display:flex;gap:2px;padding:14px 24px 0;flex-shrink:0;
+  border-bottom:1px solid rgba(255,255,255,0.05);
+}
+.nav-btn{
+  display:flex;align-items:center;gap:6px;
+  padding:10px 18px;border:none;background:transparent;
+  color:var(--text-3);font-size:13px;font-weight:500;font-family:inherit;
+  cursor:pointer;border-bottom:2px solid transparent;transition:all 0.2s;
+  margin-bottom:-1px;border-radius:8px 8px 0 0;letter-spacing:0.02em;
+}
+.nav-btn:hover{color:var(--text-2);background:var(--surface)}
+.nav-btn.active{color:var(--gold-light);border-bottom-color:var(--gold);background:rgba(201,169,110,0.06)}
+.nav-icon{font-size:15px}
+
+/* Content area */
+.content{flex:1;overflow-y:auto;overflow-x:hidden;padding:24px;}
+.content::-webkit-scrollbar{width:4px}
+.content::-webkit-scrollbar-track{background:transparent}
+.content::-webkit-scrollbar-thumb{background:rgba(201,169,110,0.2);border-radius:99px}
+.tab-panel{display:none}.tab-panel.active{display:block}
+
+/* ── SECTION HEADERS ── */
+.sec-header{
+  display:flex;align-items:baseline;gap:12px;margin-bottom:20px;
+}
+.sec-title{font-size:20px;font-weight:600;color:var(--text);letter-spacing:0.02em}
+.sec-sub{font-size:13px;color:var(--text-3)}
+.divider{width:1px;height:16px;background:var(--border)}
+
+/* ── CARDS GRID ── */
+.grid-2{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.grid-3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px}
+.grid-4{display:grid;grid-template-columns:repeat(4,1fr);gap:14px}
+@media(max-width:900px){.grid-4{grid-template-columns:repeat(2,1fr)}.grid-3{grid-template-columns:1fr 1fr}}
+@media(max-width:600px){.grid-2,.grid-4,.grid-3{grid-template-columns:1fr}}
+
+/* ── STAT CARDS ── */
+.stat-card{
+  background:var(--surface);
+  border:1px solid var(--border-2);
+  border-radius:var(--radius);
+  padding:20px;
+  position:relative;overflow:hidden;
+  transition:border-color 0.2s;
+}
+.stat-card:hover{border-color:rgba(201,169,110,0.25)}
+.stat-card::before{
+  content:'';position:absolute;top:0;left:0;right:0;height:1px;
+  background:linear-gradient(90deg,transparent,rgba(201,169,110,0.25),transparent);
+}
+.stat-label{font-size:11px;font-weight:600;letter-spacing:0.1em;text-transform:uppercase;color:var(--text-3);margin-bottom:10px}
+.stat-value{font-size:28px;font-weight:300;color:var(--text);letter-spacing:-0.02em}
+.stat-value span{font-size:14px;font-weight:500;margin-right:4px;color:var(--text-2)}
+.stat-trend{font-size:11px;color:var(--text-3);margin-top:6px}
+.stat-dot{width:6px;height:6px;border-radius:50%;display:inline-block;margin-right:6px}
+.stat-dot.green{background:var(--green)}
+.stat-dot.gold{background:var(--gold)}
+.stat-dot.red{background:var(--red)}
+.stat-dot.blue{background:var(--blue)}
+
+/* ── CONTENT CARDS ── */
+.c-card{
+  background:var(--surface);border:1px solid var(--border-2);
+  border-radius:var(--radius);padding:24px;margin-bottom:16px;
+  position:relative;overflow:hidden;
+}
+.c-card::before{
+  content:'';position:absolute;top:0;left:0;right:0;height:1px;
+  background:linear-gradient(90deg,transparent,rgba(255,255,255,0.07),transparent);
+}
+.c-card-title{
+  font-size:13px;font-weight:600;letter-spacing:0.06em;text-transform:uppercase;
+  color:var(--gold);margin-bottom:20px;display:flex;align-items:center;gap:8px;
+}
+.c-card-title::after{
+  content:'';flex:1;height:1px;background:linear-gradient(90deg,rgba(201,169,110,0.2),transparent);
+}
+
+/* ── FORM ELEMENTS ── */
+.form-row{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:4px}
+@media(max-width:600px){.form-row{grid-template-columns:1fr}}
+.form-group{margin-bottom:16px}
+.form-label{
+  font-size:11px;font-weight:600;letter-spacing:0.1em;text-transform:uppercase;
+  color:var(--text-3);margin-bottom:7px;display:block;
+}
+.form-input{
+  width:100%;padding:12px 14px;
+  background:rgba(0,0,0,0.3);border:1px solid var(--border-2);
+  border-radius:var(--radius-sm);color:var(--text);font-size:14px;font-family:inherit;
+  outline:none;transition:all 0.2s;
+}
+.form-input:focus{border-color:rgba(201,169,110,0.4);background:rgba(0,0,0,0.5)}
+.form-input::placeholder{color:var(--text-3)}
+select.form-input option{background:#1a1208}
+
+/* ── CHIPS ── */
+.chips{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:16px}
+.chip{
+  padding:8px 16px;border-radius:99px;
+  border:1px solid var(--border-2);background:transparent;
+  color:var(--text-2);font-size:12px;font-weight:500;cursor:pointer;
+  transition:all 0.2s;font-family:inherit;
+}
+.chip.active{background:var(--gold-dim);border-color:rgba(201,169,110,0.4);color:var(--gold-light)}
+
+/* ── TOTALS BAR ── */
+.totals-row{
+  display:flex;gap:8px;flex-wrap:wrap;align-items:center;
+  padding:14px 18px;background:rgba(201,169,110,0.06);
+  border:1px solid rgba(201,169,110,0.15);border-radius:var(--radius-sm);
+  margin:16px 0;
+}
+.total-item{font-size:13px;color:var(--text-2)}
+.total-item strong{color:var(--gold-light);font-weight:600}
+.total-sep{color:var(--text-3)}
+
+/* ── ACTION BUTTON ── */
+.btn-action{
+  display:inline-flex;align-items:center;gap:8px;
+  padding:13px 28px;border:none;cursor:pointer;
+  background:linear-gradient(135deg,#c9a96e,#9a7a4a);
+  color:#0a0806;font-size:13px;font-weight:700;font-family:inherit;
+  border-radius:var(--radius-sm);letter-spacing:0.06em;
+  transition:all 0.2s;
+}
+.btn-action:hover{filter:brightness(1.1)}
+.btn-action:active{transform:scale(0.98)}
+.btn-sm{
+  display:inline-flex;align-items:center;gap:6px;
+  padding:8px 16px;border-radius:8px;cursor:pointer;
+  font-size:12px;font-weight:600;font-family:inherit;
+  transition:all 0.2s;border:none;
+}
+.btn-approve{background:rgba(94,196,123,0.15);color:var(--green);border:1px solid rgba(94,196,123,0.25)}
+.btn-approve:hover{background:rgba(94,196,123,0.25)}
+.btn-warn{background:rgba(224,94,94,0.1);color:var(--red);border:1px solid rgba(224,94,94,0.2)}
+.btn-warn:hover{background:rgba(224,94,94,0.2)}
+.btn-neutral{background:var(--surface-2);color:var(--text-2);border:1px solid var(--border-2)}
+.btn-neutral:hover{border-color:var(--border)}
+
+/* ── TABLE ── */
+.data-table{width:100%;border-collapse:collapse;font-size:13px}
+.data-table th{
+  text-align:left;padding:10px 14px;
+  font-size:10px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;
+  color:var(--text-3);border-bottom:1px solid rgba(255,255,255,0.06);
+  white-space:nowrap;
+}
+.data-table td{
+  padding:12px 14px;border-bottom:1px solid rgba(255,255,255,0.04);
+  color:var(--text-2);
+}
+.data-table tr:last-child td{border-bottom:none}
+.data-table tr:hover td{background:rgba(255,255,255,0.02)}
+.badge{
+  display:inline-block;padding:3px 10px;border-radius:99px;
+  font-size:10px;font-weight:700;letter-spacing:0.08em;
+}
+.badge-active{background:rgba(94,196,123,0.15);color:var(--green);border:1px solid rgba(94,196,123,0.2)}
+.badge-pending{background:rgba(201,169,110,0.12);color:var(--gold);border:1px solid rgba(201,169,110,0.2)}
+.badge-disabled{background:rgba(224,94,94,0.1);color:var(--red);border:1px solid rgba(224,94,94,0.2)}
+
+/* ── CHART CONTAINERS ── */
+.chart-wrap{position:relative;width:100%;}
+.chart-wrap canvas{max-height:280px}
+
+/* ── EMPTY STATE ── */
+.empty-state{
+  text-align:center;padding:60px 20px;
+  color:var(--text-3);font-size:14px;
+}
+.empty-icon{font-size:40px;margin-bottom:12px;opacity:0.4}
+
+/* ── TOAST ── */
+#toast{
+  position:fixed;bottom:max(24px,env(safe-area-inset-bottom,24px));
+  left:50%;transform:translateX(-50%) translateY(80px);
+  background:rgba(15,12,20,0.95);border:1px solid var(--border);
+  color:var(--text);padding:12px 24px;border-radius:99px;
+  font-size:13px;font-weight:500;
+  box-shadow:0 8px 32px rgba(0,0,0,0.5);
+  transition:transform 0.3s cubic-bezier(0.34,1.56,0.64,1);
+  white-space:nowrap;z-index:999;
+}
+#toast.show{transform:translateX(-50%) translateY(0)}
+#toast.gold{border-color:rgba(201,169,110,0.4);color:var(--gold-light)}
+#toast.red{border-color:rgba(224,94,94,0.3);color:var(--red)}
+
+/* ── LOADING ── */
+.spin{
+  width:18px;height:18px;border:2px solid rgba(201,169,110,0.2);
+  border-top-color:var(--gold);border-radius:50%;
+  animation:spin 0.8s linear infinite;display:inline-block;
+}
+@keyframes spin{to{transform:rotate(360deg)}}
+.loading-state{display:flex;align-items:center;justify-content:center;gap:10px;padding:40px;color:var(--text-3);font-size:13px}
+
+/* ── REPORTS SPECIFIC ── */
+.kpi-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:24px}
+@media(max-width:900px){.kpi-grid{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:500px){.kpi-grid{grid-template-columns:1fr 1fr}}
+.kpi-card{
+  background:var(--surface);border:1px solid var(--border-2);
+  border-radius:var(--radius);padding:18px;
+  position:relative;overflow:hidden;
+}
+.kpi-card.gold-accent{border-color:rgba(201,169,110,0.25);background:rgba(201,169,110,0.04)}
+.kpi-label{font-size:10px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:var(--text-3);margin-bottom:8px}
+.kpi-val{font-size:24px;font-weight:300;color:var(--text)}
+.kpi-val small{font-size:12px;color:var(--text-3);margin-right:2px}
+.kpi-note{font-size:11px;color:var(--text-3);margin-top:4px}
+
+.charts-row{display:grid;grid-template-columns:1fr 340px;gap:16px;margin-bottom:16px}
+@media(max-width:900px){.charts-row{grid-template-columns:1fr}}
+
+.refresh-btn{
+  display:inline-flex;align-items:center;gap:6px;
+  padding:7px 16px;border-radius:99px;cursor:pointer;
+  font-size:11px;font-weight:600;font-family:inherit;
+  background:var(--surface);border:1px solid var(--border-2);
+  color:var(--text-2);transition:all 0.2s;
+}
+.refresh-btn:hover{border-color:var(--border);color:var(--text)}
+
+  /* ── Time range buttons ── */
+  .range-btn{background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);color:var(--text-2);padding:5px 12px;border-radius:20px;font-size:11px;letter-spacing:.04em;cursor:pointer;transition:all .2s;white-space:nowrap}
+  .range-btn:hover{background:rgba(201,169,110,0.15);border-color:rgba(201,169,110,0.4);color:var(--gold-light)}
+  .range-btn.active{background:rgba(201,169,110,0.2);border-color:var(--gold-light);color:var(--gold-light);font-weight:600}
+
+/* ── LOGIN SPLIT LAYOUT EXTRAS ── */
+.auth-wrap-outer{position:relative;}
+.login-bg-caption{
+  position:fixed;right:32px;bottom:28px;z-index:120;
+  font-size:10px;letter-spacing:0.18em;color:rgba(201,169,110,0.35);
+  text-transform:uppercase;font-weight:300;
+}
+.login-decor-line{
+  position:fixed;left:50%;top:0;bottom:0;
+  width:1px;background:linear-gradient(to bottom,transparent 0%,rgba(201,169,110,0.12) 30%,rgba(201,169,110,0.12) 70%,transparent 100%);
+  z-index:109;pointer-events:none;
+}
+
+/* ═══════════════ 🍊 卡通溫暖風 OVERRIDE ═══════════════ */
+body,html{font-family:'Noto Sans TC','Fredoka',sans-serif;}
+.brand-name,.topbar-title,.sec-title,.stat-value,.kpi-val,.c-card-title{font-family:'Fredoka','Noto Sans TC',sans-serif;}
+
+.scene-bg::after{background:linear-gradient(180deg,rgba(20,12,6,0.42) 0%,rgba(20,12,6,0.18) 38%,rgba(20,12,6,0.55) 100%)!important;}
+.noise{opacity:0.015;}
+#app{background:radial-gradient(1200px 600px at 80% -10%,#ffe9cf 0%,transparent 60%),linear-gradient(160deg,#fff6ec 0%,#ffefe0 100%);}
+.content{background:transparent;}
+
+.glass-card,.c-card,.stat-card,.kpi-card{
+  background:#fff!important;border:2px solid var(--border)!important;border-radius:24px!important;
+  box-shadow:0 10px 24px rgba(255,138,61,0.10),0 2px 0 rgba(255,138,61,0.06)!important;
+  backdrop-filter:none!important;-webkit-backdrop-filter:none!important;
+}
+.c-card::before,.stat-card::before,.kpi-card::before,.glass-card::before{display:none!important;}
+
+.brand-icon,.topbar-icon{background:#FBF2E0!important;border:none!important;overflow:hidden;box-shadow:0 6px 16px rgba(255,122,26,0.25)!important;}
+.brand-icon img,.topbar-icon img{width:100%;height:100%;object-fit:contain;display:block;}
+.brand-icon{width:108px!important;height:108px!important;border-radius:26px!important;margin-bottom:16px!important;}
+.brand-name{background:none!important;-webkit-text-fill-color:#ff6a1a!important;color:#ff6a1a!important;font-weight:700;letter-spacing:.02em;}
+.brand-sub,.login-bg-caption{color:rgba(255,122,26,0.5)!important;}
+.login-decor-line{display:none;}
+.user-avatar{background:linear-gradient(145deg,#ff9d3d,#ff6a1a)!important;color:#fff!important;}
+.topbar-title{color:#ff6a1a!important;}
+.user-name{color:var(--text-2)!important;}
+.user-badge{background:#fff!important;border:2px solid var(--border-2)!important;}
+
+.field-input,.form-input{background:#fff7ef!important;border:2px solid var(--border-2)!important;border-radius:14px!important;color:var(--text)!important;}
+.field-input:focus,.form-input:focus{border-color:var(--gold)!important;background:#fff!important;}
+.field-input::placeholder,.form-input::placeholder{color:var(--text-3)!important;}
+select.field-input option,select.form-input option{background:#fff!important;color:var(--text)!important;}
+
+.btn-primary,.btn-action{background:linear-gradient(135deg,#ff9d3d,#ff6a1a)!important;color:#fff!important;border-radius:16px!important;box-shadow:0 8px 18px rgba(255,122,26,0.30)!important;letter-spacing:.04em;}
+.btn-primary:active,.btn-action:active{transform:translateY(1px) scale(.99);}
+.btn-logout{border:2px solid var(--border-2)!important;border-radius:99px!important;color:var(--text-2)!important;}
+.btn-logout:hover{border-color:var(--red)!important;color:var(--red)!important;}
+
+.auth-tabs-row{background:#fff1e2!important;border-radius:14px!important;}
+.auth-tab-btn.active{background:#fff!important;color:#ff6a1a!important;border:2px solid var(--gold)!important;box-shadow:0 4px 10px rgba(255,122,26,.18);}
+.nav-bar{border-bottom:2px solid rgba(255,138,61,0.15)!important;flex-wrap:wrap;gap:6px;}
+.nav-btn{border-radius:14px 14px 0 0;font-weight:600;}
+.nav-btn:hover{background:#fff3e6!important;color:var(--gold)!important;}
+.nav-btn.active{color:#fff!important;background:linear-gradient(135deg,#ff9d3d,#ff6a1a)!important;border-bottom-color:transparent!important;box-shadow:0 6px 14px rgba(255,122,26,.25);}
+
+.chip{border:2px solid var(--border-2)!important;border-radius:99px!important;color:var(--text-2)!important;}
+.chip.active{background:linear-gradient(135deg,#ffd9b3,#ffc18a)!important;border-color:var(--gold)!important;color:#a8430a!important;font-weight:700;}
+
+.data-table th{color:var(--text-3)!important;border-bottom:2px solid rgba(255,138,61,0.18)!important;}
+.data-table td{border-bottom:1px solid rgba(255,138,61,0.10)!important;color:var(--text-2)!important;}
+.data-table tr:hover td{background:#fff7ef!important;}
+
+.totals-row{background:#fff3e6!important;border:2px solid rgba(255,138,61,0.18)!important;border-radius:14px!important;}
+.total-item{color:var(--text-2)!important;}.total-item strong{color:#ff6a1a!important;}
+.kpi-card.gold-accent{background:linear-gradient(135deg,#fff3e6,#ffe9d4)!important;border-color:var(--gold)!important;}
+.c-card-title{color:#ff6a1a!important;}
+.sec-title{color:var(--text)!important;}
+
+#toast{background:#fff!important;border:2px solid var(--gold)!important;color:var(--text)!important;box-shadow:0 10px 30px rgba(255,122,26,.25)!important;}
+#toast.gold{color:#ff6a1a!important;border-color:var(--gold)!important;}
+#toast.red{color:var(--red)!important;border-color:var(--red)!important;}
+
+.range-btn{background:#fff3e6!important;border:2px solid rgba(255,138,61,0.18)!important;color:var(--text-2)!important;}
+.range-btn.active{background:linear-gradient(135deg,#ffd9b3,#ffc18a)!important;border-color:var(--gold)!important;color:#a8430a!important;}
+.refresh-btn{background:#fff3e6!important;border:2px solid var(--border-2)!important;color:var(--text-2)!important;border-radius:99px!important;}
+.badge-pending{background:#fff0db!important;color:#d98018!important;border:1px solid rgba(255,138,61,.3)!important;}
+.spin{border-color:rgba(255,138,61,0.2)!important;border-top-color:var(--gold)!important;}
+
+/* ===== 遊戲元件 ===== */
+.game-chip{display:flex;align-items:center;gap:8px;padding:5px 12px 5px 8px;background:#fff;border:2px solid var(--gold);border-radius:99px;box-shadow:0 4px 12px rgba(255,122,26,.18);}
+.game-chip .gc-emoji{font-size:18px;}.game-chip .gc-lv{font-size:11px;font-weight:800;color:#ff6a1a;}.game-chip .gc-pts{font-size:11px;font-weight:700;color:#d98018;}
+.hero-card{display:flex;gap:22px;align-items:center;flex-wrap:wrap;}
+.hero-avatar{width:108px;height:108px;border-radius:30px;background:linear-gradient(145deg,#ffe1c2,#ffcf9e);display:flex;align-items:center;justify-content:center;font-size:62px;box-shadow:inset 0 -6px 0 rgba(255,138,61,.18),0 10px 24px rgba(255,122,26,.18);flex-shrink:0;}
+.hero-info{flex:1;min-width:200px;}
+.hero-name{font-size:22px;font-weight:800;color:var(--text);font-family:'Fredoka','Noto Sans TC';}
+.lv-badge{display:inline-flex;align-items:center;gap:5px;background:linear-gradient(135deg,#ff9d3d,#ff6a1a);color:#fff;font-weight:800;font-size:13px;padding:3px 12px;border-radius:99px;margin-left:8px;}
+.xp-bar{height:18px;background:#ffe6cf;border-radius:99px;overflow:hidden;margin:12px 0 6px;border:2px solid rgba(255,138,61,.2);}
+.xp-fill{height:100%;background:linear-gradient(90deg,#ffb347,#ff6a1a);border-radius:99px;transition:width .6s cubic-bezier(.34,1.56,.64,1);}
+.xp-text{font-size:12px;color:var(--text-2);}
+.pts-pill{display:inline-flex;align-items:center;gap:6px;background:#fff3e6;border:2px solid var(--gold);border-radius:99px;padding:6px 14px;font-weight:800;color:#d98018;font-size:14px;}
+.skin-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(96px,1fr));gap:12px;}
+.skin{position:relative;background:#fff7ef;border:2px solid var(--border-2);border-radius:18px;padding:14px 6px 10px;text-align:center;cursor:pointer;transition:transform .15s,border-color .15s;}
+.skin:hover{transform:translateY(-3px);}
+.skin .se{font-size:40px;display:block;line-height:1.1;}
+.skin .sn{font-size:11px;color:var(--text-2);margin-top:4px;font-weight:600;}
+.skin.sel{border-color:var(--gold);background:linear-gradient(145deg,#fff3e6,#ffe6cf);box-shadow:0 6px 16px rgba(255,122,26,.2);}
+.skin.locked{filter:grayscale(.85);opacity:.55;cursor:not-allowed;}
+.skin .lock{position:absolute;top:6px;right:8px;font-size:13px;}
+.skin .req{font-size:10px;color:var(--red);font-weight:700;display:block;}
+.task-card,.reward-card{display:flex;align-items:center;gap:14px;background:#fff;border:2px solid var(--border-2);border-radius:18px;padding:14px 16px;margin-bottom:10px;transition:transform .15s,border-color .15s;}
+.task-card:hover,.reward-card:hover{transform:translateY(-2px);border-color:var(--gold);}
+.tc-emoji{font-size:32px;flex-shrink:0;}
+.tc-body{flex:1;min-width:0;}
+.tc-title{font-weight:700;color:var(--text);font-size:15px;}
+.tc-xp{font-size:12px;color:#d98018;font-weight:800;margin-top:2px;}
+.photo-thumb{width:64px;height:64px;border-radius:12px;object-fit:cover;border:2px solid var(--border-2);flex-shrink:0;}
+.sub-row{display:flex;align-items:center;gap:12px;background:#fff7ef;border:2px solid var(--border-2);border-radius:14px;padding:10px 12px;margin-bottom:10px;flex-wrap:wrap;}
+.pill{display:inline-block;padding:2px 10px;border-radius:99px;font-size:11px;font-weight:700;}
+.pill.pending{background:#fff0db;color:#d98018;}
+.pill.approved,.pill.done{background:#e3f7ea;color:#2f9e5e;}
+.pill.rejected{background:#fde6e6;color:#d64a4a;}
+.muted-note{font-size:12px;color:var(--text-3);margin:2px 0 14px;}
+.game-empty{text-align:center;padding:26px;color:var(--text-3);font-size:13px;}
+@media(max-width:600px){.hero-avatar{width:88px;height:88px;font-size:48px;}}
+
+/* ===== 首頁（角色置中 + 漂浮按鈕）===== */
+.home-stage{position:relative;min-height:300px;}
+.home-stage.orbit{height:480px;}
+.home-stage.orbit .home-center{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:280px;}
+.home-stage.stack{display:flex;flex-direction:column;align-items:center;gap:20px;}
+.home-stage.stack .home-btns{display:grid;grid-template-columns:repeat(auto-fill,minmax(92px,1fr));gap:12px;width:100%;}
+.home-center{text-align:center;}
+.home-avatar{width:160px;height:160px;border-radius:40px;margin:0 auto 12px;background:linear-gradient(145deg,#ffe1c2,#ffcf9e);display:flex;align-items:center;justify-content:center;overflow:hidden;box-shadow:inset 0 -8px 0 rgba(255,138,61,.18),0 14px 30px rgba(255,122,26,.22);animation:bob 3s ease-in-out infinite;}
+@keyframes bob{0%,100%{transform:translateY(0)}50%{transform:translateY(-9px)}}
+.home-name{font-size:20px;font-weight:800;color:var(--text);font-family:'Fredoka','Noto Sans TC';}
+.float-btn{display:flex;flex-direction:column;align-items:center;gap:3px;width:88px;padding:12px 6px;background:#fff;border:2px solid var(--gold);border-radius:20px;cursor:pointer;font-family:inherit;box-shadow:0 8px 18px rgba(255,122,26,.18);transition:transform .15s;}
+.float-btn:hover{transform:translateY(-4px) scale(1.06);}
+.float-btn .fb-ico{font-size:26px;line-height:1;}
+.float-btn .fb-lbl{font-size:11px;font-weight:700;color:var(--text-2);}
+.home-stage.orbit .float-btn{animation:bob 4s ease-in-out infinite;}
+
+/* ===== 建立角色 overlay ===== */
+#char-create{position:fixed;inset:0;z-index:200;background:linear-gradient(160deg,#fff6ec,#ffe6cf);display:none;flex-direction:column;align-items:center;overflow-y:auto;padding:34px 20px;}
+#char-create.show{display:flex;}
+.cc-title{font-size:25px;font-weight:800;color:#ff6a1a;font-family:'Fredoka','Noto Sans TC';margin-bottom:4px;text-align:center;}
+.cc-sub{font-size:13px;color:var(--text-2);margin-bottom:20px;text-align:center;}
+.cc-preview{width:180px;height:180px;border-radius:40px;background:linear-gradient(145deg,#ffe1c2,#ffcf9e);display:flex;align-items:center;justify-content:center;overflow:hidden;box-shadow:0 14px 32px rgba(255,122,26,.28);margin-bottom:18px;border:3px solid #fff;}
+.cc-badge{display:inline-block;background:linear-gradient(135deg,#ff9d3d,#ff6a1a);color:#fff;font-weight:800;font-size:12px;letter-spacing:.1em;padding:6px 16px;border-radius:99px;margin-bottom:14px;box-shadow:0 6px 14px rgba(255,122,26,.3);}
+.cc-confirm{margin-top:26px;font-size:16px;padding:16px 40px;border-radius:99px!important;box-shadow:0 12px 26px rgba(255,122,26,.4)!important;position:sticky;bottom:14px;}
+.skin .se img{display:block;}
+
+/* ===== 換裝角色（疊圖）===== */
+.avatar-stage{position:relative;width:100%;height:100%;}
+.av-bg{position:absolute;inset:0;}
+.av-layer{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;-webkit-mask-size:contain;mask-size:contain;}
+.hero-avatar,.home-avatar,.cc-preview{overflow:hidden;}
+.color-dot{width:30px;height:30px;border-radius:50%;display:inline-block;cursor:pointer;border:3px solid #fff;box-shadow:0 0 0 2px var(--border-2);margin:3px;vertical-align:middle;transition:transform .12s;}
+.color-dot:hover{transform:scale(1.12);}
+.color-dot.sel{box-shadow:0 0 0 3px var(--gold);}
+.color-pick{vertical-align:middle;width:40px;height:34px;border:2px solid var(--border-2);border-radius:10px;background:#fff;cursor:pointer;padding:2px;margin-left:6px;}
+.dress-sec{margin-bottom:16px;}
+.dress-label{font-size:13px;font-weight:800;color:var(--text);margin-bottom:8px;}
+.swatch-row{display:flex;flex-wrap:wrap;align-items:center;gap:2px;}
+
+/* ===== 換裝試穿台（preview 置頂 + 食物背景）===== */
+.dress-top{position:sticky;top:0;z-index:6;background:#fff;padding:2px 0 8px;}
+.dress-scene{position:relative;height:330px;border-radius:18px;overflow:hidden;background:#ffe3c4;box-shadow:inset 0 0 0 2px rgba(255,138,61,.15);}
+.dress-scene .avatar-stage{position:absolute;left:50%;bottom:-6px;transform:translateX(-50%);width:300px;height:300px;}
+.dress-meta{position:absolute;top:10px;left:10px;display:flex;align-items:center;gap:8px;background:rgba(255,255,255,.85);border-radius:99px;padding:5px 12px;box-shadow:0 4px 10px rgba(0,0,0,.08);}
+.dress-meta .hero-name{font-size:14px;font-weight:800;color:var(--text);}
+.dress-meta .lv-badge{margin-left:0;}
+.mini-xp{width:78px;height:8px;background:#ffe6cf;border-radius:99px;overflow:hidden;}
+.mini-xp-fill{height:100%;background:linear-gradient(90deg,#ffb347,#ff6a1a);}
+.dcat-row{display:flex;gap:6px;flex-wrap:wrap;margin-top:10px;}
+.dcat{padding:8px 16px;border-radius:99px;border:2px solid var(--border-2);background:#fff7ef;font-family:inherit;font-weight:700;font-size:13px;color:var(--text-2);cursor:pointer;}
+.dcat.active{background:linear-gradient(135deg,#ff9d3d,#ff6a1a);color:#fff;border-color:transparent;box-shadow:0 4px 10px rgba(255,122,26,.25);}
+.opt-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(74px,1fr));gap:10px;padding:12px 0 4px;}
+.opt{aspect-ratio:1;background:#fff7ef;border:2px solid var(--border-2);border-radius:14px;cursor:pointer;display:flex;align-items:center;justify-content:center;overflow:hidden;transition:transform .12s;}
+.opt:hover{transform:translateY(-2px);}
+.opt.sel{border-color:var(--gold);background:linear-gradient(145deg,#fff3e6,#ffe6cf);box-shadow:0 4px 12px rgba(255,122,26,.22);}
+.opt img{width:100%;height:100%;object-fit:contain;}
+.cc-scene{width:300px;max-width:88vw;height:300px;margin-bottom:8px;flex-shrink:0;}
+
+/* ===== 📱 手機介面 ===== */
+@media(max-width:640px){
+  .content{padding:14px;}
+  .topbar{padding:10px 10px 0;gap:6px;}
+  .topbar-right{gap:6px;}
+  .topbar-title{font-size:13px;}
+  .user-badge{padding:4px 8px 4px 4px;}
+  .user-name{display:none;}
+  .user-badge .user-avatar{display:none;} /* 已有頂部角色徽章，避免重複小頭像 */
+  .btn-logout{padding:6px 9px;font-size:10px;}
+  /* 分頁列改成可橫向滑動的一排 */
+  .nav-bar{flex-wrap:nowrap;overflow-x:auto;-webkit-overflow-scrolling:touch;gap:4px;padding:10px 12px 0;scrollbar-width:none;}
+  .nav-bar::-webkit-scrollbar{display:none;}
+  .nav-btn{flex:0 0 auto;white-space:nowrap;padding:9px 13px;font-size:12.5px;border-radius:12px;}
+  .sec-title{font-size:17px;}
+  .sec-header{flex-wrap:wrap;gap:6px;}
+  .grid-2,.grid-3,.grid-4{grid-template-columns:1fr;}
+  .form-row{grid-template-columns:1fr;}
+  .c-card{padding:16px;border-radius:18px!important;}
+  .dress-scene{height:300px;}
+  .dress-scene .avatar-stage{width:255px;height:255px;}
+  .opt-grid{grid-template-columns:repeat(auto-fill,minmax(64px,1fr));gap:8px;}
+  .kpi-grid{grid-template-columns:1fr 1fr;}
+  .charts-row{grid-template-columns:1fr;}
+  .cc-title{font-size:21px;}
+}
+</style>
+</head>
+<body>
+
+<div class="scene-bg"></div>
+<div class="noise"></div>
+<div class="login-bg-caption">光頭餐飲集團 · 員工系統</div>
+
+<!-- ═══════════════════════════════ AUTH ═══════════════════════════════ -->
+<div id="auth-screen">
+  <div class="auth-wrap">
+    <div class="brand-header">
+      <div class="brand-icon"><img src="logo.png" alt="光頭餐飲集團"></div>
+      <div class="brand-name">光頭餐飲集團</div>
+      <div class="brand-sub">Operations Command Center</div>
+    </div>
+    <div class="glass-card">
+      <div class="auth-tabs-row">
+        <button class="auth-tab-btn active" onclick="switchAuthTab('login',this)">登入</button>
+        <button class="auth-tab-btn" onclick="switchAuthTab('register',this)">申請帳號</button>
+      </div>
+
+      <!-- LOGIN -->
+      <div class="auth-panel active" id="auth-login">
+        <div class="field-label">帳號</div>
+        <input class="field-input" id="l-user" type="text" placeholder="輸入帳號" autocomplete="username">
+        <div class="field-label">密碼</div>
+        <input class="field-input" id="l-pass" type="password" placeholder="輸入密碼" autocomplete="current-password" onkeydown="if(event.key==='Enter')doLogin()">
+        <button class="btn-primary" onclick="doLogin()" id="btn-login">登入系統</button>
+        <div class="msg" id="l-msg"></div>
+        <div style="margin-top:18px;border-top:2px solid var(--border-2);padding-top:14px">
+          <div class="field-label" style="text-align:center;margin-bottom:10px">🧪 本機測試登入（免後台・僅供預覽）</div>
+          <div style="display:flex;gap:8px">
+            <button class="btn-sm btn-neutral" style="flex:1;justify-content:center;padding:11px;border-radius:12px" onclick="demoLogin('BOSS')">老闆</button>
+            <button class="btn-sm btn-neutral" style="flex:1;justify-content:center;padding:11px;border-radius:12px" onclick="demoLogin('MGR')">店長</button>
+            <button class="btn-sm btn-neutral" style="flex:1;justify-content:center;padding:11px;border-radius:12px" onclick="demoLogin('EMP')">員工</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- REGISTER -->
+      <div class="auth-panel" id="auth-register">
+        <div class="form-row">
+          <div>
+            <div class="field-label">姓名</div>
+            <input class="field-input" id="r-name" type="text" placeholder="真實姓名">
+          </div>
+          <div>
+            <div class="field-label">帳號</div>
+            <input class="field-input" id="r-user" type="text" placeholder="自訂帳號">
+          </div>
+        </div>
+        <div class="form-row">
+          <div>
+            <div class="field-label">密碼</div>
+            <input class="field-input" id="r-pass" type="password" placeholder="設定密碼">
+          </div>
+          <div>
+            <div class="field-label">電話</div>
+            <input class="field-input" id="r-phone" type="tel" placeholder="聯絡電話">
+          </div>
+        </div>
+        <div class="field-label">申請職位</div>
+        <select class="field-input" id="r-role" onchange="updateRegNote(this.value)">
+          <option value="EMP">員工</option>
+          <option value="MGR">店長</option>
+          <option value="BOSS">老闆</option>
+        </select>
+        <div class="msg success" id="r-note" style="display:block">申請後須等待老闆審核才可登入</div>
+        <button class="btn-primary" onclick="doRegister()">送出申請</button>
+        <div class="msg" id="r-msg"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════ MAIN APP ═══════════════════════════════ -->
+<div id="app">
+  <!-- Top bar -->
+  <div class="topbar">
+    <div class="topbar-brand">
+      <div class="topbar-icon"><img src="logo.png" alt=""></div>
+      <div class="topbar-title">光頭餐飲集團</div>
+    </div>
+    <div class="topbar-right">
+      <div class="user-badge">
+        <div class="user-avatar" id="user-avatar">—</div>
+        <div class="user-name" id="user-name-display">—</div>
+        <div class="role-tag" id="user-role-tag"></div>
+      </div>
+      <button class="btn-logout" onclick="doLogout()">登出</button>
+    </div>
+  </div>
+
+  <!-- Nav -->
+  <div class="nav-bar" id="main-nav"></div>
+
+  <!-- Content -->
+  <div class="content">
+
+    <!-- REVENUE TAB -->
+    <div class="tab-panel" id="tab-revenue">
+      <div class="sec-header">
+        <div class="sec-title">每日結帳</div>
+        <div class="divider"></div>
+        <div class="sec-sub">輸入今日各通路營收</div>
+      </div>
+      <div class="c-card">
+        <div class="c-card-title">📅 基本資訊</div>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">日期</label>
+            <input class="form-input" id="rv-date" type="date">
+          </div>
+          <div class="form-group">
+            <label class="form-label">備註</label>
+            <input class="form-input" id="rv-note" type="text" placeholder="例：假日、特殊活動">
+          </div>
+        </div>
+      </div>
+      <div class="c-card">
+        <div class="c-card-title">💰 通路收入</div>
+        <div class="grid-3" style="margin-bottom:16px">
+          <div class="form-group"><label class="form-label">現金</label><input class="form-input" id="rv-cash" type="number" min="0" placeholder="0" oninput="calcRev()"></div>
+          <div class="form-group"><label class="form-label">刷卡</label><input class="form-input" id="rv-card" type="number" min="0" placeholder="0" oninput="calcRev()"></div>
+          <div class="form-group"><label class="form-label">TWQR</label><input class="form-input" id="rv-twqr" type="number" min="0" placeholder="0" oninput="calcRev()"></div>
+          <div class="form-group"><label class="form-label">Foodpanda</label><input class="form-input" id="rv-fp" type="number" min="0" placeholder="0" oninput="calcRev()"></div>
+          <div class="form-group"><label class="form-label">UberEats</label><input class="form-input" id="rv-ue" type="number" min="0" placeholder="0" oninput="calcRev()"></div>
+          <div class="form-group"><label class="form-label">非帳內</label><input class="form-input" id="rv-off" type="number" min="0" placeholder="0" oninput="calcRev()"></div>
+        </div>
+        <div class="totals-row" id="rv-totals">
+          <span class="total-item">總計 <strong id="t-total">$0</strong></span>
+          <span class="total-sep">·</span>
+          <span class="total-item">刷卡手續費 <strong id="t-cfee">$0</strong></span>
+          <span class="total-sep">·</span>
+          <span class="total-item">TWQR手續費 <strong id="t-qfee">$0</strong></span>
+          <span class="total-sep">·</span>
+          <span class="total-item">外送手續費 <strong id="t-dfee">$0</strong></span>
+        </div>
+        <button class="btn-action" onclick="submitRev()">✓ 確認送出</button>
+      </div>
+    </div>
+
+    <!-- PURCHASE TAB -->
+    <div class="tab-panel" id="tab-purchase">
+      <div class="sec-header">
+        <div class="sec-title">進貨記錄</div>
+        <div class="divider"></div>
+        <div class="sec-sub">新增食材採購明細</div>
+      </div>
+      <div class="c-card">
+        <div class="c-card-title">📦 進貨資訊</div>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">進貨日期</label>
+            <input class="form-input" id="pu-date" type="date">
+          </div>
+          <div class="form-group">
+            <label class="form-label">供應商</label>
+            <input class="form-input" id="pu-supplier" type="text" placeholder="供應商名稱">
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">分類</label>
+          <div class="chips">
+            <button class="chip active" onclick="pickChip(this)">海鮮</button>
+            <button class="chip" onclick="pickChip(this)">肉品</button>
+            <button class="chip" onclick="pickChip(this)">蔬菜</button>
+            <button class="chip" onclick="pickChip(this)">調味料</button>
+            <button class="chip" onclick="pickChip(this)">飲料</button>
+            <button class="chip" onclick="pickChip(this)">其他</button>
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">品名</label>
+            <input class="form-input" id="pu-name" type="text" placeholder="食材名稱">
+          </div>
+          <div class="form-group">
+            <label class="form-label">物料編號</label>
+            <input class="form-input" id="pu-code" type="text" placeholder="例：SEA-001">
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">數量</label>
+            <input class="form-input" id="pu-qty" type="number" min="0" placeholder="0">
+          </div>
+          <div class="form-group">
+            <label class="form-label">單位</label>
+            <select class="form-input" id="pu-unit">
+              <option>公斤</option><option>公克</option><option>箱</option>
+              <option>包</option><option>瓶</option><option>個</option>
+              <option>條</option><option>份</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">總成本（元）</label>
+            <input class="form-input" id="pu-cost" type="number" min="0" placeholder="0">
+          </div>
+          <div class="form-group">
+            <label class="form-label">單位成本（元）</label>
+            <input class="form-input" id="pu-ucost" type="number" min="0" placeholder="自動計算">
+          </div>
+        </div>
+        <button class="btn-action" onclick="submitPu()">✓ 新增進貨</button>
+      </div>
+    </div>
+
+    <!-- REPORTS TAB -->
+    <div class="tab-panel" id="tab-reports">
+      <div class="sec-header">
+        <div class="sec-title">數據報表</div>
+        <div class="divider"></div>
+        <div class="sec-sub" id="report-last-update">載入中…</div>
+        <button class="refresh-btn" onclick="loadReports()" style="margin-left:auto">↻ 重新整理</button>
+      </div>
+
+      <!-- Time Range Selector -->
+      <div id="report-range-bar" style="display:flex;align-items:center;gap:10px;margin-bottom:18px;flex-wrap:wrap">
+        <span style="font-size:12px;color:var(--text-3);letter-spacing:.06em;white-space:nowrap">時間區段</span>
+        <div style="display:flex;gap:6px;flex-wrap:wrap" id="range-btns">
+          <button class="range-btn active" data-range="today" onclick="setRange('today',this)">今日</button>
+          <button class="range-btn" data-range="7d" onclick="setRange('7d',this)">近7天</button>
+          <button class="range-btn" data-range="month" onclick="setRange('month',this)">本月</button>
+          <button class="range-btn" data-range="30d" onclick="setRange('30d',this)">近30天</button>
+          <button class="range-btn" data-range="all" onclick="setRange('all',this)">全部</button>
+          <button class="range-btn" data-range="custom" onclick="setRange('custom',this)">自訂 ✎</button>
+        </div>
+        <div id="custom-range" style="display:none;gap:6px;align-items:center;flex-wrap:wrap">
+          <input type="date" id="range-from" style="background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.12);color:var(--text-1);padding:4px 8px;border-radius:6px;font-size:12px">
+          <span style="color:var(--text-3);font-size:12px">至</span>
+          <input type="date" id="range-to" style="background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.12);color:var(--text-1);padding:4px 8px;border-radius:6px;font-size:12px">
+          <button class="refresh-btn" onclick="applyCustomRange()" style="font-size:11px;padding:4px 12px">套用</button>
+        </div>
+      </div>
+
+      <!-- KPI Cards -->
+      <div class="kpi-grid">
+        <div class="kpi-card gold-accent">
+          <div class="kpi-label">今日營收</div>
+          <div class="kpi-val" id="kpi-today"><small>$</small><span id="kv-today">—</span></div>
+          <div class="kpi-note" id="kn-today">—</div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-label">本月總營收</div>
+          <div class="kpi-val"><small>$</small><span id="kv-month">—</span></div>
+          <div class="kpi-note" id="kn-month">—</div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-label">本月進貨成本</div>
+          <div class="kpi-val"><small>$</small><span id="kv-cost">—</span></div>
+          <div class="kpi-note" id="kn-cost">—</div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-label">本月毛利</div>
+          <div class="kpi-val"><small>$</small><span id="kv-profit">—</span></div>
+          <div class="kpi-note" id="kn-profit">—</div>
+        </div>
+      </div>
+
+      <!-- Charts row -->
+      <div class="charts-row">
+        <div class="c-card" style="margin-bottom:0">
+          <div class="c-card-title">📈 近期每日營收趨勢</div>
+          <div class="chart-wrap"><canvas id="chart-trend"></canvas></div>
+          <div id="trend-empty" class="empty-state" style="display:none"><div class="empty-icon">📊</div>尚無足夠數據</div>
+        </div>
+        <div class="c-card" style="margin-bottom:0">
+          <div class="c-card-title">🥧 通路佔比</div>
+          <div class="chart-wrap" style="max-width:240px;margin:0 auto"><canvas id="chart-pie"></canvas></div>
+          <div id="pie-legend" style="margin-top:12px;display:flex;flex-direction:column;gap:5px"></div>
+          <div id="pie-empty" class="empty-state" style="display:none"><div class="empty-icon">📊</div>尚無數據</div>
+        </div>
+      </div>
+
+      <div style="height:16px"></div>
+
+      <!-- Recent records table -->
+      <div class="c-card">
+        <div class="c-card-title">📋 最近營收記錄</div>
+        <div style="overflow-x:auto">
+          <table class="data-table" id="rev-table">
+            <thead><tr>
+              <th>日期</th><th>現金</th><th>刷卡</th><th>TWQR</th>
+              <th>Foodpanda</th><th>UberEats</th><th>合計</th>
+            </tr></thead>
+            <tbody id="rev-tbody"><tr><td colspan="7" style="text-align:center;padding:30px;color:var(--text-3)">載入中…</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Purchase cost table -->
+      <div class="c-card">
+        <div class="c-card-title">📦 最近進貨記錄</div>
+        <div style="overflow-x:auto">
+          <table class="data-table" id="pur-table">
+            <thead><tr>
+              <th>日期</th><th>分類</th><th>品名</th><th>數量</th><th>成本</th><th>供應商</th>
+            </tr></thead>
+            <tbody id="pur-tbody"><tr><td colspan="6" style="text-align:center;padding:30px;color:var(--text-3)">載入中…</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- ACCOUNTS TAB -->
+    <div class="tab-panel" id="tab-accounts">
+      <div class="sec-header">
+        <div class="sec-title">帳號管理</div>
+        <div class="divider"></div>
+        <div class="sec-sub">員工帳號審核與管理</div>
+      </div>
+
+      <!-- Pending approvals -->
+      <div class="c-card">
+        <div class="c-card-title">⏳ 待審核帳號</div>
+        <div id="pending-list"><div class="loading-state"><div class="spin"></div>載入中</div></div>
+        <button class="refresh-btn" onclick="loadPending()" style="margin-top:12px">↻ 重新載入</button>
+      </div>
+
+      <!-- All accounts -->
+      <div class="c-card">
+        <div class="c-card-title">👥 所有帳號</div>
+        <div id="acc-list"><div class="loading-state"><div class="spin"></div>載入中</div></div>
+        <button class="refresh-btn" onclick="loadAccounts()" style="margin-top:12px">↻ 重新載入</button>
+      </div>
+
+      <!-- New account / Reset pw -->
+      <div class="grid-2">
+        <div class="c-card">
+          <div class="c-card-title">➕ 直接新增帳號</div>
+          <div class="form-group"><label class="form-label">姓名</label><input class="form-input" id="new-name" placeholder="員工姓名"></div>
+          <div class="form-group"><label class="form-label">帳號</label><input class="form-input" id="new-user" placeholder="登入帳號"></div>
+          <div class="form-group"><label class="form-label">密碼</label><input class="form-input" id="new-pass" type="password" placeholder="初始密碼"></div>
+          <div class="form-group"><label class="form-label">電話</label><input class="form-input" id="new-phone" placeholder="聯絡電話"></div>
+          <div class="form-group">
+            <label class="form-label">角色</label>
+            <select class="form-input" id="new-role">
+              <option value="EMP">員工</option>
+              <option value="MGR">店長</option>
+              <option value="BOSS">老闆</option>
+            </select>
+          </div>
+          <button class="btn-action" onclick="createAcc()">新增帳號</button>
+        </div>
+        <div class="c-card">
+          <div class="c-card-title">🔑 重設密碼</div>
+          <div class="form-group"><label class="form-label">帳號</label><input class="form-input" id="reset-user" placeholder="輸入帳號"></div>
+          <div class="form-group"><label class="form-label">新密碼</label><input class="form-input" id="reset-pass" type="password" placeholder="輸入新密碼"></div>
+          <button class="btn-action" onclick="resetPw()">重設密碼</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- HOME TAB -->
+    <div class="tab-panel" id="tab-home">
+      <div class="sec-header"><div class="sec-title">🏠 我的主頁</div><div class="divider"></div><div class="sec-sub">點擊周圍按鈕進入各項功能</div></div>
+      <div class="c-card"><div class="home-stage" id="home-stage"></div></div>
+    </div>
+
+    <!-- EXPENSE TAB -->
+    <div class="tab-panel" id="tab-expense">
+      <div class="sec-header"><div class="sec-title">支出記錄</div><div class="divider"></div><div class="sec-sub">登錄水電、雜支等支出（雛型・存於本機）</div></div>
+      <div class="c-card">
+        <div class="c-card-title">💸 新增支出</div>
+        <div class="form-row">
+          <div class="form-group"><label class="form-label">日期</label><input class="form-input" id="ex-date" type="date"></div>
+          <div class="form-group"><label class="form-label">金額（元）</label><input class="form-input" id="ex-amt" type="number" min="0" placeholder="0"></div>
+        </div>
+        <div class="form-group"><label class="form-label">分類</label>
+          <div class="chips" id="ex-chips">
+            <button class="chip active" onclick="pickExChip(this)">水電</button>
+            <button class="chip" onclick="pickExChip(this)">人事</button>
+            <button class="chip" onclick="pickExChip(this)">租金</button>
+            <button class="chip" onclick="pickExChip(this)">雜支</button>
+            <button class="chip" onclick="pickExChip(this)">設備</button>
+            <button class="chip" onclick="pickExChip(this)">其他</button>
+          </div>
+        </div>
+        <div class="form-group"><label class="form-label">項目說明</label><input class="form-input" id="ex-item" type="text" placeholder="例：6月電費"></div>
+        <button class="btn-action" onclick="submitExpense()">✓ 新增支出</button>
+      </div>
+      <div class="c-card"><div class="c-card-title">📋 最近支出</div><div id="ex-list"></div></div>
+    </div>
+
+    <!-- TASKS TAB -->
+    <div class="tab-panel" id="tab-tasks">
+      <div class="sec-header"><div class="sec-title">任務中心</div><div class="divider"></div><div class="sec-sub">完成任務拍照上傳，主管審核後獲得經驗值</div></div>
+      <input type="file" id="task-file-input" accept="image/*" capture="environment" style="display:none">
+      <div id="mgr-review-wrap"></div>
+      <div class="c-card"><div class="c-card-title">🎯 可接任務</div><div id="task-list"></div></div>
+      <div class="c-card"><div class="c-card-title">📸 我的上傳紀錄</div><div id="my-subs"></div></div>
+      <div id="task-admin-wrap"></div>
+    </div>
+
+    <!-- REWARDS TAB -->
+    <div class="tab-panel" id="tab-rewards">
+      <div class="sec-header"><div class="sec-title">獎勵商店</div><div class="divider"></div><div class="sec-sub">用點數兌換獎勵（加薪等由主管實際執行）</div></div>
+      <div class="c-card"><div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px"><div class="c-card-title" style="margin:0">🎁 我的點數</div><span class="pts-pill" id="rw-balance">🎫 0 點</span></div></div>
+      <div class="c-card"><div class="c-card-title">🛒 可兌換</div><div id="reward-list"></div></div>
+      <div class="c-card"><div class="c-card-title">🧾 我的兌換紀錄</div><div id="my-redeems"></div></div>
+      <div id="mgr-redeem-wrap"></div>
+      <div id="reward-admin-wrap"></div>
+    </div>
+
+    <!-- CHARACTER TAB -->
+    <div class="tab-panel" id="tab-character">
+      <div class="sec-header"><div class="sec-title">我的角色</div><div class="divider"></div><div class="sec-sub">換裝試穿 ・ 升級 ・ 簽到</div></div>
+      <div class="c-card" style="padding:14px">
+        <div class="dress-top">
+          <div class="dress-scene" id="dress-scene"></div>
+          <div class="dcat-row" id="dcat-row"></div>
+        </div>
+        <div id="dress-options"></div>
+      </div>
+      <div class="c-card" id="char-extra"></div>
+      <input type="file" id="skin-file-input" accept="image/*" style="display:none">
+      <div id="skin-admin-wrap"></div>
+    </div>
+
+  </div><!-- /content -->
+</div><!-- /app -->
+
+<!-- ═══════════════ 建立角色 overlay ═══════════════ -->
+<div id="char-create">
+  <div class="cc-badge">STEP 1 ・ 建立你的角色</div>
+  <div class="cc-title" id="cc-title">建立你的角色 🎮</div>
+  <div class="cc-sub" id="cc-sub">挑你喜歡的造型，完成後就能開始！</div>
+  <div class="dress-scene cc-scene" id="cc-scene"></div>
+  <div class="dcat-row" id="cc-cats" style="justify-content:center"></div>
+  <div id="cc-options" style="max-width:560px;width:100%"></div>
+  <button class="btn-action cc-confirm" onclick="confirmCharCreate()">✓ 就決定是你了，開始吧！</button>
+</div>
+
+<div id="toast"></div>
+
+<script>
+const GAS = 'https://script.google.com/macros/s/AKfycbwo6t4jqCx9apfSdO86iKuF42wU3GBFTM-gQosKbVJUlOpxLzdwGKoFwKujaht1RXMBBQ/exec';
+let CU = null; // current user
+let trendChart = null, pieChart = null;
+
+const $ = id => document.getElementById(id);
+
+// ── API ──
+async function api(body) {
+  const r = await fetch(GAS, {method:'POST',body:JSON.stringify(body),headers:{'Content-Type':'text/plain'}});
+  return r.json();
+}
+
+// ── AUTH TABS ──
+function switchAuthTab(tab, btn) {
+  document.querySelectorAll('.auth-tab-btn').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  document.querySelectorAll('.auth-panel').forEach(p=>p.classList.remove('active'));
+  $('auth-'+tab).classList.add('active');
+}
+
+// ── LOGIN ──
+async function doLogin() {
+  const u=$('l-user').value.trim(), p=$('l-pass').value.trim();
+  if(!u||!p){showMsg('l-msg','請輸入帳號與密碼','error');return}
+  $('btn-login').textContent='驗證中…';$('btn-login').disabled=true;
+  try{
+    const d=await api({type:'auth_login',data:{username:u,password:p}});
+    if(d.status==='success'){
+      CU={name:d.name,username:d.username,role:d.role,phone:d.phone};
+      enterApp();
+    } else if(d.status==='disabled'){showMsg('l-msg','帳號已停用','error');
+    } else if(d.status==='pending'){showMsg('l-msg','帳號待審核，請等待老闆批准','error');
+    } else if(d.status==='wrong_password'){showMsg('l-msg','密碼錯誤','error');
+    } else {showMsg('l-msg','找不到此帳號','error');}
+  }catch(e){showMsg('l-msg','連線失敗（本機開啟常會擋後台，可改用下方測試登入；正式請用 Netlify 網址）','error');}
+  $('btn-login').textContent='登入系統';$('btn-login').disabled=false;
+}
+
+// ── REGISTER ──
+async function doRegister() {
+  const name=$('r-name').value.trim(),user=$('r-user').value.trim();
+  const pass=$('r-pass').value.trim(),phone=$('r-phone').value.trim();
+  const role=$('r-role').value;
+  if(!name||!user||!pass){showMsg('r-msg','請填寫姓名、帳號、密碼','error');return}
+  const status=role==='BOSS'?'啟用':'待審核';
+  try{
+    const d=await api({type:'auth_register',data:{name,username:user,password:pass,role,phone,status,createdBy:'self'}});
+    if(d.status==='success'){
+      if(status==='啟用'){CU={name,username:user,role,phone};enterApp();}
+      else{showMsg('r-msg','申請成功！等待老闆審核後即可登入','success');}
+    } else {showMsg('r-msg',d.message||'申請失敗','error');}
+  }catch(e){showMsg('r-msg','連線失敗','error');}
+}
+
+function showMsg(id,text,type) {
+  const el=$(id); el.textContent=text; el.className='msg '+type;
+}
+function updateRegNote(role) {
+  const note=$('r-note');
+  if(role==='BOSS'){note.textContent='老闆帳號申請後立即啟用';note.className='msg success';note.style.display='block';}
+  else{note.textContent='申請後須等待老闆審核才可登入';note.className='msg success';note.style.display='block';}
+}
+
+// ── 本機測試登入（免後台）──
+function demoLogin(role){
+  const names={BOSS:'老闆',MGR:'店長',EMP:'員工'};
+  CU={name:names[role]+'(測試)',username:'demo_'+role,role,phone:''};
+  enterApp();
+  toast('已用「'+names[role]+'」測試身分登入','gold');
+}
+
+// ── ENTER APP ──
+function enterApp() {
+  $('auth-screen').classList.add('hidden');
+  initApp();
+  $('app').classList.add('visible');
+  if(!getChar().chosen) showCharCreate();
+}
+
+// ── LOGOUT ──
+function doLogout() {
+  CU=null;
+  $('app').classList.remove('visible');
+  $('auth-screen').classList.remove('hidden');
+  $('l-user').value='';$('l-pass').value='';
+  $('l-msg').className='msg';
+  if(trendChart){trendChart.destroy();trendChart=null;}
+  if(pieChart){pieChart.destroy();pieChart=null;}
+}
+
+// ── INIT APP ──
+function initApp() {
+  // user info
+  $('user-avatar').textContent=CU.name.charAt(0);
+  $('user-name-display').textContent=CU.name;
+  const roleTag=$('user-role-tag');
+  const labels={BOSS:'老闆',MGR:'店長',EMP:'員工'};
+  roleTag.textContent=labels[CU.role]||CU.role;
+  roleTag.className='role-tag role-'+CU.role;
+  seedGame();wireTaskInput();wirePartInput();updateGameChip();
+
+  // build nav
+  const tabs=ALL_TABS.filter(t=>t.roles.includes(CU.role));
+  $('main-nav').innerHTML=tabs.map((t,i)=>
+    `<button class="nav-btn${i===0?' active':''}" data-tab="${t.id}" onclick="switchTab('${t.id}',this)">
+      <span class="nav-icon">${t.icon}</span>${t.label}
+    </button>`).join('');
+  document.querySelectorAll('.tab-panel').forEach(p=>p.classList.remove('active'));
+  $('tab-'+tabs[0].id).classList.add('active');
+
+  // set default dates
+  const today=new Date().toISOString().split('T')[0];
+  if($('rv-date'))$('rv-date').value=today;
+  if($('pu-date'))$('pu-date').value=today;
+  if($('ex-date'))$('ex-date').value=today;
+
+  // load data
+  if(tabs.some(t=>t.id==='reports')) loadReports();
+  if(tabs.some(t=>t.id==='accounts')){loadPending();loadAccounts();}
+  if(tabs[0]&&tabs[0].id==='home') renderHome();
+  if(!window._homeResizeWired){window._homeResizeWired=true;window.addEventListener('resize',()=>{const h=$('tab-home');if(h&&h.classList.contains('active'))renderHome();});}
+}
+
+// ── NAV ──
+function switchTab(name,btn) {
+  document.querySelectorAll('.tab-panel').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.nav-btn').forEach(b=>b.classList.remove('active'));
+  $('tab-'+name).classList.add('active');
+  btn.classList.add('active');
+  if(name==='reports')loadReports();
+  if(name==='accounts'){loadPending();loadAccounts();}
+  if(name==='expense')renderExpenseList();
+  if(name==='tasks')renderTasks();
+  if(name==='rewards')renderRewards();
+  if(name==='character')renderCharacter();
+  if(name==='home')renderHome();
+}
+function goTab(id){const b=[...document.querySelectorAll('.nav-btn')].find(x=>x.dataset.tab===id);if(b)b.click();}
+
+// ── REVENUE CALC ──
+function calcRev() {
+  const v=n=>parseFloat($(n)?.value||0)||0;
+  const cash=v('rv-cash'),card=v('rv-card'),twqr=v('rv-twqr'),fp=v('rv-fp'),ue=v('rv-ue'),off=v('rv-off');
+  const total=cash+card+twqr+fp+ue+off;
+  const cFee=Math.round(card*0.015);
+  const qFee=Math.round(twqr*0.006);
+  const dFee=Math.round((fp+ue)*0.3);
+  $('t-total').textContent='$'+total.toLocaleString();
+  $('t-cfee').textContent='$'+cFee.toLocaleString();
+  $('t-qfee').textContent='$'+qFee.toLocaleString();
+  $('t-dfee').textContent='$'+dFee.toLocaleString();
+}
+
+async function submitRev() {
+  const v=n=>parseFloat($(n)?.value||0)||0;
+  const date=$('rv-date').value;
+  if(!date){toast('請選擇日期','red');return}
+  const cash=v('rv-cash'),card=v('rv-card'),twqr=v('rv-twqr'),fp=v('rv-fp'),ue=v('rv-ue'),off=v('rv-off');
+  const total=cash+card+twqr+fp+ue+off;
+  const row={date,note:$('rv-note').value,cash,card,twqr,foodpanda:fp,ubereats:ue,total,
+    cardFee:Math.round(card*0.015),twqrFee:Math.round(twqr*0.006),
+    deliveryFee:Math.round((fp+ue)*0.3),platformRemittance:0,offRecord:off};
+  try{
+    const d=await api({type:'revenue',rows:[row]});
+    if(d.status==='success'){toast('✓ 營收已記錄','gold');['rv-cash','rv-card','rv-twqr','rv-fp','rv-ue','rv-off','rv-note'].forEach(id=>{if($(id))$(id).value=''});calcRev();}
+    else toast(d.message||'送出失敗','red');
+  }catch(e){toast('連線失敗','red');}
+}
+
+// ── PURCHASE ──
+let selectedCat='海鮮';
+function pickChip(el) {
+  document.querySelectorAll('.chip').forEach(c=>c.classList.remove('active'));
+  el.classList.add('active');
+  selectedCat=el.textContent;
+}
+
+async function submitPu() {
+  const date=$('pu-date').value,name=$('pu-name').value.trim();
+  const qty=parseFloat($('pu-qty').value)||0,cost=parseFloat($('pu-cost').value)||0;
+  if(!date||!name||!qty||!cost){toast('請填寫日期、品名、數量、成本','red');return}
+  const row={
+    '進貨日期':date,'物料編號':$('pu-code').value,
+    '分類':selectedCat,'物料名稱':name,'進貨數量':qty,
+    '單位量詞':$('pu-unit').value,'總成本':cost,
+    '單位成本':qty?Math.round(cost/qty):0,'供應商':$('pu-supplier').value
+  };
+  try{
+    const d=await api({type:'purchase',rows:[row]});
+    if(d.status==='success'){toast('✓ 進貨記錄已儲存','gold');['pu-name','pu-code','pu-qty','pu-cost','pu-ucost','pu-supplier'].forEach(id=>{if($(id))$(id).value=''});}
+    else toast(d.message||'送出失敗','red');
+  }catch(e){toast('連線失敗','red');}
+}
+
+// ── REPORTS ──
+let _reportRange = 'today';
+let _customFrom = null, _customTo = null;
+let _allRevData = [], _allPurData = [], _summaryData = null;
+
+function setRange(range, btn) {
+  _reportRange = range;
+  document.querySelectorAll('.range-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  const cd = document.getElementById('custom-range');
+  if (range === 'custom') {
+    cd.style.display = 'flex';
+    // Set default range to current month
+    const now = new Date();
+    const mm = String(now.getMonth()+1).padStart(2,'0');
+    const dd = String(now.getDate()).padStart(2,'0');
+    const y = now.getFullYear();
+    if (!document.getElementById('range-to').value) {
+      document.getElementById('range-to').value = `${y}-${mm}-${dd}`;
+      document.getElementById('range-from').value = `${y}-${mm}-01`;
+    }
+  } else {
+    cd.style.display = 'none';
+    if (_allRevData.length > 0) renderReports();
+  }
+}
+
+function applyCustomRange() {
+  _customFrom = document.getElementById('range-from').value;
+  _customTo   = document.getElementById('range-to').value;
+  if (!_customFrom || !_customTo) { toast('請選擇起訖日期','red'); return; }
+  renderReports();
+}
+
+function getDateBounds() {
+  const now = new Date();
+  const pad = n => String(n).padStart(2,'0');
+  const todayStr = `${now.getFullYear()}-${pad(now.getMonth()+1)}-${pad(now.getDate())}`;
+  if (_reportRange === 'today') return { from: todayStr, to: todayStr };
+  if (_reportRange === '7d') {
+    const d = new Date(now); d.setDate(d.getDate()-6);
+    return { from: `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`, to: todayStr };
+  }
+  if (_reportRange === 'month') {
+    return { from: `${now.getFullYear()}-${pad(now.getMonth()+1)}-01`, to: todayStr };
+  }
+  if (_reportRange === '30d') {
+    const d = new Date(now); d.setDate(d.getDate()-29);
+    return { from: `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`, to: todayStr };
+  }
+  if (_reportRange === 'custom') {
+    return { from: _customFrom || todayStr, to: _customTo || todayStr };
+  }
+  return { from: '2000-01-01', to: '2099-12-31' }; // all
+}
+
+function normDate(v) {
+  if (!v) return '';
+  if (typeof v === 'object' && v instanceof Date) {
+    const pad = n => String(n).padStart(2,'0');
+    return `${v.getFullYear()}-${pad(v.getMonth()+1)}-${pad(v.getDate())}`;
+  }
+  const s = String(v).substring(0,10);
+  return s.replace(/\//g, '-');
+}
+
+function filterByRange(rows) {
+  const { from, to } = getDateBounds();
+  return rows.filter(r => {
+    const d = normDate(r.date);
+    return d >= from && d <= to;
+  });
+}
+
+function renderReports() {
+  const revRows = filterByRange(_allRevData);
+  const purRows = filterByRange(_allPurData);
+  const { from, to } = getDateBounds();
+
+  // Recalculate KPIs from filtered data
+  const totalRev = revRows.reduce((a,r) => a + (r.total||0), 0);
+  const totalCost = purRows.reduce((a,r) => a + (r.cost||0), 0);
+  const gross = totalRev - totalCost;
+  const ch = { cash:0, card:0, twqr:0, foodpanda:0, ubereats:0 };
+  revRows.forEach(r => { ch.cash+=r.cash||0; ch.card+=r.card||0; ch.twqr+=r.twqr||0; ch.foodpanda+=r.foodpanda||0; ch.ubereats+=r.ubereats||0; });
+
+  // Range label
+  const rangeLabel = _reportRange === 'today' ? '今日' : _reportRange === '7d' ? '近7天' : _reportRange === 'month' ? '本月' : _reportRange === '30d' ? '近30天' : _reportRange === 'custom' ? `${from} ~ ${to}` : '全部';
+
+  // Update KPIs - first card shows period total, not "today" label if not today
+  const kpiLabel = document.querySelector('#kpi-today .kpi-label');
+  if (kpiLabel) kpiLabel.textContent = rangeLabel + '營收';
+  $('kv-today').textContent = totalRev.toLocaleString();
+  $('kn-today').textContent = revRows.length + ' 筆';
+  $('kv-month').textContent = totalRev.toLocaleString();
+  $('kn-month').textContent = rangeLabel + ' 共' + revRows.length + '筆';
+  $('kv-cost').textContent = totalCost.toLocaleString();
+  const ratio = totalRev > 0 ? Math.round(totalCost/totalRev*100) : 0;
+  $('kn-cost').textContent = '成本率 ' + ratio + '%';
+  $('kv-profit').textContent = gross.toLocaleString();
+  const margin = totalRev > 0 ? Math.round(gross/totalRev*100) : 0;
+  $('kn-profit').textContent = '毛利率 ' + margin + '%';
+
+  // Pie chart
+  const pieData = [ch.cash, ch.card, ch.twqr, ch.foodpanda, ch.ubereats];
+  const pieLabels = ['現金','刷卡','TWQR','Foodpanda','UberEats'];
+  const pieColors = ['#c9a96e','#6ea8e0','#5ec47b','#e08f6e','#c46e9a'];
+  const pieTotal = pieData.reduce((a,b)=>a+b,0);
+  if (pieTotal > 0) {
+    if (pieChart) pieChart.destroy();
+    const ctx = $('chart-pie').getContext('2d');
+    pieChart = new Chart(ctx, {
+      type:'doughnut',
+      data:{labels:pieLabels,datasets:[{data:pieData,backgroundColor:pieColors,borderWidth:0,hoverOffset:4}]},
+      options:{plugins:{legend:{display:false}},cutout:'70%',responsive:true}
+    });
+    $('pie-empty').style.display='none';
+    $('pie-legend').innerHTML = pieLabels.map((l,i) =>
+      `<div style="display:flex;align-items:center;gap:6px;font-size:11px;color:var(--text-2)">
+        <div style="width:8px;height:8px;border-radius:50%;background:${pieColors[i]};flex-shrink:0"></div>
+        <span>${l}</span>
+        <span style="margin-left:auto;color:var(--text-3)">${pieTotal>0?Math.round(pieData[i]/pieTotal*100):0}%</span>
+      </div>`).join('');
+  } else { $('pie-empty').style.display='block'; }
+
+  // Trend chart
+  const displayRows = revRows.slice(-60);
+  if (displayRows.length > 0) {
+    const labels = displayRows.map(r => {
+      const d = normDate(r.date);
+      const parts = d.split('-');
+      return parts.length >= 3 ? parts[1]+'/'+parts[2] : d;
+    });
+    const vals = displayRows.map(r => r.total||0);
+    if (trendChart) trendChart.destroy();
+    const ctx = $('chart-trend').getContext('2d');
+    const grad = ctx.createLinearGradient(0,0,0,220);
+    grad.addColorStop(0,'rgba(255,122,26,0.30)');
+    grad.addColorStop(1,'rgba(255,122,26,0)');
+    trendChart = new Chart(ctx, {
+      type:'line',
+      data:{labels,datasets:[{label:'營收',data:vals,borderColor:'#ff7a1a',backgroundColor:grad,borderWidth:3,pointRadius:displayRows.length>20?0:3,pointBackgroundColor:'#ff7a1a',tension:0.4,fill:true}]},
+      options:{
+        plugins:{legend:{display:false},tooltip:{callbacks:{label:ctx=>'$'+ctx.raw.toLocaleString()}}},
+        scales:{
+          x:{grid:{color:'rgba(255,138,61,0.10)'},ticks:{color:'rgba(58,36,23,0.5)',font:{size:10},maxTicksLimit:10}},
+          y:{grid:{color:'rgba(255,138,61,0.10)'},ticks:{color:'rgba(58,36,23,0.5)',font:{size:10},callback:v=>'$'+v.toLocaleString()}}
+        },responsive:true
+      }
+    });
+    $('trend-empty').style.display='none';
+    $('rev-tbody').innerHTML = revRows.slice(-20).reverse().map(r=>
+      `<tr><td>${normDate(r.date)}</td><td>${r.cash?'$'+r.cash.toLocaleString():'-'}</td><td>${r.card?'$'+r.card.toLocaleString():'-'}</td><td>${r.twqr?'$'+r.twqr.toLocaleString():'-'}</td><td>${r.foodpanda?'$'+r.foodpanda.toLocaleString():'-'}</td><td>${r.ubereats?'$'+r.ubereats.toLocaleString():'-'}</td><td style="font-weight:600;color:var(--gold-light)">${r.total?'$'+r.total.toLocaleString():'-'}</td></tr>`
+    ).join('') || '<tr><td colspan="7" style="text-align:center;padding:30px;color:var(--text-3)">此區段無營收記錄</td></tr>';
+  } else {
+    $('trend-empty').style.display='block';
+    $('rev-tbody').innerHTML='<tr><td colspan="7" style="text-align:center;padding:30px;color:var(--text-3)">此區段無營收記錄</td></tr>';
+    if (trendChart) { trendChart.destroy(); trendChart=null; }
+  }
+
+  if (purRows.length > 0) {
+    $('pur-tbody').innerHTML = purRows.slice(-20).reverse().map(r=>
+      `<tr><td>${normDate(r.date)}</td><td><span class="badge badge-pending">${r.category}</span></td><td>${r.name}</td><td>${r.qty}${r.unit}</td><td style="color:var(--gold-light)">${r.cost?'$'+r.cost.toLocaleString():'-'}</td><td>${r.supplier||'-'}</td></tr>`
+    ).join('');
+  } else {
+    $('pur-tbody').innerHTML='<tr><td colspan="6" style="text-align:center;padding:30px;color:var(--text-3)">此區段無進貨記錄</td></tr>';
+  }
+}
+
+async function loadReports() {
+  $('report-last-update').textContent='載入中…';
+  try{
+    const [revRes,purRes]=await Promise.all([
+      api({type:'query_revenue',data:{}}),
+      api({type:'query_purchase',data:{}})
+    ]);
+    const revOk = revRes.status==='ok' || revRes.status==='success';
+    const purOk = purRes.status==='ok' || purRes.status==='success';
+    _allRevData = revOk
+      ? (revRes.rows
+          ? revRes.rows.slice(1).map(r=>({date:r[0],cash:Number(r[2])||0,card:Number(r[3])||0,twqr:Number(r[4])||0,foodpanda:Number(r[5])||0,ubereats:Number(r[6])||0,total:Number(r[7])||0}))
+          : (revRes.data||[]))
+      : [];
+    _allPurData = purOk
+      ? (purRes.rows
+          ? purRes.rows.slice(1).map(r=>({date:r[0],cost:Number(r[6])||0,name:String(r[3]||''),category:String(r[2]||''),qty:Number(r[4])||0,unit:String(r[5]||''),unitCost:Number(r[7])||0,supplier:String(r[8]||'')}))
+          : (purRes.data||[]))
+      : [];
+    renderReports();
+    const now=new Date();
+    $('report-last-update').textContent='最後更新：'+now.getHours()+':'+String(now.getMinutes()).padStart(2,'0');
+  }catch(e){
+    $('report-last-update').textContent='載入失敗：'+e.message;
+    toast('報表載入失敗','red');
+  }
+}
+
+// ── ACCOUNTS ──
+async function loadPending() {
+  $('pending-list').innerHTML='<div class="loading-state"><div class="spin"></div>載入中</div>';
+  try{
+    const d=await api({type:'auth_list_users',data:{requestedBy:CU?.username}});
+    if(d.status==='success'||d.status==='ok'){
+      const pending=d.users.filter(u=>u.status==='待審核');
+      if(!pending.length){
+        $('pending-list').innerHTML='<div class="empty-state"><div class="empty-icon">✓</div>目前沒有待審核帳號</div>';
+        return;
+      }
+      $('pending-list').innerHTML=`<table class="data-table"><thead><tr><th>姓名</th><th>帳號</th><th>職位</th><th>操作</th></tr></thead><tbody>`+
+        pending.map(u=>`<tr>
+          <td>${u.name}</td><td style="color:var(--text-2)">${u.username}</td>
+          <td><span class="badge badge-pending">${{'BOSS':'老闆','MGR':'店長','EMP':'員工'}[u.role]||u.role}</span></td>
+          <td style="display:flex;gap:8px">
+            <button class="btn-sm btn-approve" onclick="approveUser('${u.username}')">✓ 審核通過</button>
+            <button class="btn-sm btn-warn" onclick="toggleUser('${u.username}','停用')">✗ 拒絕</button>
+          </td>
+        </tr>`).join('')+'</tbody></table>';
+    }
+  }catch(e){$('pending-list').innerHTML='<div class="empty-state">載入失敗</div>';}
+}
+
+async function approveUser(username) {
+  try{
+    const d=await api({type:'auth_toggle_status',data:{username,newStatus:'啟用',changedBy:CU?.username}});
+    if(d.status==='success'||d.status==='ok'){toast('✓ 已審核通過','gold');loadPending();loadAccounts();}
+    else toast(d.message||'操作失敗','red');
+  }catch(e){toast('連線失敗','red');}
+}
+
+async function loadAccounts() {
+  $('acc-list').innerHTML='<div class="loading-state"><div class="spin"></div>載入中</div>';
+  try{
+    const d=await api({type:'auth_list_users',data:{requestedBy:CU?.username}});
+    if(d.status==='success'||d.status==='ok'){
+      if(!d.users.length){$('acc-list').innerHTML='<div class="empty-state">尚無帳號</div>';return;}
+      const roleMap={'BOSS':'老闆','MGR':'店長','EMP':'員工'};
+      $('acc-list').innerHTML=`<table class="data-table"><thead><tr><th>姓名</th><th>帳號</th><th>職位</th><th>狀態</th><th>最後登入</th><th>操作</th></tr></thead><tbody>`+
+        d.users.map(u=>`<tr>
+          <td>${u.name}</td><td style="color:var(--text-2)">${u.username}</td>
+          <td>${roleMap[u.role]||u.role}</td>
+          <td><span class="badge ${u.status==='啟用'?'badge-active':u.status==='待審核'?'badge-pending':'badge-disabled'}">${u.status}</span></td>
+          <td style="color:var(--text-3)">${u.lastLogin}</td>
+          <td>
+            ${u.status==='啟用'?`<button class="btn-sm btn-warn" onclick="toggleUser('${u.username}','停用')">停用</button>`:
+                             `<button class="btn-sm btn-approve" onclick="toggleUser('${u.username}','啟用')">啟用</button>`}
+          </td>
+        </tr>`).join('')+'</tbody></table>';
+    }
+  }catch(e){$('acc-list').innerHTML='<div class="empty-state">載入失敗</div>';}
+}
+
+async function toggleUser(username,newStatus) {
+  try{
+    const d=await api({type:'auth_toggle_status',data:{username,newStatus,changedBy:CU?.username}});
+    if(d.status==='success'||d.status==='ok'){toast(d.message||'操作成功','gold');loadAccounts();loadPending();}
+    else toast(d.message||'操作失敗','red');
+  }catch(e){toast('連線失敗','red');}
+}
+
+async function createAcc() {
+  const name=$('new-name').value.trim(),user=$('new-user').value.trim();
+  const pass=$('new-pass').value.trim(),phone=$('new-phone').value.trim();
+  const role=$('new-role').value;
+  if(!name||!user||!pass){toast('請填寫姓名、帳號、密碼','red');return}
+  try{
+    const d=await api({type:'auth_register',data:{name,username:user,password:pass,role,phone,status:'啟用',createdBy:CU?.username}});
+    if(d.status==='success'||d.status==='ok'){toast('✓ 帳號已建立','gold');['new-name','new-user','new-pass','new-phone'].forEach(id=>{if($(id))$(id).value=''});loadAccounts();}
+    else toast(d.message||'建立失敗','red');
+  }catch(e){toast('連線失敗','red');}
+}
+
+async function resetPw() {
+  const user=$('reset-user').value.trim(), pass=$('reset-pass').value.trim();
+  if(!user||!pass){toast('請輸入帳號與新密碼','red');return;}
+  try{
+    const d=await api({type:'auth_reset_password',data:{username:user,newPassword:pass,changedBy:CU?.username}});
+    if(d.status==='success'||d.status==='ok'){toast('✓ 密碼已重設','gold');$('reset-user').value='';$('reset-pass').value='';}
+    else toast(d.message||'重設失敗（後端可能未支援此功能）','red');
+  }catch(e){toast('連線失敗','red');}
+}
+
+// ════════════════════════════════════════════════════════════
+//  TOAST
+// ════════════════════════════════════════════════════════════
+let _toastT=null;
+function toast(msg,type){
+  const t=$('toast'); if(!t)return;
+  t.textContent=msg; t.className=''; if(type)t.classList.add(type);
+  t.classList.add('show'); clearTimeout(_toastT);
+  _toastT=setTimeout(()=>t.classList.remove('show'),2600);
+}
+
+// ════════════════════════════════════════════════════════════
+//  🎮 遊戲化引擎（雛型・資料存於瀏覽器 localStorage）
+// ════════════════════════════════════════════════════════════
+const LS={
+  get(k,d){try{const v=JSON.parse(localStorage.getItem(k));return v===null||v===undefined?d:v;}catch(e){return d;}},
+  set(k,v){try{localStorage.setItem(k,JSON.stringify(v));return true;}catch(e){toast('本機儲存空間已滿，請清理舊照片','red');return false;}}
+};
+
+// 內建部件庫（換裝角色）：染色部位(face/hair)用剪影；其餘彩圖。老闆可在「我的角色」上傳更多
+function svgURI(s){return 'data:image/svg+xml,'+encodeURIComponent(s).replace(/'/g,'%27').replace(/"/g,'%22');}
+const DEFAULT_PARTS={
+  face:[
+    {id:'f1',name:'標準臉',img:svgURI("<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><circle cx='50' cy='40' r='25' fill='#000'/><path d='M20 100 Q20 71 50 71 Q80 71 80 100 Z' fill='#000'/></svg>"),builtin:1},
+    {id:'f2',name:'圓臉',img:svgURI("<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><ellipse cx='50' cy='42' rx='29' ry='26' fill='#000'/><path d='M16 100 Q16 73 50 73 Q84 73 84 100 Z' fill='#000'/></svg>"),builtin:1},
+    {id:'f3',name:'瓜子臉',img:svgURI("<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><ellipse cx='50' cy='40' rx='21' ry='26' fill='#000'/><path d='M24 100 Q24 72 50 72 Q76 72 76 100 Z' fill='#000'/></svg>"),builtin:1},
+  ],
+  hair:[
+    {id:'none',name:'光頭'},
+    {id:'h1',name:'俐落短髮',img:svgURI("<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><path d='M25 42 Q23 14 50 14 Q77 14 75 42 Q69 27 50 26 Q31 27 25 42 Z' fill='#000'/></svg>"),builtin:1},
+    {id:'h2',name:'飄逸長髮',img:svgURI("<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><path d='M22 66 Q16 14 50 14 Q84 14 78 66 Q73 36 50 32 Q27 36 22 66 Z' fill='#000'/></svg>"),builtin:1},
+  ],
+  outfit:[
+    {id:'o1',name:'橘衫',img:svgURI("<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><path d='M22 100 Q22 70 50 68 Q78 70 78 100 Z' fill='#ff8a3d'/></svg>"),builtin:1},
+    {id:'o2',name:'藍衫',img:svgURI("<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><path d='M22 100 Q22 70 50 68 Q78 70 78 100 Z' fill='#5b8fd6'/></svg>"),builtin:1},
+    {id:'o3',name:'圍裙',img:svgURI("<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><path d='M22 100 Q22 70 50 68 Q78 70 78 100 Z' fill='#4caf7d'/><rect x='40' y='72' width='20' height='26' rx='3' fill='#3d9168'/></svg>"),builtin:1},
+  ],
+  eyes:[
+    {id:'e1',name:'微笑',img:svgURI("<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><circle cx='41' cy='40' r='3.4' fill='#3a2417'/><circle cx='59' cy='40' r='3.4' fill='#3a2417'/><path d='M43 49 Q50 55 57 49' stroke='#3a2417' stroke-width='2.4' fill='none' stroke-linecap='round'/></svg>"),builtin:1},
+    {id:'e2',name:'眨眼',img:svgURI("<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><path d='M37 40 Q41 37 45 40' stroke='#3a2417' stroke-width='2.4' fill='none' stroke-linecap='round'/><circle cx='59' cy='40' r='3.4' fill='#3a2417'/><path d='M43 49 Q50 54 57 49' stroke='#3a2417' stroke-width='2.4' fill='none' stroke-linecap='round'/></svg>"),builtin:1},
+    {id:'e3',name:'認真',img:svgURI("<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect x='38' y='39' width='6' height='3' rx='1.5' fill='#3a2417'/><rect x='56' y='39' width='6' height='3' rx='1.5' fill='#3a2417'/><line x1='45' y1='51' x2='55' y2='51' stroke='#3a2417' stroke-width='2.2' stroke-linecap='round'/></svg>"),builtin:1},
+  ],
+  accessory:[
+    {id:'none',name:'無'},
+    {id:'a1',name:'眼鏡',img:svgURI("<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><circle cx='41' cy='40' r='8' fill='none' stroke='#3a2417' stroke-width='2.4'/><circle cx='59' cy='40' r='8' fill='none' stroke='#3a2417' stroke-width='2.4'/><line x1='49' y1='40' x2='51' y2='40' stroke='#3a2417' stroke-width='2.4'/></svg>"),builtin:1},
+    {id:'a2',name:'鬍子',img:svgURI("<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><path d='M34 46 Q50 70 66 46 Q60 60 50 60 Q40 60 34 46 Z' fill='#5a3a22'/></svg>"),builtin:1},
+  ],
+  equipment:[
+    {id:'eq1',name:'廚師帽',lv:3,img:svgURI("<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><path d='M30 30 Q24 10 40 12 Q44 3 56 7 Q72 3 72 18 Q86 18 80 32 Q66 25 50 26 Q34 25 30 30 Z' fill='#ffffff' stroke='#e7d9c5' stroke-width='1.5'/></svg>"),builtin:1},
+    {id:'eq2',name:'黃金皇冠',lv:8,img:svgURI("<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><path d='M30 32 L34 16 L42 27 L50 12 L58 27 L66 16 L70 32 Z' fill='#ffd24d' stroke='#e0a500' stroke-width='1.5'/></svg>"),builtin:1},
+  ],
+};
+// 專案檔案部件（放在 parts/<分類>/ 內的圖片；由掃描資料夾自動產生此清單）
+// 有檔案部件的分類會「優先採用檔案、取代內建簡易造型」；空的分類沿用內建預設。
+const FILE_PARTS={
+  outfit:[
+    {id:'ou_1',name:'身形1',img:'parts/outfit/1.png'},
+    {id:'ou_33',name:'服裝2',img:'parts/outfit/33.png'},
+    {id:'ou_34',name:'服裝3',img:'parts/outfit/34.png'},
+    {id:'ou_35',name:'服裝4',img:'parts/outfit/35.png'},
+    {id:'ou_36',name:'服裝5',img:'parts/outfit/36.png'},
+    {id:'ou_37',name:'服裝6',img:'parts/outfit/37.png'},
+    {id:'ou_38',name:'服裝7',img:'parts/outfit/38.png'},
+    {id:'ou_39',name:'服裝8',img:'parts/outfit/39.png'},
+    {id:'ou_40',name:'服裝9',img:'parts/outfit/40.png'},
+    {id:'ou_41',name:'服裝10',img:'parts/outfit/41.png'},
+    {id:'ou_42',name:'服裝11',img:'parts/outfit/42.png'},
+    {id:'ou_43',name:'服裝12',img:'parts/outfit/43.png'},
+  ],
+  hair:[
+    {id:'ha_6',name:'髮型1',img:'parts/hair/6.png'},
+    {id:'ha_7',name:'髮型2',img:'parts/hair/7.png'},
+    {id:'ha_8',name:'髮型3',img:'parts/hair/8.png'},
+    {id:'ha_9',name:'髮型4',img:'parts/hair/9.png'},
+    {id:'ha_10',name:'髮型5',img:'parts/hair/10.png'},
+    {id:'ha_30',name:'髮型6',img:'parts/hair/30.png'},
+    {id:'ha_31',name:'髮型7',img:'parts/hair/31.png'},
+    {id:'ha_45',name:'髮型8',img:'parts/hair/45.png'},
+    {id:'ha_46',name:'髮型9',img:'parts/hair/46.png'},
+    {id:'ha_47',name:'髮型10',img:'parts/hair/47.png'},
+    {id:'ha_48',name:'髮型11',img:'parts/hair/48.png'},
+    {id:'ha_49',name:'髮型12',img:'parts/hair/49.png'},
+    {id:'ha_50',name:'髮型13',img:'parts/hair/50.png'},
+    {id:'ha_51',name:'髮型14',img:'parts/hair/51.png'},
+    {id:'ha_52',name:'髮型15',img:'parts/hair/52.png'},
+    {id:'ha_53',name:'髮型16',img:'parts/hair/53.png'},
+    {id:'ha_54',name:'髮型17',img:'parts/hair/54.png'},
+  ],
+  face:[
+    {id:'fa_17',name:'嘴巴1',img:'parts/face/17.png'},
+    {id:'fa_18',name:'嘴巴2',img:'parts/face/18.png'},
+    {id:'fa_19',name:'嘴巴3',img:'parts/face/19.png'},
+    {id:'fa_20',name:'嘴巴4',img:'parts/face/20.png'},
+    {id:'fa_21',name:'嘴巴5',img:'parts/face/21.png'},
+    {id:'fa_22',name:'嘴巴6',img:'parts/face/22.png'},
+    {id:'fa_23',name:'嘴巴7',img:'parts/face/23.png'},
+    {id:'fa_24',name:'嘴巴8',img:'parts/face/24.png'},
+    {id:'fa_25',name:'嘴巴9',img:'parts/face/25.png'},
+    {id:'fa_27',name:'嘴巴10',img:'parts/face/27.png'},
+    {id:'fa_28',name:'嘴巴11',img:'parts/face/28.png'},
+    {id:'fa_29',name:'嘴巴12',img:'parts/face/29.png'},
+    {id:'fa_44',name:'嘴巴13',img:'parts/face/44.png'},
+  ],
+  eyes:[
+    {id:'ey_2',name:'眼睛1',img:'parts/eyes/2.png'},
+    {id:'ey_3',name:'眼睛2',img:'parts/eyes/3.png'},
+    {id:'ey_4',name:'眼睛3',img:'parts/eyes/4.png'},
+    {id:'ey_5',name:'眼睛4',img:'parts/eyes/5.png'},
+    {id:'ey_11',name:'眼睛5',img:'parts/eyes/11.png'},
+    {id:'ey_12',name:'眼睛6',img:'parts/eyes/12.png'},
+    {id:'ey_13',name:'眼睛7',img:'parts/eyes/13.png'},
+    {id:'ey_14',name:'眼睛8',img:'parts/eyes/14.png'},
+    {id:'ey_15',name:'眼睛9',img:'parts/eyes/15.png'},
+    {id:'ey_16',name:'眼睛10',img:'parts/eyes/16.png'},
+    {id:'ey_26',name:'眼睛11',img:'parts/eyes/26.png'},
+  ],
+  equipment:[
+  ],
+};
+const SKIN_COLORS=['#ffe0bd','#f3c9a0','#e8b48a','#d49a6a','#a96b3f','#7a4a28'];
+const HAIR_COLORS=['#2b2118','#5a3a22','#8a5a2b','#c9962f','#d6d6d6','#e05e5e','#3d5a98','#9b59b6'];
+const BG_COLORS=['#ffd9a8','#ffc0cb','#bfe3ff','#c8f0c8','#e6d3ff','#fff0a8','#ffb3a8','#dfe3e8'];
+function defAvatar(){const P=getParts();const first=cat=>{const a=P[cat]||[];const r=a.find(p=>p.img)||a[0];return r?r.id:'';};return {bgColor:'#ffd9a8',skinColor:'#f3c9a0',hairColor:'#5a3a22',parts:{outfit:first('outfit'),hair:first('hair'),face:first('face'),eyes:first('eyes')}};}
+// 全部分頁（首頁置頂，員工登入第一眼）
+const ALL_TABS=[
+  {id:'home',icon:'🏠',label:'首頁',roles:['BOSS','MGR','EMP']},
+  {id:'revenue',icon:'💳',label:'每日結帳',roles:['BOSS','MGR','EMP']},
+  {id:'purchase',icon:'📦',label:'進貨記錄',roles:['BOSS','MGR','EMP']},
+  {id:'reports',icon:'📊',label:'數據報表',roles:['BOSS','MGR']},
+  {id:'tasks',icon:'✅',label:'任務',roles:['BOSS','MGR','EMP']},
+  {id:'rewards',icon:'🎁',label:'獎勵商店',roles:['BOSS','MGR','EMP']},
+  {id:'character',icon:'🎮',label:'我的角色',roles:['BOSS','MGR','EMP']},
+  {id:'accounts',icon:'👥',label:'帳號管理',roles:['BOSS']},
+];
+function getParts(){
+  const u=LS.get('rm_parts',{})||{};const o={};
+  for(const k in DEFAULT_PARTS){
+    const none=DEFAULT_PARTS[k].filter(p=>p.id==='none');
+    const fileParts=(FILE_PARTS[k]||[]);
+    const base=fileParts.length?none.concat(fileParts):DEFAULT_PARTS[k];
+    o[k]=base.concat(u[k]||[]);
+  }
+  return o;
+}
+function autoEquip(level){const eqs=(getParts().equipment||[]).filter(e=>(e.lv||1)<=level).sort((a,b)=>(b.lv||1)-(a.lv||1));return eqs[0]||null;}
+function renderAvatar(av,level,opts){
+  opts=opts||{};
+  av=av||defAvatar();const P=getParts();
+  const pick=cat=>{const arr=P[cat]||[];const id=av.parts&&av.parts[cat];return arr.find(p=>p.id===id)||arr.find(p=>p.img)||null;};
+  const imgLayer=cat=>{const p=pick(cat);if(!p||!p.img)return '';return `<img class="av-layer" src="${p.img}" alt="">`;};
+  const eq=autoEquip(level||1);const eqL=eq&&eq.img?`<img class="av-layer" src="${eq.img}" alt="">`:'';
+  const bg=opts.noBg?'':`<div class="av-bg" style="background:${av.bgColor||'#ffd9a8'}"></div>`;
+  return `<div class="avatar-stage">${bg}${imgLayer('outfit')}${imgLayer('face')}${imgLayer('eyes')}${imgLayer('hair')}${eqL}</div>`;
+}
+function partThumb(part,tint,color){
+  if(!part||part.id==='none'||!part.img)return `<span class="se" style="display:flex;align-items:center;justify-content:center;width:48px;height:48px;color:#c9b8a8;font-size:20px">∅</span>`;
+  if(tint)return `<span class="se" style="display:inline-block;width:48px;height:48px;background-color:${color||'#b08050'};-webkit-mask:url('${part.img}') center/contain no-repeat;mask:url('${part.img}') center/contain no-repeat"></span>`;
+  return `<span class="se" style="display:inline-block;width:48px;height:48px"><img src="${part.img}" style="width:100%;height:100%;object-fit:contain"></span>`;
+}
+function swatches(key,colors){const cur=getChar().avatar[key];return colors.map(col=>`<span class="color-dot ${cur===col?'sel':''}" style="background:${col}" onclick="setAvatarColor('${key}','${col}')"></span>`).join('')+`<input type="color" class="color-pick" value="${cur}" oninput="setAvatarColor('${key}',this.value)">`;}
+function dressCat(cat,label,tint,colorKey){const av=getChar().avatar;const color=colorKey?av[colorKey]:null;const opts=getParts()[cat]||[];return `<div class="dress-sec"><div class="dress-label">${label}</div><div class="skin-grid">${opts.map(p=>`<div class="skin ${av.parts[cat]===p.id?'sel':''}" onclick="pickPart('${cat}','${p.id}')">${partThumb(p,tint,color)}<span class="sn">${p.name}</span></div>`).join('')}</div></div>`;}
+function equipNote(lv){const eqs=(getParts().equipment||[]).slice().sort((a,b)=>(a.lv||1)-(b.lv||1));if(!eqs.length)return '尚無裝備（老闆可在下方新增）';const cur=autoEquip(lv);return eqs.map(e=>`Lv.${e.lv||1} ${e.name}${cur&&cur.id===e.id?'（目前穿戴）':''}`).join('　・　');}
+let _dressCat='outfit';
+const DRESS_CATS=[['outfit','服裝'],['hair','髮型'],['face','嘴巴'],['eyes','眼睛'],['bg','背景']];
+function sceneHTML(c,lv){
+  const cur=cumXp(lv),next=cumXp(lv+1);const pct=Math.min(100,Math.round((c.xp-cur)/(next-cur)*100));
+  return `<div class="dress-meta"><span class="hero-name">${CU?CU.name:''}</span><span class="lv-badge">⭐Lv.${lv}</span><div class="mini-xp"><div class="mini-xp-fill" style="width:${pct}%"></div></div></div>${renderAvatar(c.avatar,lv,{noBg:true})}`;
+}
+function dressTabs(active){return DRESS_CATS.map(t=>`<button class="dcat ${active===t[0]?'active':''}" onclick="setDressCat('${t[0]}')">${t[1]}</button>`).join('');}
+function dressOptions(cat){
+  const c=getChar();
+  if(cat==='bg')return `<div class="swatch-row" style="padding:10px 2px">${swatches('bgColor',BG_COLORS)}</div>`;
+  const list=getParts()[cat]||[];
+  return `<div class="opt-grid">`+list.map(p=>{
+    const thumb=p.img?`<img src="${p.img}" alt="">`:`<span style="color:#c9b8a8;font-size:22px">∅</span>`;
+    return `<div class="opt ${c.avatar.parts[cat]===p.id?'sel':''}" data-cat="${cat}" data-id="${p.id}" onclick="pickPart('${cat}','${p.id}')">${thumb}</div>`;
+  }).join('')+`</div>`;
+}
+function setDressCat(cat){_dressCat=cat;if($('dcat-row'))$('dcat-row').innerHTML=dressTabs(cat);if($('cc-cats'))$('cc-cats').innerHTML=dressTabs(cat);refreshDressOptions();}
+function refreshDressOptions(){if($('dress-options'))$('dress-options').innerHTML=dressOptions(_dressCat);if($('cc-options'))$('cc-options').innerHTML=dressOptions(_dressCat);}
+function paintScene(idn){const el=$(idn);if(!el)return;const c=getChar();el.style.background=c.avatar.bgColor||'#ffe3c4';el.innerHTML=sceneHTML(c,levelOf(c.xp));}
+function updateScenes(){paintScene('dress-scene');paintScene('cc-scene');}
+function charExtraHTML(c,lv){
+  const today=new Date().toISOString().split('T')[0];const checked=c.lastCheckin===today;
+  return `<div class="c-card-title">🎮 我的狀態</div>
+    <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">
+      <span class="pts-pill">🎫 ${c.points} 點</span>
+      <span class="xp-text">✅ 已完成任務 ${c.tasksDone} 件</span>
+      <button class="btn-action" style="padding:9px 18px${checked?';opacity:.5':''}" ${checked?'disabled':''} onclick="dailyCheckin()">${checked?'今日已簽到 ✓':'每日簽到 +10 XP'}</button>
+    </div>
+    <div class="muted-note" style="margin-top:12px">🎖️ 等級裝備：${equipNote(lv)}</div>`;
+}
+function setAvatarColor(key,val){const c=getChar();c.avatar[key]=val;saveChar(c);updateScenes();updateGameChip();if(_dressCat==='bg')refreshDressOptions();const hm=$('tab-home');if(hm&&hm.classList.contains('active'))renderHome();}
+function pickPart(cat,id){const c=getChar();c.avatar.parts[cat]=id;saveChar(c);updateScenes();updateGameChip();document.querySelectorAll('.opt[data-cat="'+cat+'"]').forEach(el=>el.classList.toggle('sel',el.dataset.id===id));const hm=$('tab-home');if(hm&&hm.classList.contains('active'))renderHome();}
+function refreshAvatars(){
+  updateGameChip();
+  const ch=$('tab-character');if(ch&&ch.classList.contains('active'))renderCharacter();
+  const cc=$('char-create');if(cc&&cc.classList.contains('show')){paintScene('cc-scene');if($('cc-cats'))$('cc-cats').innerHTML=dressTabs(_dressCat);if($('cc-options'))$('cc-options').innerHTML=dressOptions(_dressCat);}
+  const hm=$('tab-home');if(hm&&hm.classList.contains('active'))renderHome();
+}
+
+// 等級曲線：到達等級 L 所需累積經驗 = 50*L*(L-1)  → Lv2:100, Lv3:300, Lv4:600...
+function cumXp(lv){return 50*lv*(lv-1);}
+function levelOf(xp){let lv=1;while(cumXp(lv+1)<=xp)lv++;return lv;}
+
+function charKey(u){return 'rm_char_'+(u||CU.username);}
+function normChar(c){c=c||{};const d=defAvatar();const a=c.avatar||{};
+  const parts=Object.assign({},d.parts,a.parts||{});
+  const P=getParts();
+  ['outfit','hair','face','eyes'].forEach(k=>{const arr=P[k]||[];if(!arr.find(p=>p.id===parts[k]))parts[k]=d.parts[k];});
+  return {
+    xp:c.xp||0, points:c.points||0,
+    lastCheckin:c.lastCheckin||'', tasksDone:c.tasksDone||0, chosen:!!c.chosen,
+    avatar:{bgColor:a.bgColor||d.bgColor,skinColor:a.skinColor||d.skinColor,hairColor:a.hairColor||d.hairColor,parts}
+  };
+}
+function getChar(u){return normChar(LS.get(charKey(u),null));}
+function saveChar(c,u){LS.set(charKey(u),c);}
+
+// 給某員工加經驗值＋點數（裝備依等級即時推算，不需解鎖清單）
+function awardXp(username,amt){
+  const c=getChar(username);
+  const before=levelOf(c.xp);
+  c.xp+=amt; c.points+=amt;
+  const after=levelOf(c.xp);
+  saveChar(c,username);
+  return {before,after,leveledUp:after>before};
+}
+
+// 預設任務 / 獎勵
+const SEED_VER=3;
+function seedGame(){
+  if(!LS.get('rm_tasks',null))LS.set('rm_tasks',[
+    {id:'t1',icon:'🧻',title:'補充廁所衛生紙',xp:20},
+    {id:'t2',icon:'🧹',title:'打烊清潔地板',xp:30},
+    {id:'t3',icon:'🧊',title:'冰箱溫度檢查並記錄',xp:25},
+    {id:'t4',icon:'🍽️',title:'餐具消毒完成',xp:20},
+    {id:'t5',icon:'📋',title:'完成今日交接表',xp:35},
+    {id:'t6',icon:'🗑️',title:'垃圾分類與回收',xp:15},
+  ]);
+  if(!LS.get('rm_parts',null))LS.set('rm_parts',{});
+  // 獎勵：版本升級時重置為最新預設（老闆之後可自行增刪）
+  if(!LS.get('rm_rewards',null)||LS.get('rm_seed_v',0)<SEED_VER)LS.set('rm_rewards',[
+    {id:'rw_drink',icon:'🧋',title:'免費手搖飲一杯',cost:120,type:'perk'},
+    {id:'rw_meal',icon:'🍱',title:'員工餐加菜券',cost:200,type:'perk'},
+    {id:'rw_late',icon:'😌',title:'遲到免責卡 ×1',cost:300,type:'perk'},
+    {id:'rw_early',icon:'⏰',title:'提早30分下班券',cost:450,type:'perk'},
+    {id:'rw_badge',icon:'🎖️',title:'限定裝備兌換券',cost:600,type:'perk'},
+    {id:'rw_star',icon:'🌟',title:'本月之星（公告表揚）',cost:800,type:'perk'},
+    {id:'rw_bonus',icon:'💰',title:'加薪面談資格',cost:2000,type:'perk'},
+    {id:'rw_dayoff',icon:'🏖️',title:'多一天有薪假',cost:3000,type:'perk'},
+  ]);
+  LS.set('rm_seed_v',SEED_VER);
+  if(!LS.get('rm_submissions',null))LS.set('rm_submissions',[]);
+  if(!LS.get('rm_redemptions',null))LS.set('rm_redemptions',[]);
+  if(!LS.get('rm_expenses',null))LS.set('rm_expenses',[]);
+}
+
+function isMgr(){return CU&&(CU.role==='BOSS'||CU.role==='MGR');}
+
+// 頂部角色小徽章
+function updateGameChip(){
+  if(!CU)return;
+  const c=getChar();const lv=levelOf(c.xp);
+  let chip=$('game-chip');
+  if(!chip){
+    chip=document.createElement('div');chip.id='game-chip';chip.className='game-chip';
+    chip.style.cursor='pointer';chip.title='查看我的角色';
+    chip.onclick=()=>{const b=[...document.querySelectorAll('.nav-btn')].find(x=>x.textContent.includes('我的角色'));if(b)b.click();};
+    const tr=document.querySelector('.topbar-right');if(tr)tr.insertBefore(chip,tr.firstChild);
+  }
+  const face=`<span class="gc-emoji" style="width:26px;height:26px;border-radius:50%;overflow:hidden;display:inline-block">${renderAvatar(c.avatar,lv)}</span>`;
+  chip.innerHTML=`${face}<span class="gc-lv">Lv.${lv}</span><span class="gc-pts">🎫${c.points}</span>`;
+}
+
+// ── 我的角色（換裝編輯器）──
+function renderCharacter(){
+  const c=getChar();const lv=levelOf(c.xp);
+  paintScene('dress-scene');
+  if($('dcat-row'))$('dcat-row').innerHTML=dressTabs(_dressCat);
+  if($('dress-options'))$('dress-options').innerHTML=dressOptions(_dressCat);
+  if($('char-extra'))$('char-extra').innerHTML=charExtraHTML(c,lv);
+  renderPartAdmin();
+}
+
+// 老闆：部件管理（分類上傳圖片）
+let _adminCat='face';
+function renderPartAdmin(){
+  const wrap=$('skin-admin-wrap');if(!wrap)return;
+  if(CU.role!=='BOSS'){wrap.innerHTML='';return;}
+  const cats=[['outfit','服裝',false],['hair','髮型',false],['face','嘴巴',false],['eyes','眼睛',false],['equipment','裝備',false]];
+  const cur=cats.find(c=>c[0]===_adminCat)||cats[0];
+  const tint=cur[2];const isEq=_adminCat==='equipment';
+  const list=(LS.get('rm_parts',{})[_adminCat]||[]);
+  wrap.innerHTML=`<div class="c-card"><div class="c-card-title">🛠️ 部件管理（老闆）</div>
+    <div class="chips" style="margin-bottom:12px">${cats.map(c=>`<button class="chip ${_adminCat===c[0]?'active':''}" onclick="setAdminCat('${c[0]}')">${c[1]}</button>`).join('')}</div>
+    <div class="muted-note">${tint?'⚠️ 這是會「染色」的部位，請上傳 <b>單色剪影 PNG</b>（系統會依員工選的顏色上色）。':'請上傳 <b>正常彩色、去背 PNG</b>。'}建議方形、透明背景。</div>
+    <div class="form-row">
+      <div class="form-group"><label class="form-label">部件名稱</label><input class="form-input" id="pt-name" placeholder="例：俐落短髮"></div>
+      ${isEq?'<div class="form-group"><label class="form-label">解鎖等級</label><input class="form-input" id="pt-lv" type="number" min="1" value="3"></div>':''}
+    </div>
+    <button class="btn-action" onclick="$('skin-file-input').click()">📤 上傳圖片到「${cur[1]}」</button>
+    ${list.length?'<div style="margin-top:16px" class="skin-grid">'+list.map(p=>`<div class="skin">${partThumb(p,tint,tint?'#b08050':null)}<span class="sn">${p.name}</span>${isEq?`<span class="req">Lv.${p.lv||1}</span>`:''}<button class="btn-sm btn-warn" style="margin-top:8px" onclick="delPart('${p.id}')">刪除</button></div>`).join('')+'</div>':'<div class="muted-note" style="margin-top:12px">此分類尚無自製部件</div>'}
+  </div>`;
+}
+function setAdminCat(cat){_adminCat=cat;renderPartAdmin();}
+function delPart(id){const parts=LS.get('rm_parts',{});const arr=parts[_adminCat]||[];parts[_adminCat]=arr.filter(p=>p.id!==id);LS.set('rm_parts',parts);toast('已刪除部件','red');renderCharacter();}
+let _partWired=false;
+function wirePartInput(){
+  if(_partWired)return;const inp=$('skin-file-input');if(!inp)return;_partWired=true;
+  inp.onchange=function(){
+    const f=this.files&&this.files[0];this.value='';if(!f)return;
+    const name=($('pt-name')&&$('pt-name').value.trim())||'自訂部件';
+    const isEq=_adminCat==='equipment';
+    const lv=isEq?Math.max(1,parseInt($('pt-lv')&&$('pt-lv').value)||1):undefined;
+    fileToThumb(f,url=>{
+      const parts=LS.get('rm_parts',{});if(!parts[_adminCat])parts[_adminCat]=[];
+      const item={id:'p'+Date.now(),name,img:url};if(isEq)item.lv=lv;
+      parts[_adminCat].push(item);
+      if(LS.set('rm_parts',parts)){toast('✓ 已新增部件','gold');renderCharacter();}
+    },400,'image/png');
+  };
+}
+function dailyCheckin(){
+  const c=getChar();const today=new Date().toISOString().split('T')[0];
+  if(c.lastCheckin===today){toast('今天已經簽到囉','red');return;}
+  c.lastCheckin=today;saveChar(c);
+  awardXp(CU.username,10);
+  refreshAvatars();toast('🎉 簽到成功 +10 XP','gold');
+}
+
+// ── 首頁（角色置中 + 漂浮按鈕）──
+function renderHome(){
+  const stage=$('home-stage');if(!stage||!CU)return;
+  const c=getChar();const lv=levelOf(c.xp);
+  const cur=cumXp(lv),next=cumXp(lv+1);
+  const pct=Math.min(100,Math.round((c.xp-cur)/(next-cur)*100));
+  const items=ALL_TABS.filter(b=>b.id!=='home'&&b.roles.includes(CU.role));
+  const center=`<div class="home-center">
+      <div class="home-avatar">${renderAvatar(c.avatar,lv)}</div>
+      <div class="home-name">${CU.name} <span class="lv-badge">⭐ Lv.${lv}</span></div>
+      <div class="xp-bar" style="max-width:240px;margin:10px auto 4px"><div class="xp-fill" style="width:${pct}%"></div></div>
+      <div class="xp-text">🎫 ${c.points} 點 ・ 經驗 ${c.xp} XP</div>
+    </div>`;
+  const btns=`<div class="home-btns">`+items.map(b=>
+    `<button class="float-btn" onclick="goTab('${b.id}')"><span class="fb-ico">${b.icon}</span><span class="fb-lbl">${b.label}</span></button>`).join('')+`</div>`;
+  const wide=window.innerWidth>=760;
+  stage.className='home-stage '+(wide?'orbit':'stack');
+  stage.innerHTML=center+btns;
+  if(wide){
+    const rect=stage.getBoundingClientRect();
+    const cx=rect.width/2, cy=rect.height/2;
+    const rad=Math.min(rect.width,rect.height)/2-58;
+    const els=[...stage.querySelectorAll('.float-btn')];
+    els.forEach((el,i)=>{
+      const ang=-Math.PI/2 + i*2*Math.PI/els.length;
+      el.style.position='absolute';
+      el.style.left=(cx+rad*Math.cos(ang)-44)+'px';
+      el.style.top=(cy+rad*Math.sin(ang)-30)+'px';
+      el.style.animationDelay=(i*0.18)+'s';
+    });
+  }
+}
+
+// ── 建立角色（首次登入：精簡換裝）──
+function showCharCreate(){
+  const c=getChar();saveChar(c);const lv=levelOf(c.xp);
+  if($('cc-title'))$('cc-title').textContent='歡迎加入，'+CU.name+'！';
+  if($('cc-sub'))$('cc-sub').textContent='打造你的專屬角色：挑服裝、髮型、嘴巴、眼睛，完成後就開始！';
+  paintScene('cc-scene');
+  $('cc-cats').innerHTML=dressTabs(_dressCat);
+  $('cc-options').innerHTML=dressOptions(_dressCat);
+  $('char-create').classList.add('show');
+}
+function confirmCharCreate(){
+  const c=getChar();c.chosen=true;saveChar(c);
+  $('char-create').classList.remove('show');
+  refreshAvatars();goTab('home');renderHome();
+  toast('🎉 角色建立完成，歡迎加入！','gold');
+}
+
+// ── 任務中心 ──
+let _pendingTaskId=null,_taskInputWired=false;
+function wireTaskInput(){
+  if(_taskInputWired)return;const inp=$('task-file-input');if(!inp)return;_taskInputWired=true;
+  inp.onchange=function(){
+    const file=this.files&&this.files[0];this.value='';
+    if(!file||!_pendingTaskId)return;
+    const tasks=LS.get('rm_tasks',[]);const task=tasks.find(t=>t.id===_pendingTaskId);if(!task)return;
+    fileToThumb(file,dataUrl=>{
+      const subs=LS.get('rm_submissions',[]);
+      subs.push({id:'s'+Date.now(),taskId:task.id,taskTitle:task.title,icon:task.icon,xp:task.xp,
+        user:CU.username,userName:CU.name,photo:dataUrl,status:'pending',ts:Date.now()});
+      if(LS.set('rm_submissions',subs)){toast('📤 已上傳，等待主管審核','gold');renderTasks();}
+    });
+  };
+}
+function fileToThumb(file,cb,max){
+  max=max||560;
+  const r=new FileReader();
+  r.onload=e=>{const img=new Image();img.onload=()=>{
+    let w=img.width,h=img.height;
+    if(w>h&&w>max){h=Math.round(h*max/w);w=max;}else if(h>=w&&h>max){w=Math.round(w*max/h);h=max;}
+    const cv=document.createElement('canvas');cv.width=w;cv.height=h;
+    cv.getContext('2d').drawImage(img,0,0,w,h);
+    cb(cv.toDataURL('image/jpeg',0.6));
+  };img.onerror=()=>toast('圖片讀取失敗','red');img.src=e.target.result;};
+  r.readAsDataURL(file);
+}
+function startTask(taskId){_pendingTaskId=taskId;$('task-file-input').click();}
+function fmtTime(ts){const d=new Date(ts);const p=n=>String(n).padStart(2,'0');return `${p(d.getMonth()+1)}/${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}`;}
+
+function renderTasks(){
+  const tasks=LS.get('rm_tasks',[]);
+  $('task-list').innerHTML=tasks.map(t=>`
+    <div class="task-card">
+      <span class="tc-emoji">${t.icon}</span>
+      <div class="tc-body"><div class="tc-title">${t.title}</div><div class="tc-xp">完成可得 +${t.xp} XP</div></div>
+      <button class="btn-action" style="padding:10px 16px" onclick="startTask('${t.id}')">📸 拍照上傳</button>
+    </div>`).join('');
+
+  const subs=LS.get('rm_submissions',[]);
+  const mine=subs.filter(s=>s.user===CU.username).sort((a,b)=>b.ts-a.ts);
+  $('my-subs').innerHTML=mine.length?mine.map(s=>`
+    <div class="sub-row">
+      <img class="photo-thumb" src="${s.photo}" alt="">
+      <div style="flex:1;min-width:0"><div class="tc-title" style="font-size:14px">${s.icon} ${s.taskTitle}</div>
+        <div class="xp-text">${fmtTime(s.ts)} ・ +${s.xp} XP</div></div>
+      <span class="pill ${s.status}">${({pending:'審核中',approved:'已通過 ✓',rejected:'未通過'})[s.status]}</span>
+    </div>`).join(''):'<div class="game-empty">還沒有上傳紀錄，快去完成任務吧！</div>';
+
+  // 主管審核區
+  const wrap=$('mgr-review-wrap');
+  if(isMgr()){
+    const pending=subs.filter(s=>s.status==='pending').sort((a,b)=>a.ts-b.ts);
+    wrap.innerHTML=`<div class="c-card"><div class="c-card-title">🛡️ 待審核任務（主管）</div>${
+      pending.length?pending.map(s=>`
+      <div class="sub-row">
+        <img class="photo-thumb" src="${s.photo}" alt="">
+        <div style="flex:1;min-width:0"><div class="tc-title" style="font-size:14px">${s.icon} ${s.taskTitle}</div>
+          <div class="xp-text">${s.userName} ・ ${fmtTime(s.ts)} ・ +${s.xp} XP</div></div>
+        <div style="display:flex;gap:8px">
+          <button class="btn-sm btn-approve" onclick="reviewSub('${s.id}',true)">✓ 通過</button>
+          <button class="btn-sm btn-warn" onclick="reviewSub('${s.id}',false)">✗ 退回</button>
+        </div>
+      </div>`).join(''):'<div class="game-empty">目前沒有待審核的任務 🎉'+'</div>'
+    }</div>`;
+  }else{wrap.innerHTML='';}
+  renderTaskAdmin();
+}
+function renderTaskAdmin(){
+  const wrap=$('task-admin-wrap');if(!wrap)return;
+  if(CU.role!=='BOSS'){wrap.innerHTML='';return;}
+  const tasks=LS.get('rm_tasks',[]);
+  wrap.innerHTML=`<div class="c-card"><div class="c-card-title">🛠️ 任務管理（老闆）</div>
+    <div class="form-row">
+      <div class="form-group"><label class="form-label">圖示 emoji</label><input class="form-input" id="nt-icon" value="✅"></div>
+      <div class="form-group"><label class="form-label">完成經驗值</label><input class="form-input" id="nt-xp" type="number" min="1" value="20"></div>
+    </div>
+    <div class="form-group"><label class="form-label">任務名稱</label><input class="form-input" id="nt-title" placeholder="例：擦拭玻璃門"></div>
+    <button class="btn-action" onclick="addTask()">➕ 新增任務</button>
+    <div style="margin-top:14px">${tasks.map(t=>`<div class="sub-row"><span class="tc-emoji">${t.icon}</span><div style="flex:1;min-width:0"><div class="tc-title" style="font-size:14px">${t.title}</div><div class="xp-text">+${t.xp} XP</div></div><button class="btn-sm btn-warn" onclick="delTask('${t.id}')">刪除</button></div>`).join('')||'<div class="muted-note">目前沒有任務</div>'}</div>
+  </div>`;
+}
+function addTask(){
+  const icon=($('nt-icon')&&$('nt-icon').value.trim())||'✅';
+  const title=($('nt-title')&&$('nt-title').value.trim())||'';
+  const xp=Math.max(1,parseInt($('nt-xp')&&$('nt-xp').value)||20);
+  if(!title){toast('請輸入任務名稱','red');return;}
+  const tasks=LS.get('rm_tasks',[]);tasks.push({id:'t'+Date.now(),icon,title,xp});LS.set('rm_tasks',tasks);
+  toast('✓ 已新增任務','gold');renderTasks();
+}
+function delTask(id){const tasks=LS.get('rm_tasks',[]).filter(t=>t.id!==id);LS.set('rm_tasks',tasks);toast('已刪除任務','red');renderTasks();}
+function reviewSub(id,ok){
+  const subs=LS.get('rm_submissions',[]);const s=subs.find(x=>x.id===id);if(!s||s.status!=='pending')return;
+  s.status=ok?'approved':'rejected';s.reviewer=CU.name;
+  LS.set('rm_submissions',subs);
+  if(ok){
+    const r=awardXp(s.user,s.xp);
+    const c=getChar(s.user);c.tasksDone=(c.tasksDone||0)+1;saveChar(c,s.user);
+    toast(`✓ 已通過，給 ${s.userName} +${s.xp} XP`+(r.leveledUp?`（升級 Lv.${r.after}！）`:''),'gold');
+  }else{toast('已退回該任務','red');}
+  renderTasks();updateGameChip();
+}
+
+// ── 獎勵商店 ──
+function renderRewards(){
+  const c=getChar();
+  $('rw-balance').textContent='🎫 '+c.points+' 點';
+  const rewards=LS.get('rm_rewards',[]);
+  $('reward-list').innerHTML=rewards.map(r=>{
+    const afford=c.points>=r.cost;
+    return `<div class="reward-card">
+      <span class="tc-emoji">${r.icon}</span>
+      <div class="tc-body"><div class="tc-title">${r.title}</div><div class="tc-xp">需要 ${r.cost} 點</div></div>
+      <button class="btn-action" style="padding:10px 16px;${afford?'':'opacity:.45'}" ${afford?'':'disabled'} onclick="redeem('${r.id}')">🎫 ${r.cost} 兌換</button></div>`;
+  }).join('');
+
+  const reds=LS.get('rm_redemptions',[]);
+  const mine=reds.filter(x=>x.user===CU.username).sort((a,b)=>b.ts-a.ts);
+  $('my-redeems').innerHTML=mine.length?mine.map(x=>`
+    <div class="sub-row"><span class="tc-emoji">${x.icon}</span>
+      <div style="flex:1;min-width:0"><div class="tc-title" style="font-size:14px">${x.title}</div>
+        <div class="xp-text">${fmtTime(x.ts)} ・ -${x.cost} 點</div></div>
+      <span class="pill ${x.status}">${({pending:'待主管處理',done:'已發放 ✓'})[x.status]}</span>
+    </div>`).join(''):'<div class="game-empty">還沒有兌換紀錄</div>';
+
+  const wrap=$('mgr-redeem-wrap');
+  if(isMgr()){
+    const pend=reds.filter(x=>x.status==='pending').sort((a,b)=>a.ts-b.ts);
+    wrap.innerHTML=`<div class="c-card"><div class="c-card-title">🛡️ 待處理兌換（主管實際執行）</div>${
+      pend.length?pend.map(x=>`
+      <div class="sub-row"><span class="tc-emoji">${x.icon}</span>
+        <div style="flex:1;min-width:0"><div class="tc-title" style="font-size:14px">${x.title}</div>
+          <div class="xp-text">${x.userName} ・ ${fmtTime(x.ts)} ・ ${x.cost} 點</div></div>
+        <button class="btn-sm btn-approve" onclick="markRedeemDone('${x.id}')">✓ 已發放</button>
+      </div>`).join(''):'<div class="game-empty">沒有待處理的兌換</div>'
+    }</div>`;
+  }else{wrap.innerHTML='';}
+  renderRewardAdmin();
+}
+function renderRewardAdmin(){
+  const wrap=$('reward-admin-wrap');if(!wrap)return;
+  if(CU.role!=='BOSS'){wrap.innerHTML='';return;}
+  const rewards=LS.get('rm_rewards',[]);
+  wrap.innerHTML=`<div class="c-card"><div class="c-card-title">🛠️ 獎勵管理（老闆）</div>
+    <div class="form-row">
+      <div class="form-group"><label class="form-label">圖示 emoji</label><input class="form-input" id="nr-icon" value="🎁"></div>
+      <div class="form-group"><label class="form-label">所需點數</label><input class="form-input" id="nr-cost" type="number" min="1" value="200"></div>
+    </div>
+    <div class="form-group"><label class="form-label">獎勵名稱</label><input class="form-input" id="nr-title" placeholder="例：電影票一張"></div>
+    <button class="btn-action" onclick="addReward()">➕ 新增獎勵</button>
+    <div style="margin-top:14px">${rewards.map(r=>`<div class="sub-row"><span class="tc-emoji">${r.icon}</span><div style="flex:1;min-width:0"><div class="tc-title" style="font-size:14px">${r.title}</div><div class="xp-text">${r.cost} 點${r.type==='skin'?' ・ 皮膚':''}</div></div><button class="btn-sm btn-warn" onclick="delReward('${r.id}')">刪除</button></div>`).join('')||'<div class="muted-note">目前沒有獎勵</div>'}</div>
+  </div>`;
+}
+function addReward(){
+  const icon=($('nr-icon')&&$('nr-icon').value.trim())||'🎁';
+  const title=($('nr-title')&&$('nr-title').value.trim())||'';
+  const cost=Math.max(1,parseInt($('nr-cost')&&$('nr-cost').value)||200);
+  if(!title){toast('請輸入獎勵名稱','red');return;}
+  const rewards=LS.get('rm_rewards',[]);rewards.push({id:'rw'+Date.now(),icon,title,cost,type:'perk'});LS.set('rm_rewards',rewards);
+  toast('✓ 已新增獎勵','gold');renderRewards();
+}
+function delReward(id){const rewards=LS.get('rm_rewards',[]).filter(r=>r.id!==id);LS.set('rm_rewards',rewards);toast('已刪除獎勵','red');renderRewards();}
+function redeem(id){
+  const rewards=LS.get('rm_rewards',[]);const r=rewards.find(x=>x.id===id);if(!r)return;
+  const c=getChar();
+  if(c.points<r.cost){toast('點數不足','red');return;}
+  c.points-=r.cost;saveChar(c);
+  const reds=LS.get('rm_redemptions',[]);
+  reds.push({id:'rd'+Date.now(),rewardId:r.id,title:r.title,icon:r.icon,cost:r.cost,
+    user:CU.username,userName:CU.name,status:'pending',ts:Date.now()});
+  LS.set('rm_redemptions',reds);
+  toast('🎁 兌換成功，等待主管發放','gold');
+  renderRewards();updateGameChip();
+}
+function markRedeemDone(id){
+  const reds=LS.get('rm_redemptions',[]);const x=reds.find(r=>r.id===id);if(!x)return;
+  x.status='done';x.handledBy=CU.name;LS.set('rm_redemptions',reds);
+  toast('✓ 已標記為發放','gold');renderRewards();
+}
+
+// ── 支出（本機雛型）──
+let selectedExCat='水電';
+function pickExChip(el){document.querySelectorAll('#ex-chips .chip').forEach(c=>c.classList.remove('active'));el.classList.add('active');selectedExCat=el.textContent;}
+function submitExpense(){
+  const date=$('ex-date').value,amt=parseFloat($('ex-amt').value)||0,item=$('ex-item').value.trim();
+  if(!date||!amt||!item){toast('請填寫日期、金額、項目','red');return;}
+  const list=LS.get('rm_expenses',[]);
+  list.push({id:'e'+Date.now(),date,category:selectedExCat,item,amount:amt,user:CU.name,ts:Date.now()});
+  LS.set('rm_expenses',list);
+  $('ex-amt').value='';$('ex-item').value='';
+  toast('✓ 支出已記錄','gold');renderExpenseList();
+}
+function delExpense(id){const list=LS.get('rm_expenses',[]).filter(e=>e.id!==id);LS.set('rm_expenses',list);renderExpenseList();}
+function renderExpenseList(){
+  const list=LS.get('rm_expenses',[]).sort((a,b)=>b.ts-a.ts);
+  if(!list.length){$('ex-list').innerHTML='<div class="game-empty">尚無支出記錄</div>';return;}
+  $('ex-list').innerHTML=`<table class="data-table"><thead><tr><th>日期</th><th>分類</th><th>項目</th><th>金額</th><th>登錄人</th><th></th></tr></thead><tbody>`+
+    list.map(e=>`<tr>
+      <td>${e.date}</td><td><span class="badge badge-pending">${e.category}</span></td>
+      <td>${e.item}</td><td style="font-weight:700;color:#ff6a1a">$${e.amount.toLocaleString()}</td>
+      <td style="color:var(--text-3)">${e.user}</td>
+      <td><button class="btn-sm btn-warn" onclick="delExpense('${e.id}')">刪除</button></td>
+    </tr>`).join('')+'</tbody></table>';
+}
+</script>
+</body>
+</html>
