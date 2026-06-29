@@ -1026,7 +1026,7 @@ select.field-input option,select.form-input option{background:#fff!important;col
 
     <!-- REWARDS TAB -->
     <div class="tab-panel" id="tab-rewards">
-      <div class="sec-header"><div class="sec-title">獎勵商店</div><div class="divider"></div><div class="sec-sub">用點數兌換獎勵（加薪等由主管實際執行）</div></div>
+      <div class="sec-header"><div class="sec-title">獎勵商店</div><div class="divider"></div><div class="sec-sub">用點數兌換獎勵 ・ 每月 10 號截止、15 號發放（由主管實際執行）</div></div>
       <div class="c-card"><div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px"><div class="c-card-title" style="margin:0">🎁 我的點數</div><span class="pts-pill" id="rw-balance">🎫 0 點</span></div></div>
       <div class="c-card"><div class="c-card-title">🛒 可兌換</div><div id="reward-list"></div></div>
       <div class="c-card"><div class="c-card-title">🧾 我的兌換紀錄</div><div id="my-redeems"></div></div>
@@ -1771,7 +1771,7 @@ function awardXp(username,amt){
 }
 
 // 預設任務 / 獎勵
-const SEED_VER=3;
+const SEED_VER=4;
 function seedGame(){
   if(!LS.get('rm_tasks',null))LS.set('rm_tasks',[
     {id:'t1',icon:'🧻',title:'補充廁所衛生紙',xp:20},
@@ -1784,14 +1784,14 @@ function seedGame(){
   if(!LS.get('rm_parts',null))LS.set('rm_parts',{});
   // 獎勵：版本升級時重置為最新預設（老闆之後可自行增刪）
   if(!LS.get('rm_rewards',null)||LS.get('rm_seed_v',0)<SEED_VER)LS.set('rm_rewards',[
-    {id:'rw_drink',icon:'🧋',title:'免費手搖飲一杯',cost:120,type:'perk'},
-    {id:'rw_meal',icon:'🍱',title:'員工餐加菜券',cost:200,type:'perk'},
-    {id:'rw_late',icon:'😌',title:'遲到免責卡 ×1',cost:300,type:'perk'},
-    {id:'rw_early',icon:'⏰',title:'提早30分下班券',cost:450,type:'perk'},
-    {id:'rw_badge',icon:'🎖️',title:'限定裝備兌換券',cost:600,type:'perk'},
-    {id:'rw_star',icon:'🌟',title:'本月之星（公告表揚）',cost:800,type:'perk'},
-    {id:'rw_bonus',icon:'💰',title:'加薪面談資格',cost:2000,type:'perk'},
-    {id:'rw_dayoff',icon:'🏖️',title:'多一天有薪假',cost:3000,type:'perk'},
+    {id:'rw_meal',icon:'🍽️',title:'免費套餐券（家庭套餐）',cost:20,type:'perk'},
+    {id:'rw_gift',icon:'🎁',title:'餐廳限定特製禮盒',cost:40,type:'perk'},
+    {id:'rw_giftcard',icon:'📱',title:'禮物卡 $800',cost:80,type:'perk'},
+    {id:'rw_gear',icon:'👕',title:'工作裝備（工作服/運動鞋）',cost:100,type:'perk'},
+    {id:'rw_cash',icon:'💰',title:'現金獎金 $1,000（直接入帳）',cost:100,type:'perk'},
+    {id:'rw_course',icon:'🎓',title:'進階課程（廚藝/服務培訓）',cost:120,type:'perk'},
+    {id:'rw_dayoff',icon:'🏖️',title:'有薪假 1 天',cost:150,type:'perk'},
+    {id:'rw_annual',icon:'🏆',title:'年度大獎（獎狀＋特別獎金）',cost:200,type:'perk'},
   ]);
   LS.set('rm_seed_v',SEED_VER);
   if(!LS.get('rm_submissions',null))LS.set('rm_submissions',[]);
