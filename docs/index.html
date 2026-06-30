@@ -691,9 +691,9 @@ img,canvas,table,video{max-width:100%;}
       <!-- LOGIN -->
       <div class="auth-panel active" id="auth-login">
         <div class="field-label">帳號</div>
-        <input class="field-input" id="l-user" type="text" placeholder="輸入帳號" autocomplete="username">
+        <input class="field-input" id="l-user" type="text" placeholder="輸入帳號" autocomplete="username" autocapitalize="none" autocorrect="off" spellcheck="false">
         <div class="field-label">密碼</div>
-        <input class="field-input" id="l-pass" type="password" placeholder="輸入密碼" autocomplete="current-password" onkeydown="if(event.key==='Enter')doLogin()">
+        <input class="field-input" id="l-pass" type="password" placeholder="輸入密碼" autocomplete="current-password" autocapitalize="none" autocorrect="off" spellcheck="false" onkeydown="if(event.key==='Enter')doLogin()">
         <button class="btn-primary" onclick="doLogin()" id="btn-login">登入系統</button>
         <div class="msg" id="l-msg"></div>
       </div>
@@ -707,7 +707,7 @@ img,canvas,table,video{max-width:100%;}
           </div>
           <div>
             <div class="field-label">帳號</div>
-            <input class="field-input" id="r-user" type="text" placeholder="自訂帳號">
+            <input class="field-input" id="r-user" type="text" placeholder="自訂帳號" autocapitalize="none" autocorrect="off" spellcheck="false">
           </div>
         </div>
         <div class="form-row">
