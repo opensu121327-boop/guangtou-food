@@ -1891,6 +1891,16 @@ const FILE_PARTS={
   ],
   equipment:[
   ],
+  background:[
+    {id:'bg_sky',name:'藍天草地',img:'parts/background/6.jpg',lv:1},
+    {id:'bg_beach',name:'海邊沙灘',img:'parts/background/7.jpg',lv:2},
+    {id:'bg_money',name:'錢錢背景',img:'parts/background/bg-money.jpg',lv:3},
+    {id:'bg_food',name:'美食天堂',img:'parts/background/8.jpg',lv:4},
+    {id:'bg_bear',name:'我是棕熊背景',img:'parts/background/bg-bear.jpg',lv:5},
+    {id:'bg_forest',name:'森林探險',img:'parts/background/4.jpg',lv:7},
+    {id:'bg_tetris',name:'俄羅斯方塊',img:'parts/background/5.jpg',lv:8},
+    {id:'bg_booze',name:'酒精成癮背景',img:'parts/background/bg-booze.jpg',lv:10},
+  ],
 };
 const SKIN_COLORS=['#ffe0bd','#f3c9a0','#e8b48a','#d49a6a','#a96b3f','#7a4a28'];
 const HAIR_COLORS=['#2b2118','#5a3a22','#8a5a2b','#c9962f','#d6d6d6','#e05e5e','#3d5a98','#9b59b6'];
@@ -1923,13 +1933,17 @@ function getParts(){
   return o;
 }
 function autoEquip(level){const eqs=(getParts().equipment||[]).filter(e=>(e.lv||1)<=level).sort((a,b)=>(b.lv||1)-(a.lv||1));return eqs[0]||null;}
+function getBgs(){const u=LS.get('rm_parts',{})||{};return (FILE_PARTS.background||[]).concat(u.background||[]);}
+function findBg(id){return getBgs().find(b=>b.id===id);}
 function renderAvatar(av,level,opts){
   opts=opts||{};
   av=av||defAvatar();const P=getParts();
   const pick=cat=>{const arr=P[cat]||[];const id=av.parts&&av.parts[cat];return arr.find(p=>p.id===id)||arr.find(p=>p.img)||null;};
   const imgLayer=cat=>{const p=pick(cat);if(!p||!p.img)return '';return `<img class="av-layer" src="${p.img}" alt="">`;};
   const eq=autoEquip(level||1);const eqL=eq&&eq.img?`<img class="av-layer" src="${eq.img}" alt="">`:'';
-  const bg=opts.noBg?'':`<div class="av-bg" style="background:${av.bgColor||'#ffd9a8'}"></div>`;
+  let bgStyle='background:'+(av.bgColor||'#ffd9a8');
+  if(av.bgImg){const b=findBg(av.bgImg);if(b&&(level||1)>=(b.lv||1))bgStyle="background:url('"+b.img+"') center/cover no-repeat";}
+  const bg=opts.noBg?'':`<div class="av-bg" style="${bgStyle}"></div>`;
   return `<div class="avatar-stage">${bg}${imgLayer('outfit')}${imgLayer('face')}${imgLayer('eyes')}${imgLayer('hair')}${eqL}</div>`;
 }
 function partThumb(part,tint,color){
@@ -1949,7 +1963,17 @@ function sceneHTML(c,lv){
 function dressTabs(active){return DRESS_CATS.map(t=>`<button class="dcat ${active===t[0]?'active':''}" onclick="setDressCat('${t[0]}')">${t[1]}</button>`).join('');}
 function dressOptions(cat){
   const c=getChar();
-  if(cat==='bg')return `<div class="swatch-row" style="padding:10px 2px">${swatches('bgColor',BG_COLORS)}</div>`;
+  if(cat==='bg'){
+    const lv=levelOf(c.xp);const bgs=getBgs();
+    let html=`<div class="dress-label" style="margin:2px">純色背景</div><div class="swatch-row" style="padding:6px 2px 10px">${swatches('bgColor',BG_COLORS)}</div>`;
+    if(bgs.length){
+      html+='<div class="dress-label" style="margin:2px">場景背景（依等級解鎖）</div><div class="opt-grid">';
+      html+=`<div class="opt ${!c.avatar.bgImg?'sel':''}" style="display:flex;align-items:center;justify-content:center;font-size:12px;color:#9a7d63" onclick="pickBg('')">純色</div>`;
+      html+=bgs.map(b=>{const locked=lv<(b.lv||1);const sel=c.avatar.bgImg===b.id?'sel':'';return `<div class="opt ${sel}" style="position:relative;${locked?'opacity:.6':''}" title="${esc(b.name)}" onclick="pickBg('${b.id}')"><img src="${b.img}" alt="" onerror="this.style.visibility='hidden'">${locked?`<span style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,.42);color:#fff;font-size:11px;font-weight:800;border-radius:8px">🔒Lv.${b.lv}</span>`:''}</div>`;}).join('');
+      html+='</div>';
+    }
+    return html;
+  }
   const list=getParts()[cat]||[];
   return `<div class="opt-grid">`+list.map(p=>{
     const thumb=p.img?`<img src="${p.img}" alt="">`:`<span style="color:#c9b8a8;font-size:22px">∅</span>`;
@@ -1958,7 +1982,7 @@ function dressOptions(cat){
 }
 function setDressCat(cat){_dressCat=cat;if($('dcat-row'))$('dcat-row').innerHTML=dressTabs(cat);if($('cc-cats'))$('cc-cats').innerHTML=dressTabs(cat);refreshDressOptions();}
 function refreshDressOptions(){if($('dress-options'))$('dress-options').innerHTML=dressOptions(_dressCat);if($('cc-options'))$('cc-options').innerHTML=dressOptions(_dressCat);}
-function paintScene(idn){const el=$(idn);if(!el)return;const c=getChar();el.style.background=c.avatar.bgColor||'#ffe3c4';el.innerHTML=sceneHTML(c,levelOf(c.xp));}
+function paintScene(idn){const el=$(idn);if(!el)return;const c=getChar();const lv=levelOf(c.xp);const b=c.avatar.bgImg?findBg(c.avatar.bgImg):null;if(b&&lv>=(b.lv||1)){el.style.background="url('"+b.img+"') center/cover no-repeat";}else{el.style.background=c.avatar.bgColor||'#ffe3c4';}el.innerHTML=sceneHTML(c,lv);}
 function updateScenes(){paintScene('dress-scene');paintScene('cc-scene');}
 // ── 排行榜 ──
 function recordName(u,name){if(!u||!name)return;const m=LS.get('rm_names',{})||{};if(m[u]!==name){m[u]=name;LS.set('rm_names',m);}}
@@ -1990,6 +2014,7 @@ function charExtraHTML(c,lv){
 }
 function setAvatarColor(key,val){const c=getChar();c.avatar[key]=val;saveChar(c);updateScenes();updateGameChip();if(_dressCat==='bg')refreshDressOptions();const hm=$('tab-home');if(hm&&hm.classList.contains('active'))renderHome();}
 function pickPart(cat,id){const c=getChar();c.avatar.parts[cat]=id;saveChar(c);updateScenes();updateGameChip();document.querySelectorAll('.opt[data-cat="'+cat+'"]').forEach(el=>el.classList.toggle('sel',el.dataset.id===id));const hm=$('tab-home');if(hm&&hm.classList.contains('active'))renderHome();}
+function pickBg(id){const c=getChar();const lv=levelOf(c.xp);if(id){const b=findBg(id);if(!b)return;if(lv<(b.lv||1)){toast('Lv.'+(b.lv||1)+' 才能解鎖此背景','red');return;}}c.avatar.bgImg=id||'';saveChar(c);updateScenes();updateGameChip();refreshDressOptions();const hm=$('tab-home');if(hm&&hm.classList.contains('active'))renderHome();}
 function refreshAvatars(){
   updateGameChip();
   const ch=$('tab-character');if(ch&&ch.classList.contains('active'))renderCharacter();
@@ -2009,7 +2034,7 @@ function normChar(c){c=c||{};const d=defAvatar();const a=c.avatar||{};
   return {
     xp:c.xp||0, points:c.points||0,
     lastCheckin:c.lastCheckin||'', tasksDone:c.tasksDone||0, chosen:!!c.chosen, lastHandover:c.lastHandover||'',
-    avatar:{bgColor:a.bgColor||d.bgColor,skinColor:a.skinColor||d.skinColor,hairColor:a.hairColor||d.hairColor,parts}
+    avatar:{bgColor:a.bgColor||d.bgColor,bgImg:a.bgImg||'',skinColor:a.skinColor||d.skinColor,hairColor:a.hairColor||d.hairColor,parts}
   };
 }
 function getChar(u){return normChar(LS.get(charKey(u),null));}
