@@ -1186,6 +1186,12 @@ async function api(body) {
   const r = await fetch(GAS, {method:'POST',body:JSON.stringify(body),headers:{'Content-Type':'text/plain'}});
   return r.json();
 }
+// 帳號系統走「同步後台」（直接讀寫帳號管理表）
+async function authApi(body){
+  if(body&&body.data&&typeof body.data==='object'){body=Object.assign({},body.data,body);}
+  const r=await fetch(SYNC_URL,{method:'POST',body:JSON.stringify(body),headers:{'Content-Type':'text/plain'}});
+  return r.json();
+}
 // 查詢資料用 GET（營運後台 doGet 才處理 query_*）
 async function apiGet(type,params){
   let q='?type='+encodeURIComponent(type);
@@ -1208,7 +1214,7 @@ async function doLogin() {
   if(!u||!p){showMsg('l-msg','請輸入帳號與密碼','error');return}
   $('btn-login').textContent='驗證中…';$('btn-login').disabled=true;
   try{
-    const d=await api({type:'auth_login',data:{username:u,password:p}});
+    const d=await authApi({type:'auth_login',data:{username:u,password:p}});
     if(d.status==='success'){
       CU={name:d.name,username:d.username,role:d.role,phone:d.phone};
       enterApp();
@@ -1228,7 +1234,7 @@ async function doRegister() {
   if(!name||!user||!pass){showMsg('r-msg','請填寫姓名、帳號、密碼','error');return}
   const status=role==='BOSS'?'啟用':'待審核';
   try{
-    const d=await api({type:'auth_register',data:{name,username:user,password:pass,role,phone,status,createdBy:'self'}});
+    const d=await authApi({type:'auth_register',data:{name,username:user,password:pass,role,phone,status,createdBy:'self'}});
     if(d.status==='success'){
       if(status==='啟用'){CU={name,username:user,role,phone};enterApp();}
       else{showMsg('r-msg','申請成功！等待老闆審核後即可登入','success');}
@@ -1761,7 +1767,7 @@ async function loadReports() {
 async function loadPending() {
   $('pending-list').innerHTML='<div class="loading-state"><div class="spin"></div>載入中</div>';
   try{
-    const d=await api({type:'auth_list_users',data:{requestedBy:CU?.username}});
+    const d=await authApi({type:'auth_list_users',data:{requestedBy:CU?.username}});
     if(d.status==='success'||d.status==='ok'){
       const pending=d.users.filter(u=>u.status==='待審核');
       if(!pending.length){
@@ -1783,7 +1789,7 @@ async function loadPending() {
 
 async function approveUser(username) {
   try{
-    const d=await api({type:'auth_toggle_status',data:{username,newStatus:'啟用',changedBy:CU?.username}});
+    const d=await authApi({type:'auth_toggle_status',data:{username,newStatus:'啟用',changedBy:CU?.username}});
     if(d.status==='success'||d.status==='ok'){toast('✓ 已審核通過','gold');loadPending();loadAccounts();}
     else toast(d.message||'操作失敗','red');
   }catch(e){toast('連線失敗','red');}
@@ -1792,7 +1798,7 @@ async function approveUser(username) {
 async function loadAccounts() {
   $('acc-list').innerHTML='<div class="loading-state"><div class="spin"></div>載入中</div>';
   try{
-    const d=await api({type:'auth_list_users',data:{requestedBy:CU?.username}});
+    const d=await authApi({type:'auth_list_users',data:{requestedBy:CU?.username}});
     if(d.status==='success'||d.status==='ok'){
       if(!d.users.length){$('acc-list').innerHTML='<div class="empty-state">尚無帳號</div>';return;}
       const roleMap={'BOSS':'老闆','MGR':'店長','EMP':'員工'};
@@ -1813,7 +1819,7 @@ async function loadAccounts() {
 
 async function toggleUser(username,newStatus) {
   try{
-    const d=await api({type:'auth_toggle_status',data:{username,newStatus,changedBy:CU?.username}});
+    const d=await authApi({type:'auth_toggle_status',data:{username,newStatus,changedBy:CU?.username}});
     if(d.status==='success'||d.status==='ok'){toast(d.message||'操作成功','gold');loadAccounts();loadPending();}
     else toast(d.message||'操作失敗','red');
   }catch(e){toast('連線失敗','red');}
@@ -1825,7 +1831,7 @@ async function createAcc() {
   const role=$('new-role').value;
   if(!name||!user||!pass){toast('請填寫姓名、帳號、密碼','red');return}
   try{
-    const d=await api({type:'auth_register',data:{name,username:user,password:pass,role,phone,status:'啟用',createdBy:CU?.username}});
+    const d=await authApi({type:'auth_register',data:{name,username:user,password:pass,role,phone,status:'啟用',createdBy:CU?.username}});
     if(d.status==='success'||d.status==='ok'){toast('✓ 帳號已建立','gold');['new-name','new-user','new-pass','new-phone'].forEach(id=>{if($(id))$(id).value=''});loadAccounts();}
     else toast(d.message||'建立失敗','red');
   }catch(e){toast('連線失敗','red');}
@@ -1835,7 +1841,7 @@ async function resetPw() {
   const user=$('reset-user').value.trim(), pass=$('reset-pass').value.trim();
   if(!user||!pass){toast('請輸入帳號與新密碼','red');return;}
   try{
-    const d=await api({type:'auth_reset_password',data:{username:user,newPassword:pass,changedBy:CU?.username}});
+    const d=await authApi({type:'auth_reset_password',data:{username:user,newPassword:pass,changedBy:CU?.username}});
     if(d.status==='success'||d.status==='ok'){toast('✓ 密碼已重設','gold');$('reset-user').value='';$('reset-pass').value='';}
     else toast(d.message||'重設失敗（後端可能未支援此功能）','red');
   }catch(e){toast('連線失敗','red');}
