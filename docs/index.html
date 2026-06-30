@@ -1181,6 +1181,13 @@ async function api(body) {
   const r = await fetch(GAS, {method:'POST',body:JSON.stringify(body),headers:{'Content-Type':'text/plain'}});
   return r.json();
 }
+// 查詢資料用 GET（營運後台 doGet 才處理 query_*）
+async function apiGet(type,params){
+  let q='?type='+encodeURIComponent(type);
+  if(params)for(const k in params){q+='&'+encodeURIComponent(k)+'='+encodeURIComponent(params[k]);}
+  const r=await fetch(GAS+q);
+  return r.json();
+}
 
 // ── AUTH TABS ──
 function switchAuthTab(tab, btn) {
@@ -1358,7 +1365,7 @@ async function loadMaterials(force){
     let arr=[];
     if(syncOn()){try{const d=await kv('materials',{});if(d&&d.status==='ok'&&d.data&&d.data.length)arr=d.data;}catch(e){}}
     if(!arr.length){
-      const d2=await api({type:'query_purchase',data:{}});const ok=d2&&(d2.status==='ok'||d2.status==='success');
+      const d2=await apiGet('query_purchase');const ok=d2&&(d2.status==='ok'||d2.status==='success');
       const rows=ok?(d2.rows?d2.rows.slice(1):(d2.data||[])):[];const map={};
       rows.forEach(r=>{const code=r[1]?String(r[1]).trim():'';const name=r[3]?String(r[3]).trim():'';if(!code&&!name)return;map[code||name]={code:code,name:name,cat:r[2]?String(r[2]).trim():'',unit:r[5]?String(r[5]).trim():'',supplier:r[8]?String(r[8]).trim():''};});
       arr=Object.keys(map).map(k=>map[k]);
@@ -1569,8 +1576,8 @@ async function loadReports() {
   $('report-last-update').textContent='載入中…';
   try{
     const [revRes,purRes]=await Promise.all([
-      api({type:'query_revenue',data:{}}),
-      api({type:'query_purchase',data:{}})
+      apiGet('query_revenue'),
+      apiGet('query_purchase')
     ]);
     const revOk = revRes.status==='ok' || revRes.status==='success';
     const purOk = purRes.status==='ok' || purRes.status==='success';
@@ -2218,7 +2225,7 @@ function renderChProgress(){
   </div>`;
 }
 function fetchChRevenue(){
-  api({type:'query_revenue',data:{}}).then(res=>{
+  apiGet('query_revenue').then(res=>{
     const ok=res&&(res.status==='ok'||res.status==='success');let rows=[];
     if(ok){rows=res.rows?res.rows.slice(1).map(r=>({date:normDate(r[0]),total:Number(r[7])||0})):((res.data||[]).map(r=>({date:normDate(r.date),total:Number(r.total)||0})));}
     const td=bizDay(),mk=monthKey();let today=0,month=0;
@@ -2274,7 +2281,7 @@ function saveChallengeCfg(){const cfg={dailyTargetWeekday:Math.max(0,parseInt($(
 let _costMap={};
 async function loadRecipeCosts(){
   try{
-    const d=await api({type:'query_purchase',data:{}});const ok=d&&(d.status==='ok'||d.status==='success');
+    const d=await apiGet('query_purchase');const ok=d&&(d.status==='ok'||d.status==='success');
     const rows=ok?(d.rows?d.rows.slice(1):(d.data||[])):[];const map={};
     rows.forEach(r=>{const code=r[1]?String(r[1]).trim():'';if(!code)return;const uc=parseFloat(r[7]);const unit=r[5]?String(r[5]).trim():'';if(!isNaN(uc))map[code]={cost:uc,unit:unit};});
     _costMap=map;
