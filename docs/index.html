@@ -470,6 +470,10 @@ body,html{font-family:'Noto Sans TC','Fredoka',sans-serif;}
 .field-input:focus,.form-input:focus{border-color:var(--gold)!important;background:#fff!important;}
 .field-input::placeholder,.form-input::placeholder{color:var(--text-3)!important;}
 select.field-input option,select.form-input option{background:#fff!important;color:var(--text)!important;}
+/* 日期/時間欄位正規化（iOS 原生會變高、置中）*/
+input[type="date"],input[type="time"],input[type="datetime-local"]{-webkit-appearance:none;appearance:none;}
+input[type="date"].form-input,input[type="time"].form-input,input[type="datetime-local"].form-input{text-align:left;min-height:0;line-height:1.4;}
+input[type="date"]::-webkit-date-and-time-value{text-align:left;}
 
 .btn-primary,.btn-action{background:linear-gradient(135deg,#ff9d3d,#ff6a1a)!important;color:#fff!important;border-radius:16px!important;box-shadow:0 8px 18px rgba(255,122,26,0.30)!important;letter-spacing:.04em;}
 .btn-primary:active,.btn-action:active{transform:translateY(1px) scale(.99);}
@@ -906,22 +910,22 @@ img,canvas,table,video{max-width:100%;}
       <!-- KPI Cards -->
       <div class="kpi-grid">
         <div class="kpi-card gold-accent">
-          <div class="kpi-label">今日營收</div>
+          <div class="kpi-label" id="kl-today">今日營收</div>
           <div class="kpi-val" id="kpi-today"><small>$</small><span id="kv-today">—</span></div>
           <div class="kpi-note" id="kn-today">—</div>
         </div>
         <div class="kpi-card">
-          <div class="kpi-label">本月總營收</div>
+          <div class="kpi-label" id="kl-month">本月總營收</div>
           <div class="kpi-val"><small>$</small><span id="kv-month">—</span></div>
           <div class="kpi-note" id="kn-month">—</div>
         </div>
         <div class="kpi-card">
-          <div class="kpi-label">本月進貨成本</div>
+          <div class="kpi-label" id="kl-cost">本月進貨成本</div>
           <div class="kpi-val"><small>$</small><span id="kv-cost">—</span></div>
           <div class="kpi-note" id="kn-cost">—</div>
         </div>
         <div class="kpi-card">
-          <div class="kpi-label">本月毛利</div>
+          <div class="kpi-label" id="kl-profit">本月毛利</div>
           <div class="kpi-val"><small>$</small><span id="kv-profit">—</span></div>
           <div class="kpi-note" id="kn-profit">—</div>
         </div>
@@ -1550,16 +1554,24 @@ function renderReports() {
   // Range label
   const rangeLabel = _reportRange === 'today' ? '今日' : _reportRange === '7d' ? '近7天' : _reportRange === 'month' ? '本月' : _reportRange === '30d' ? '近30天' : _reportRange === 'custom' ? `${from} ~ ${to}` : '全部';
 
-  // Update KPIs - first card shows period total, not "today" label if not today
-  const kpiLabel = document.querySelector('#kpi-today .kpi-label');
-  if (kpiLabel) kpiLabel.textContent = rangeLabel + '營收';
-  $('kv-today').textContent = totalRev.toLocaleString();
-  $('kn-today').textContent = revRows.length + ' 筆';
+  // Card 1 = 今日(營業日)營收（固定，不受時間區段影響）
+  const _bd = bizDay();
+  const todayRows = _allRevData.filter(r => normDate(r.date) === _bd);
+  const todayRev = todayRows.reduce((a,r) => a + (r.total||0), 0);
+  if ($('kl-today')) $('kl-today').textContent = '今日營收';
+  $('kv-today').textContent = todayRev.toLocaleString();
+  $('kn-today').textContent = todayRows.length + ' 筆';
+  // Card 2 = 選取區段總營收（標題隨區段變動）
+  if ($('kl-month')) $('kl-month').textContent = rangeLabel + '總營收';
   $('kv-month').textContent = totalRev.toLocaleString();
   $('kn-month').textContent = rangeLabel + ' 共' + revRows.length + '筆';
+  // Card 3 = 區段進貨成本
+  if ($('kl-cost')) $('kl-cost').textContent = rangeLabel + '進貨成本';
   $('kv-cost').textContent = totalCost.toLocaleString();
   const ratio = totalRev > 0 ? Math.round(totalCost/totalRev*100) : 0;
   $('kn-cost').textContent = '成本率 ' + ratio + '%';
+  // Card 4 = 區段毛利
+  if ($('kl-profit')) $('kl-profit').textContent = rangeLabel + '毛利';
   $('kv-profit').textContent = gross.toLocaleString();
   const margin = totalRev > 0 ? Math.round(gross/totalRev*100) : 0;
   $('kn-profit').textContent = '毛利率 ' + margin + '%';
