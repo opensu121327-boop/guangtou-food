@@ -2353,7 +2353,7 @@ async function loadRecipeCosts(){
   try{
     const d=await apiGet('query_purchase');const ok=d&&(d.status==='ok'||d.status==='success');
     const rows=ok?(d.rows?d.rows.slice(1):(d.data||[])):[];const map={};
-    rows.forEach(r=>{const code=r[1]?String(r[1]).trim():'';if(!code)return;const uc=parseFloat(r[7]);const unit=r[5]?String(r[5]).trim():'';if(!isNaN(uc))map[code]={cost:uc,unit:unit};});
+    rows.forEach(r=>{const code=r[1]?String(r[1]).trim():'';if(!code)return;const uc=parseFloat(r[7]);const unit=r[5]?String(r[5]).trim():'';const nm=r[3]?String(r[3]).trim():'';if(!isNaN(uc))map[code]={cost:uc,unit:unit,name:nm};});
     _costMap=map;
   }catch(e){}
 }
@@ -2362,6 +2362,26 @@ const W2G={'克':1,'公克':1,'g':1,'公斤':1000,'kg':1000,'台斤':600,'斤':6
 const V2ML={'cc':1,'ml':1,'毫升':1,'公升':1000,'l':1000,'L':1000};
 function weightKg(u){return (W2G[u]!=null)?W2G[u]/1000:null;}
 function convFactor(fromU,toU){fromU=fromU||'';toU=toU||'';if(fromU===toU)return 1;if(W2G[fromU]!=null&&W2G[toU]!=null)return W2G[fromU]/W2G[toU];if(V2ML[fromU]!=null&&V2ML[toU]!=null)return V2ML[fromU]/V2ML[toU];return null;}
+// 從品名解析包裝規格（如「(1KG)」「(500克)」「(1.6L)」「250G*2/盒」），回傳換算成 克 或 毫升 的總量
+function parsePack(name){
+  if(!name)return null;
+  var re=/(\d+(?:\.\d+)?)\s*(公斤|kg|公克|台斤|斤|兩|克|g|公升|l|毫升|ml|cc)\s*(?:[\*xX]\s*(\d+(?:\.\d+)?))?/i;
+  var m=re.exec(String(name));
+  if(!m)return null;
+  var qty=parseFloat(m[1])*(m[3]?parseFloat(m[3]):1);
+  var u=m[2].toLowerCase();
+  var G={'公斤':1000,'kg':1000,'公克':1,'克':1,'g':1,'台斤':600,'斤':600,'兩':37.5};
+  var ML={'公升':1000,'l':1000,'毫升':1,'ml':1,'cc':1};
+  if(G[u]!=null)return {base:'g', amount:qty*G[u]};
+  if(ML[u]!=null)return {base:'ml', amount:qty*ML[u]};
+  return null;
+}
+// 把某用量換算成 克(g) 或 毫升(ml)
+function toBase(qty,unit,base){
+  if(base==='g'){var g={'公斤':1000,'kg':1000,'公克':1,'克':1,'g':1,'台斤':600,'斤':600,'兩':37.5};return g[unit]!=null?qty*g[unit]:null;}
+  if(base==='ml'){var v={'公升':1000,'l':1000,'毫升':1,'ml':1,'cc':1};return v[unit]!=null?qty*v[unit]:null;}
+  return null;
+}
 function findRecipe(id){return (LS.get('rm_recipes',[])||[]).find(r=>r.id===id);}
 function round2(n){return Math.round((n||0)*100)/100;}
 // 單一食材成本（物料 or 半成品，含遞迴與循環防呆）
@@ -2374,7 +2394,9 @@ function itemCost(it,stack){
     const q=parseFloat(it.qty)||0;return q*f*(rc.cost/yq);
   }
   const m=_costMap[it.code];if(!m||isNaN(m.cost))return null;const q=parseFloat(it.qty)||0;
-  const f=convFactor(it.unit,m.unit);if(f==null)return null;return q*f*m.cost;
+  const f=convFactor(it.unit,m.unit);if(f!=null)return q*f*m.cost;
+  const pk=parsePack(m.name);if(pk&&pk.amount>0){const ib=toBase(q,it.unit,pk.base);if(ib!=null)return (ib/pk.amount)*m.cost;}
+  return null;
 }
 // 整份配方成本（遞迴展開半成品）
 function recipeCost(rc,stack){stack=stack||[];if(!rc||stack.indexOf(rc.id)>=0)return{cost:0,miss:true};const st=stack.concat(rc.id);let total=0,miss=false;(rc.items||[]).forEach(it=>{const c=itemCost(it,st);if(c==null)miss=true;else total+=c;});return{cost:total,miss:miss};}
