@@ -946,6 +946,8 @@ img,canvas,table,video{max-width:100%;}
         </div>
       </div>
 
+      <div id="report-analysis" style="margin-top:16px"></div>
+
       <div style="height:16px"></div>
 
       <!-- Recent records table -->
@@ -1546,7 +1548,9 @@ function renderReports() {
 
   // Recalculate KPIs from filtered data
   const totalRev = revRows.reduce((a,r) => a + (r.total||0), 0);
-  const totalCost = purRows.reduce((a,r) => a + (r.cost||0), 0);
+  const _cc={'食材':0,'人事':0,'固定':0,'耗材':0};
+  purRows.forEach(r=>{const k=costClass(r.category);if(k)_cc[k]+=(r.cost||0);});
+  const totalCost = _cc['食材']+_cc['人事']+_cc['固定']+_cc['耗材'];
   const gross = totalRev - totalCost;
   const ch = { cash:0, card:0, twqr:0, foodpanda:0, ubereats:0 };
   revRows.forEach(r => { ch.cash+=r.cash||0; ch.card+=r.card||0; ch.twqr+=r.twqr||0; ch.foodpanda+=r.foodpanda||0; ch.ubereats+=r.ubereats||0; });
@@ -1565,16 +1569,19 @@ function renderReports() {
   if ($('kl-month')) $('kl-month').textContent = rangeLabel + '總營收';
   $('kv-month').textContent = totalRev.toLocaleString();
   $('kn-month').textContent = rangeLabel + ' 共' + revRows.length + '筆';
-  // Card 3 = 區段進貨成本
-  if ($('kl-cost')) $('kl-cost').textContent = rangeLabel + '進貨成本';
+  // Card 3 = 區段總成本（分類後，排除金額異動）
+  if ($('kl-cost')) $('kl-cost').textContent = rangeLabel + '總成本';
   $('kv-cost').textContent = totalCost.toLocaleString();
   const ratio = totalRev > 0 ? Math.round(totalCost/totalRev*100) : 0;
   $('kn-cost').textContent = '成本率 ' + ratio + '%';
-  // Card 4 = 區段毛利
-  if ($('kl-profit')) $('kl-profit').textContent = rangeLabel + '毛利';
+  // Card 4 = 區段淨利
+  if ($('kl-profit')) $('kl-profit').textContent = rangeLabel + '淨利';
   $('kv-profit').textContent = gross.toLocaleString();
   const margin = totalRev > 0 ? Math.round(gross/totalRev*100) : 0;
-  $('kn-profit').textContent = '毛利率 ' + margin + '%';
+  $('kn-profit').textContent = '淨利率 ' + margin + '%';
+  // 上期比較（同長度區段）
+  const _prevRev = prevPeriodRev(from,to);
+  if(_prevRev!=null && _prevRev>0){const _d=Math.round((totalRev-_prevRev)/_prevRev*100);const _n=$('kn-month');if(_n)_n.innerHTML+=` <span style="color:${_d>=0?'#16a34a':'#dc2626'};font-weight:700">${_d>=0?'▲':'▼'}${Math.abs(_d)}%</span>`;}
 
   // Pie chart
   const pieData = [ch.cash, ch.card, ch.twqr, ch.foodpanda, ch.ubereats];
@@ -1640,6 +1647,100 @@ function renderReports() {
   } else {
     $('pur-tbody').innerHTML='<tr><td colspan="6" style="text-align:center;padding:30px;color:var(--text-3)">此區段無進貨記錄</td></tr>';
   }
+  try{ renderAnalysis(revRows,purRows,totalRev,_cc); }catch(e){ const _h=$('report-analysis'); if(_h)_h.innerHTML='<div class="muted-note">（分析區載入失敗：'+e.message+'）</div>'; }
+}
+
+// ════════ report-analysis SKILL 整合 ════════
+const FOOD_KEYS=['肉','水產','蔬菜','半成品','冷盤','調味'];
+function costClass(cat){cat=String(cat||'');if(cat.indexOf('金額異動')===0)return null;for(var i=0;i<FOOD_KEYS.length;i++){if(cat.indexOf(FOOD_KEYS[i])===0)return '食材';}if(cat.indexOf('員工')===0)return '人事';if(cat.indexOf('餐具')===0||cat.indexOf('廚具')===0||cat.indexOf('設備')===0)return '固定';return '耗材';}
+function prevPeriodRev(from,to){
+  if(!from||!to||from<'2001'||to>'2098')return null;
+  const f=new Date(from),t=new Date(to);if(isNaN(f)||isNaN(t))return null;
+  const days=Math.round((t-f)/86400000)+1;if(days<=0)return null;
+  const pt=new Date(f);pt.setDate(pt.getDate()-1);const pf=new Date(pt);pf.setDate(pf.getDate()-(days-1));
+  const pad=n=>String(n).padStart(2,'0');const s=d=>d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate());
+  const a=s(pf),b=s(pt);
+  return _allRevData.filter(r=>{const d=normDate(r.date);return d>=a&&d<=b;}).reduce((x,r)=>x+(r.total||0),0);
+}
+function costStat(label,val,rate,hm){const ok=rate<=hm;const col=ok?'#16a34a':'#dc2626';return `<div class="kpi-card"><div class="kpi-label">${label}</div><div class="kpi-val"><small>$</small>${Math.round(val).toLocaleString()}</div><div class="kpi-note" style="color:${col}">${rate.toFixed(0)}%（健康<${hm}%）${ok?' ✓':' ⚠'}</div></div>`;}
+function miniStat(label,val,rev){const rate=rev>0?val/rev*100:0;return `<div class="kpi-card"><div class="kpi-label">${label}</div><div class="kpi-val"><small>$</small>${Math.round(val).toLocaleString()}</div><div class="kpi-note">${rate.toFixed(0)}%</div></div>`;}
+function weekdayAvg(rows){
+  if(!rows||rows.length<3)return null;
+  const sum=[0,0,0,0,0,0,0],cnt=[0,0,0,0,0,0,0];
+  rows.forEach(r=>{const d=new Date(normDate(r.date));if(isNaN(d))return;const w=d.getDay();sum[w]+=(r.total||0);cnt[w]++;});
+  const names=['週日','週一','週二','週三','週四','週五','週六'];
+  let best=-1,worst=-1,bv=-1,wv=Infinity;
+  for(let i=0;i<7;i++){if(cnt[i]===0)continue;const av=sum[i]/cnt[i];if(av>bv){bv=av;best=i;}if(av<wv){wv=av;worst=i;}}
+  if(best<0||worst<0||best===worst)return null;
+  return {bestName:names[best],worstName:names[worst],best:bv,worst:wv};
+}
+function buildTips(m){
+  const t=[];const f=v=>'$'+Math.round(v).toLocaleString();
+  if(m.totalRev<=0)return t;
+  if(m.foodRate>32)t.push({tag:'🔴 成本',title:'食材成本率偏高',body:`目前 ${m.foodRate.toFixed(0)}%（健康 <32%）。行動：對漲最多的食材議價或換供應商、檢視高成本菜色售價。`,c:'#dc2626'});
+  if(m.laborRate>25)t.push({tag:'🔴 人事',title:'人事費用率偏高',body:`目前 ${m.laborRate.toFixed(0)}%（健康 <25%）。行動：檢視離峰時段排班，離峰少 1 人即可省下可觀人事。`,c:'#dc2626'});
+  if(m.ups&&m.ups.length){const u=m.ups[0];t.push({tag:'🟠 食材',title:`${u.name} 漲最兇`,body:`單價 ${f(u.prev)}→${f(u.cur)}（+${u.chg.toFixed(0)}%）。行動：跟供應商議價或找替代品，必要時微調相關菜色售價。`,c:'#ea580c'});}
+  if(m.downs&&m.downs.length){const d=m.downs[0];t.push({tag:'🟢 機會',title:`${d.name} 變便宜了`,body:`單價 ${f(d.prev)}→${f(d.cur)}（${d.chg.toFixed(0)}%）。行動：可順勢主推含此食材的餐點，毛利更好。`,c:'#16a34a'});}
+  const wk=weekdayAvg(m.revRows);if(wk)t.push({tag:'🔵 時段',title:`${wk.bestName}最旺、${wk.worstName}最淡`,body:`${wk.bestName}平均 ${f(wk.best)}、${wk.worstName}平均 ${f(wk.worst)}。行動：${wk.worstName}推限定優惠衝來客，${wk.bestName}主推高毛利餐點。`,c:'#2563eb'});
+  const dlv=m.revRows.reduce((a,r)=>a+(r.foodpanda||0)+(r.ubereats||0),0);const dr=m.totalRev>0?dlv/m.totalRev*100:0;
+  if(dr>15)t.push({tag:'🔵 通路',title:'外送占比不低',body:`外送約占 ${dr.toFixed(0)}%，平台抽成約 30% 實收較少。行動：店內主推會員/現金優惠，把客人導回到店消費。`,c:'#2563eb'});
+  if(m.netRate>=20)t.push({tag:'🟢 體質',title:'整體獲利健康',body:`淨利率約 ${m.netRate.toFixed(0)}%，維持目前成本控管即可，可考慮把部分利潤投入行銷或員工獎勵。`,c:'#16a34a'});
+  return t.slice(0,8);
+}
+let _costChart=null,_top5Chart=null,_priceChart=null;
+function drawCostPie(food,labor,fixed,misc){
+  const cv=$('cost-pie');if(!cv)return;const data=[food,labor,fixed,misc],labels=['食材','人事','固定','耗材'],colors=['#f59e0b','#ef4444','#6366f1','#10b981'];
+  const tot=data.reduce((a,b)=>a+b,0);if(_costChart){_costChart.destroy();_costChart=null;}if(tot<=0)return;
+  _costChart=new Chart(cv.getContext('2d'),{type:'doughnut',data:{labels:labels,datasets:[{data:data,backgroundColor:colors,borderWidth:0}]},options:{plugins:{legend:{display:false}},cutout:'68%',responsive:true}});
+  const lg=$('cost-legend');if(lg)lg.innerHTML=labels.map((l,i)=>`<div style="display:flex;align-items:center;gap:6px;font-size:11px;color:var(--text-2)"><div style="width:8px;height:8px;border-radius:50%;background:${colors[i]}"></div><span>${l}</span><span style="margin-left:auto;color:var(--text-3)">$${Math.round(data[i]).toLocaleString()}（${tot>0?Math.round(data[i]/tot*100):0}%）</span></div>`).join('');
+}
+function drawTop5(top5){
+  const cv=$('top5-chart');if(!cv)return;if(_top5Chart){_top5Chart.destroy();_top5Chart=null;}
+  _top5Chart=new Chart(cv.getContext('2d'),{type:'bar',data:{labels:top5.map(f=>f.name),datasets:[{data:top5.map(f=>Math.round(f.chg*10)/10),backgroundColor:top5.map(f=>f.chg>=0?'#ef4444':'#22c55e')}]},options:{indexAxis:'y',plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>(c.raw>=0?'+':'')+c.raw+'%'}}},scales:{x:{ticks:{callback:v=>v+'%',font:{size:10}}},y:{ticks:{font:{size:10}}}},responsive:true}});
+}
+function drawPriceHistory(byAmt){
+  const cv=$('price-chart');if(!cv)return;if(_priceChart){_priceChart.destroy();_priceChart=null;}
+  const cols=['#ff7a1a','#2563eb','#16a34a','#a855f7','#dc2626'];
+  const dset={};byAmt.forEach(f=>f.recs.forEach(r=>dset[r.d]=1));const dates=Object.keys(dset).sort();
+  const ds=byAmt.map((f,i)=>{const mm={};f.recs.forEach(r=>mm[r.d]=r.uc);return {label:f.name,data:dates.map(d=>mm[d]!=null?mm[d]:null),borderColor:cols[i%cols.length],backgroundColor:cols[i%cols.length],spanGaps:true,tension:0.3,pointRadius:3,borderWidth:2};});
+  _priceChart=new Chart(cv.getContext('2d'),{type:'line',data:{labels:dates.map(d=>{const p=d.split('-');return p.length>=3?p[1]+'/'+p[2]:d;}),datasets:ds},options:{plugins:{legend:{display:true,position:'bottom',labels:{font:{size:10},boxWidth:10}}},scales:{x:{ticks:{font:{size:9},maxTicksLimit:8}},y:{ticks:{font:{size:9},callback:v=>'$'+v}}},responsive:true}});
+}
+function renderAnalysis(revRows,purRows,totalRev,cc){
+  const host=$('report-analysis');if(!host)return;
+  const foodCost=cc['食材'],laborCost=cc['人事'],fixedCost=cc['固定'],miscCost=cc['耗材'];
+  const opCost=foodCost+laborCost+fixedCost+miscCost;
+  const foodRate=totalRev>0?foodCost/totalRev*100:0,laborRate=totalRev>0?laborCost/totalRev*100:0;
+  const net=totalRev-opCost,netRate=totalRev>0?net/totalRev*100:0;
+  const fmap={};
+  _allPurData.forEach(r=>{if(costClass(r.category)!=='食材')return;const uc=Number(r.unitCost)||0;if(uc<=0)return;const nm=r.name;if(!nm)return;if(!fmap[nm])fmap[nm]={name:nm,cat:r.category,recs:[],total:0};fmap[nm].recs.push({d:normDate(r.date),uc:uc});fmap[nm].total+=(Number(r.cost)||0);});
+  const foods=Object.keys(fmap).map(k=>fmap[k]);
+  foods.forEach(f=>{f.recs.sort((a,b)=>a.d<b.d?-1:1);const n=f.recs.length;f.cur=f.recs[n-1].uc;f.prev=n>=2?f.recs[n-2].uc:null;f.date=f.recs[n-1].d;f.chg=(f.prev!=null&&f.prev>0)?((f.cur-f.prev)/f.prev*100):null;});
+  const changed=foods.filter(f=>f.chg!=null).sort((a,b)=>b.chg-a.chg);
+  const ups=changed.filter(f=>f.chg>0.5),downs=changed.filter(f=>f.chg<-0.5);
+  const top5=changed.slice(0,5);
+  const byAmt=foods.slice().sort((a,b)=>b.total-a.total).slice(0,5);
+  const tips=buildTips({totalRev,foodCost,laborCost,fixedCost,miscCost,net,netRate,foodRate,laborRate,ups,downs,revRows});
+  let h='';
+  if(totalRev>0&&(foodRate>32||laborRate>25||netRate<10)){
+    const msgs=[];if(foodRate>32)msgs.push('食材成本率 '+foodRate.toFixed(0)+'%（>32%）');if(laborRate>25)msgs.push('人事費用率 '+laborRate.toFixed(0)+'%（>25%）');if(netRate<10)msgs.push('淨利率僅 '+netRate.toFixed(0)+'%');
+    h+=`<div style="background:#fff7ed;border:1px solid #fdba74;border-left:5px solid #f97316;border-radius:12px;padding:12px 14px;margin-bottom:14px;color:#9a3412;font-size:13px;font-weight:600">⚠️ 注意：${msgs.join('；')}</div>`;
+  }
+  h+=`<div class="c-card"><div class="c-card-title">💰 成本結構</div><div class="kpi-grid" style="margin-bottom:12px">${costStat('🥬 食材',foodCost,foodRate,32)}${costStat('👥 人事',laborCost,laborRate,25)}${miniStat('🏠 固定',fixedCost,totalRev)}${miniStat('📦 耗材',miscCost,totalRev)}</div><div class="chart-wrap" style="max-width:240px;margin:0 auto"><canvas id="cost-pie"></canvas></div><div id="cost-legend" style="margin-top:10px;display:flex;flex-direction:column;gap:5px"></div></div>`;
+  h+=`<div class="c-card"><div class="c-card-title">📈 食材漲跌分析</div>`;
+  if(!changed.length){h+=`<div class="game-empty">尚無足夠的進貨歷史可比較（同一食材需至少 2 次進貨）</div>`;}
+  else{
+    h+=`<div style="font-size:12px;color:var(--text-3);margin-bottom:8px">漲價 ${ups.length} 項 ・ 跌價 ${downs.length} 項（共 ${foods.length} 樣食材）</div>`;
+    if(top5.length)h+=`<div class="chart-wrap"><canvas id="top5-chart"></canvas></div>`;
+    h+=`<div style="display:flex;flex-direction:column;gap:8px;margin-top:12px">`+changed.slice(0,15).map(f=>{const up=f.chg>0.5,down=f.chg<-0.5;const col=up?'#dc2626':(down?'#16a34a':'#9ca3af');const arr=up?'↑':(down?'↓':'—');return `<div style="border-left:4px solid ${col};background:#fff7ef;border-radius:10px;padding:8px 12px;display:flex;align-items:center;gap:10px"><div style="flex:1;min-width:0"><div style="font-weight:700;font-size:13px">${esc(f.name)}</div><div style="font-size:11px;color:var(--text-3)">最近 ${f.date}</div></div><div style="text-align:right;font-size:12px"><div>$${round2(f.cur)} <span style="color:var(--text-3)">/ 上次 $${round2(f.prev)}</span></div><div style="color:${col};font-weight:800">${arr} ${f.chg>0?'+':''}${f.chg.toFixed(1)}%</div></div></div>`;}).join('')+`</div>`;
+    if(changed.length>15)h+=`<div style="font-size:11px;color:var(--text-3);margin-top:8px">（僅顯示漲跌前 15 項）</div>`;
+    if(byAmt.length)h+=`<div class="c-card-title" style="margin-top:16px">💵 重點食材價格走勢（採購額前5）</div><div class="chart-wrap"><canvas id="price-chart"></canvas></div>`;
+  }
+  h+=`</div>`;
+  h+=`<div class="c-card"><div class="c-card-title">💡 營運建議</div>`+(tips.length?tips.map(t=>`<div style="border-left:4px solid ${t.c};background:#fff7ef;border-radius:10px;padding:10px 12px;margin-bottom:8px"><div style="font-weight:700;font-size:13px;color:${t.c}">${t.tag} ${esc(t.title)}</div><div style="font-size:12px;color:var(--text-2);margin-top:3px">${t.body}</div></div>`).join(''):'<div class="game-empty">資料不足，無法產生建議</div>')+`</div>`;
+  host.innerHTML=h;
+  drawCostPie(foodCost,laborCost,fixedCost,miscCost);
+  if(top5.length)drawTop5(top5);
+  if(byAmt.length)drawPriceHistory(byAmt);
 }
 
 async function loadReports() {
