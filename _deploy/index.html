@@ -627,16 +627,21 @@ textarea.form-input{resize:vertical;line-height:1.5;}
 .hb-motto-t{font-size:13px;font-weight:800;letter-spacing:.12em;opacity:.95;margin-bottom:8px;}
 .hb-motto-b{font-size:20px;font-weight:800;font-family:'Fredoka','Noto Sans TC';line-height:1.45;}
 
+/* 全域防橫向溢出 */
+html,body{max-width:100%;overflow-x:hidden;}
+img,canvas,table,video{max-width:100%;}
+*{min-width:0;}
 /* ===== 📱 手機介面 ===== */
 @media(max-width:640px){
-  .content{padding:14px;}
-  .topbar{padding:10px 10px 0;gap:6px;}
-  .topbar-right{gap:6px;}
-  .topbar-title{font-size:13px;}
-  .user-badge{padding:4px 8px 4px 4px;}
-  .user-name{display:none;}
-  .user-badge .user-avatar{display:none;} /* 已有頂部角色徽章，避免重複小頭像 */
-  .btn-logout{padding:6px 9px;font-size:10px;}
+  .content{padding:12px;}
+  /* 頂列：手機只留 LOGO + 角色徽章 + 登出，避免擠爆切到 */
+  .topbar{padding:10px 10px 0;gap:6px;flex-wrap:nowrap;}
+  .topbar-brand{flex-shrink:1;min-width:0;}
+  .topbar-title{display:none;}
+  .topbar-right{gap:6px;flex-shrink:0;}
+  .user-badge{display:none;}
+  .btn-logout{padding:6px 10px;font-size:11px;}
+  .game-chip{padding:4px 10px 4px 6px;}
   /* 分頁列改成可橫向滑動的一排 */
   .nav-bar{flex-wrap:nowrap;overflow-x:auto;-webkit-overflow-scrolling:touch;gap:4px;padding:10px 12px 0;scrollbar-width:none;}
   .nav-bar::-webkit-scrollbar{display:none;}
@@ -645,13 +650,16 @@ textarea.form-input{resize:vertical;line-height:1.5;}
   .sec-header{flex-wrap:wrap;gap:6px;}
   .grid-2,.grid-3,.grid-4{grid-template-columns:1fr;}
   .form-row{grid-template-columns:1fr;}
-  .c-card{padding:16px;border-radius:18px!important;}
+  .c-card{padding:15px;border-radius:18px!important;}
   .dress-scene{height:300px;}
   .dress-scene .avatar-stage{width:255px;height:255px;}
   .opt-grid{grid-template-columns:repeat(auto-fill,minmax(64px,1fr));gap:8px;}
   .kpi-grid{grid-template-columns:1fr 1fr;}
   .charts-row{grid-template-columns:1fr;}
   .cc-title{font-size:21px;}
+  /* 表格在手機可橫向滑動、不撐破版面 */
+  .data-table{font-size:12px;}
+  .data-table th,.data-table td{padding:8px 8px;white-space:nowrap;}
 }
 </style>
 </head>
