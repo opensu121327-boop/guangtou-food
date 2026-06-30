@@ -622,6 +622,10 @@ textarea.form-input{resize:vertical;line-height:1.5;}
 .lb-name{font-weight:800;color:var(--text);font-size:15px;}
 .lb-xp{font-weight:800;color:#ff6a1a;font-size:18px;flex-shrink:0;}
 .lb-xp span{font-size:11px;color:var(--text-3);font-weight:600;}
+/* ===== 員工守則標語 ===== */
+.hb-motto{background:linear-gradient(135deg,#ff9d3d,#ff6a1a);color:#fff;border-radius:20px;padding:22px 20px;margin-bottom:16px;text-align:center;box-shadow:0 10px 24px rgba(255,122,26,.28);}
+.hb-motto-t{font-size:13px;font-weight:800;letter-spacing:.12em;opacity:.95;margin-bottom:8px;}
+.hb-motto-b{font-size:20px;font-weight:800;font-family:'Fredoka','Noto Sans TC';line-height:1.45;}
 
 /* ===== 📱 手機介面 ===== */
 @media(max-width:640px){
@@ -1083,6 +1087,16 @@ textarea.form-input{resize:vertical;line-height:1.5;}
       <div id="hb-admin-wrap"></div>
     </div>
 
+    <!-- CHALLENGE TAB -->
+    <div class="tab-panel" id="tab-challenge">
+      <div class="sec-header"><div class="sec-title">共同挑戰</div><div class="divider"></div><div class="sec-sub">全店業績目標達標，當日上班人員一起加分</div></div>
+      <div class="c-card"><div class="muted-note">業績取自 Google Sheet 營收；「上班名單／點數派發」目前存本機，跨裝置同步後全店一致。</div></div>
+      <div id="ch-daily"></div>
+      <div id="ch-monthly"></div>
+      <div id="ch-roster"></div>
+      <div id="ch-admin"></div>
+    </div>
+
     <!-- LEADERBOARD TAB -->
     <div class="tab-panel" id="tab-leaderboard">
       <div class="sec-header"><div class="sec-title">排行榜</div><div class="divider"></div><div class="sec-sub">依累積經驗值排名</div></div>
@@ -1216,10 +1230,12 @@ function demoLogin(role){
 }
 
 // ── ENTER APP ──
-function enterApp() {
+async function enterApp() {
   $('auth-screen').classList.add('hidden');
+  if(syncOn()){try{await cloudPull();}catch(e){}}
   initApp();
   $('app').classList.add('visible');
+  startSyncPoll();
   if(!getChar().chosen) showCharCreate();
   else maybeForceRec();
 }
@@ -1283,6 +1299,7 @@ function switchTab(name,btn) {
   if(name==='leaderboard')renderLeaderboard();
   if(name==='handover')renderHandover();
   if(name==='handbook')renderHandbook();
+  if(name==='challenge')renderChallenge();
   if(name==='home')renderHome();
 }
 function goTab(id){const b=[...document.querySelectorAll('.nav-btn')].find(x=>x.dataset.tab===id);if(b)b.click();}
@@ -1639,8 +1656,18 @@ function toast(msg,type){
 // ════════════════════════════════════════════════════════════
 const LS={
   get(k,d){try{const v=JSON.parse(localStorage.getItem(k));return v===null||v===undefined?d:v;}catch(e){return d;}},
-  set(k,v){try{localStorage.setItem(k,JSON.stringify(v));return true;}catch(e){toast('本機儲存空間已滿，請清理舊照片','red');return false;}}
+  set(k,v){try{localStorage.setItem(k,JSON.stringify(v));}catch(e){toast('本機儲存空間已滿，請清理舊照片','red');return false;} if(syncOn()&&k.indexOf('rm_')===0)cloudPush(k); return true;}
 };
+
+// ════════ 跨裝置同步層（填上 SYNC_URL 才啟動）════════
+const SYNC_URL='https://script.google.com/macros/s/AKfycbwSSOZDNWsHm9NqEK4eg3zjfwC7nXgJssCidWfxOiB08dZk_7SmgMtwJ3Ir5PrqPUwH_A/exec';  // 跨裝置同步後台
+function syncOn(){return !!SYNC_URL;}
+function kv(type,extra){return fetch(SYNC_URL,{method:'POST',body:JSON.stringify(Object.assign({type:type},extra||{})),headers:{'Content-Type':'text/plain'}}).then(r=>r.json());}
+let _pushTimers={};
+function cloudPush(key){if(!syncOn())return;clearTimeout(_pushTimers[key]);_pushTimers[key]=setTimeout(function(){const val=localStorage.getItem(key);if(val!=null)kv('kv_set',{key:key,value:val}).catch(function(){});},600);}
+function cloudPull(){if(!syncOn())return Promise.resolve();return kv('kv_all',{}).then(function(res){if(res&&res.status==='ok'&&res.data){for(var k in res.data){if(k.indexOf('rm_')===0&&res.data[k]!=null)localStorage.setItem(k,res.data[k]);}}}).catch(function(){});}
+function reRenderTab(id){const map={home:renderHome,reports:loadReports,handover:renderHandover,handbook:renderHandbook,tasks:renderTasks,rewards:renderRewards,challenge:renderChallenge,leaderboard:renderLeaderboard,character:renderCharacter};if(map[id]){try{map[id]();}catch(e){}}if(id==='accounts'){try{loadPending();loadAccounts();}catch(e){}}}
+function startSyncPoll(){if(!syncOn()||window._syncPoll)return;window._syncPoll=setInterval(function(){cloudPull().then(function(){if(!CU)return;updateGameChip();const act=document.querySelector('.tab-panel.active');if(act)reRenderTab(act.id.replace('tab-',''));});},20000);}
 
 // 內建部件庫（換裝角色）：染色部位(face/hair)用剪影；其餘彩圖。老闆可在「我的角色」上傳更多
 function svgURI(s){return 'data:image/svg+xml,'+encodeURIComponent(s).replace(/'/g,'%27').replace(/"/g,'%22');}
@@ -1756,6 +1783,7 @@ const ALL_TABS=[
   {id:'handbook',icon:'📖',label:'員工守則',roles:['BOSS','MGR','EMP']},
   {id:'tasks',icon:'✅',label:'任務',roles:['BOSS','MGR','EMP']},
   {id:'rewards',icon:'🎁',label:'獎勵商店',roles:['BOSS','MGR','EMP']},
+  {id:'challenge',icon:'🤝',label:'共同挑戰',roles:['BOSS','MGR','EMP']},
   {id:'leaderboard',icon:'🏆',label:'排行榜',roles:['BOSS','MGR','EMP']},
   {id:'character',icon:'🎮',label:'我的角色',roles:['BOSS','MGR','EMP']},
   {id:'accounts',icon:'👥',label:'帳號管理',roles:['BOSS']},
@@ -2059,7 +2087,7 @@ function wireTaskInput(){
         cat:task.cat||'daily',type:'photo',
         user:CU.username,userName:CU.name,photo:dataUrl,status:'pending',ts:Date.now()});
       if(LS.set('rm_submissions',subs)){toast('📤 已上傳，等待主管審核','gold');renderTasks();}
-    });
+    },240);
   };
 }
 function fileToThumb(file,cb,max){
@@ -2110,11 +2138,94 @@ function saveRecommend(){const v=($('rec-input')&&$('rec-input').value.trim())||
 function saveRecommendModal(){const v=($('rec-modal-input')&&$('rec-modal-input').value.trim())||'';if(!v){toast('請輸入必推餐點','red');return;}recSave(v);toast('✓ 今日必推已設定','gold');$('rec-modal').classList.remove('show');if($('tab-tasks')&&$('tab-tasks').classList.contains('active'))renderTasks();}
 function maybeForceRec(){if(isMgr()&&!recGet()){const i=$('rec-modal-input');if(i)i.value='';$('rec-modal').classList.add('show');}}
 
+// ── 共同挑戰 ──
+let _chRev=null;
+function chCfg(){const c=LS.get('rm_challenge',{})||{};const legacy=c.dailyTarget||0;return Object.assign({dailyTargetWeekday:legacy,dailyTargetWeekend:legacy,monthlyTarget:0,dailyReward:20,monthlyReward:100},c);}
+function isWeekendBiz(){const w=new Date(bizDay()+'T12:00:00').getDay();return w===5||w===6||w===0;}
+function dailyTargetNow(){const cfg=chCfg();return isWeekendBiz()?cfg.dailyTargetWeekend:cfg.dailyTargetWeekday;}
+function rosterToday(){const r=LS.get('rm_roster',{})||{};return r[bizDay()]||[];}
+function monthKey(){return bizDay().slice(0,7);}
+function chPaid(){const p=LS.get('rm_challenge_paid',{})||{};return {daily:p.daily||{},monthly:p.monthly||{}};}
+function renderChallenge(){renderChRoster();renderChAdmin();renderChProgress();fetchChRevenue();}
+function renderChProgress(){
+  const cfg=chCfg();const d=$('ch-daily'),m=$('ch-monthly');if(!d||!m)return;
+  const paid=chPaid();
+  const fmt=v=>v==null?'讀取中…':('$'+Number(v).toLocaleString());
+  const bar=(cur,target)=>{const pct=(target>0&&cur!=null)?Math.min(100,Math.round(cur/target*100)):0;return {pct,done:(target>0&&cur!=null&&cur>=target)};};
+  const tRev=_chRev?_chRev.today:null,mRev=_chRev?_chRev.month:null;
+  const dTarget=dailyTargetNow(),dayType=isWeekendBiz()?'假日':'平日';
+  const db=bar(tRev,dTarget),mb=bar(mRev,cfg.monthlyTarget);
+  const dCan=db.done&&!paid.daily[bizDay()],mCan=mb.done&&!paid.monthly[monthKey()];
+  d.innerHTML=`<div class="c-card"><div class="c-card-title">🎯 今日業績挑戰（${dayType}）${db.done?'<span class="pill done">已達標 🎉</span>':''}</div>
+    <div class="xp-text">今日營收 ${fmt(tRev)} ／ ${dayType}目標 ${dTarget?('$'+dTarget.toLocaleString()):'未設定'}</div>
+    <div class="xp-bar" style="margin:8px 0"><div class="xp-fill" style="width:${db.pct}%"></div></div>
+    ${isMgr()?`<button class="btn-action" style="padding:10px 16px;${dCan?'':'opacity:.5'}" ${dCan?'':'disabled'} onclick="payChallenge('daily')">達標派發 +${cfg.dailyReward} 給今日上班人員（${rosterToday().length}人）</button>${paid.daily[bizDay()]?'<div class="muted-note" style="margin-top:6px">今日已派發 ✓</div>':''}`:''}
+  </div>`;
+  m.innerHTML=`<div class="c-card"><div class="c-card-title">📅 本月業績挑戰 ${mb.done?'<span class="pill done">已達標 🎉</span>':''}</div>
+    <div class="xp-text">本月營收 ${fmt(mRev)} ／ 目標 ${cfg.monthlyTarget?('$'+cfg.monthlyTarget.toLocaleString()):'未設定'}</div>
+    <div class="xp-bar" style="margin:8px 0"><div class="xp-fill" style="width:${mb.pct}%"></div></div>
+    ${isMgr()?`<button class="btn-action" style="padding:10px 16px;${mCan?'':'opacity:.5'}" ${mCan?'':'disabled'} onclick="payChallenge('monthly')">達標派發 +${cfg.monthlyReward} 給今日上班人員</button>${paid.monthly[monthKey()]?'<div class="muted-note" style="margin-top:6px">本月已派發 ✓</div>':''}`:''}
+  </div>`;
+}
+function fetchChRevenue(){
+  api({type:'query_revenue',data:{}}).then(res=>{
+    const ok=res&&(res.status==='ok'||res.status==='success');let rows=[];
+    if(ok){rows=res.rows?res.rows.slice(1).map(r=>({date:normDate(r[0]),total:Number(r[7])||0})):((res.data||[]).map(r=>({date:normDate(r.date),total:Number(r.total)||0})));}
+    const td=bizDay(),mk=monthKey();let today=0,month=0;
+    rows.forEach(r=>{if(r.date===td)today+=r.total;if(r.date&&r.date.slice(0,7)===mk)month+=r.total;});
+    _chRev={today,month};renderChProgress();
+  }).catch(()=>{_chRev={today:null,month:null};renderChProgress();});
+}
+function payChallenge(kind){
+  const cfg=chCfg();const roster=rosterToday();
+  if(!roster.length){toast('請先設定今日上班人員','red');return;}
+  const paid=chPaid();
+  if(kind==='daily'){
+    if(paid.daily[bizDay()]){toast('今日已派發','red');return;}
+    const dT=dailyTargetNow();if(!(dT>0&&_chRev&&_chRev.today>=dT)){toast('今日尚未達標','red');return;}
+    roster.forEach(u=>awardXp(u,cfg.dailyReward));paid.daily[bizDay()]=true;LS.set('rm_challenge_paid',paid);
+    toast(`✓ 今日達標！已派發 +${cfg.dailyReward} 給 ${roster.length} 人`,'gold');
+  }else{
+    if(paid.monthly[monthKey()]){toast('本月已派發','red');return;}
+    if(!(cfg.monthlyTarget>0&&_chRev&&_chRev.month>=cfg.monthlyTarget)){toast('本月尚未達標','red');return;}
+    roster.forEach(u=>awardXp(u,cfg.monthlyReward));paid.monthly[monthKey()]=true;LS.set('rm_challenge_paid',paid);
+    toast(`✓ 本月達標！已派發 +${cfg.monthlyReward} 給 ${roster.length} 人`,'gold');
+  }
+  updateGameChip();renderChProgress();
+}
+function renderChRoster(){
+  const wrap=$('ch-roster');if(!wrap)return;
+  const names=LS.get('rm_names',{})||{};const roster=rosterToday();const us=Object.keys(names);
+  if(isMgr()){
+    wrap.innerHTML=`<div class="c-card"><div class="c-card-title">🧑‍🍳 今日上班人員（${bizDay()}）</div>
+      <div class="muted-note">勾選今天有上班的人；達標時只有他們加分。</div>
+      ${us.length?us.map(u=>`<label style="display:flex;align-items:center;gap:8px;padding:7px 0;border-bottom:1px solid rgba(255,138,61,.1)"><input type="checkbox" ${roster.includes(u)?'checked':''} onchange="toggleRoster('${u}',this.checked)" style="width:18px;height:18px"> ${esc(names[u])}</label>`).join(''):'<div class="muted-note">尚無員工資料（員工在本機登入過後才會出現）</div>'}
+    </div>`;
+  }else{
+    wrap.innerHTML=`<div class="c-card"><div class="c-card-title">🧑‍🍳 今日上班人員</div>${roster.length?('<div class="xp-text">'+roster.map(u=>esc(names[u]||u)).join('、')+'</div>'):'<div class="muted-note">店長尚未設定</div>'}</div>`;
+  }
+}
+function toggleRoster(u,on){const r=LS.get('rm_roster',{})||{};const d=bizDay();const arr=r[d]||[];const i=arr.indexOf(u);if(on&&i<0)arr.push(u);if(!on&&i>=0)arr.splice(i,1);r[d]=arr;LS.set('rm_roster',r);renderChProgress();}
+function renderChAdmin(){
+  const wrap=$('ch-admin');if(!wrap)return;
+  if(CU.role!=='BOSS'){wrap.innerHTML='';return;}
+  const cfg=chCfg();
+  wrap.innerHTML=`<div class="c-card"><div class="c-card-title">🛠️ 目標設定（老闆）</div>
+    <div class="form-row"><div class="form-group"><label class="form-label">平日業績目標($)</label><input class="form-input" id="ch-dtw" type="number" min="0" value="${cfg.dailyTargetWeekday}"></div><div class="form-group"><label class="form-label">假日業績目標($)</label><input class="form-input" id="ch-dte" type="number" min="0" value="${cfg.dailyTargetWeekend}"></div></div>
+    <div class="muted-note">假日＝週五、六、日（其餘為平日）</div>
+    <div class="form-group"><label class="form-label">每日達標獎勵(點)</label><input class="form-input" id="ch-dr" type="number" min="0" value="${cfg.dailyReward}"></div>
+    <div class="form-row"><div class="form-group"><label class="form-label">每月業績目標($)</label><input class="form-input" id="ch-mt" type="number" min="0" value="${cfg.monthlyTarget}"></div><div class="form-group"><label class="form-label">每月達標獎勵(點)</label><input class="form-input" id="ch-mr" type="number" min="0" value="${cfg.monthlyReward}"></div></div>
+    <button class="btn-action" onclick="saveChallengeCfg()">儲存目標</button>
+  </div>`;
+}
+function saveChallengeCfg(){const cfg={dailyTargetWeekday:Math.max(0,parseInt($('ch-dtw').value)||0),dailyTargetWeekend:Math.max(0,parseInt($('ch-dte').value)||0),dailyReward:Math.max(0,parseInt($('ch-dr').value)||0),monthlyTarget:Math.max(0,parseInt($('ch-mt').value)||0),monthlyReward:Math.max(0,parseInt($('ch-mr').value)||0)};LS.set('rm_challenge',cfg);toast('✓ 目標已儲存','gold');renderChallenge();}
+
 // ── 員工守則 ──
 function renderHandbook(){
   const view=$('hb-view');if(!view)return;
   const list=LS.get('rm_handbook',[])||[];
-  view.innerHTML=list.length?list.map(s=>`<div class="c-card"><div class="c-card-title">${esc(s.title)}</div><div style="white-space:pre-wrap;font-size:14px;color:var(--text-2);line-height:1.6">${esc(s.body)}</div></div>`).join(''):'<div class="c-card"><div class="game-empty">尚未公布員工守則</div></div>';
+  const motto=`<div class="hb-motto"><div class="hb-motto-t">🌟 服務精神</div><div class="hb-motto-b">把所有人當自己人，別讓自己人失望</div></div>`;
+  view.innerHTML=motto+(list.length?list.map(s=>`<div class="c-card"><div class="c-card-title">${esc(s.title)}</div><div style="white-space:pre-wrap;font-size:14px;color:var(--text-2);line-height:1.6">${esc(s.body)}</div></div>`).join(''):'<div class="c-card"><div class="game-empty">尚未公布員工守則</div></div>');
   renderHbAdmin();
 }
 function renderHbAdmin(){
@@ -2346,7 +2457,7 @@ function addQuiz(){
 function delQuiz(id){const list=LS.get('rm_quiz',[]).filter(x=>x.id!==id);LS.set('rm_quiz',list);toast('已刪除題目','red');renderTasks();}
 function reviewSub(id,ok){
   const subs=LS.get('rm_submissions',[]);const s=subs.find(x=>x.id===id);if(!s||s.status!=='pending')return;
-  s.status=ok?'approved':'rejected';s.reviewer=CU.name;
+  s.status=ok?'approved':'rejected';s.reviewer=CU.name;s.photo='';
   LS.set('rm_submissions',subs);
   if(ok){
     const r=awardXp(s.user,s.xp);
