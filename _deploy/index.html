@@ -805,6 +805,10 @@ textarea.form-input{resize:vertical;line-height:1.5;}
       </div>
       <div class="c-card">
         <div class="c-card-title">📦 進貨資訊</div>
+        <div class="form-group">
+          <label class="form-label">🔍 選擇物料（自動帶入編號/分類/供應商）</label>
+          <select class="form-input" id="pu-mat" onchange="onPickMaterial()"><option value="">— 載入中… 或直接手動輸入 —</option></select>
+        </div>
         <div class="form-row">
           <div class="form-group">
             <label class="form-label">進貨日期</label>
@@ -815,17 +819,6 @@ textarea.form-input{resize:vertical;line-height:1.5;}
             <input class="form-input" id="pu-supplier" type="text" placeholder="供應商名稱">
           </div>
         </div>
-        <div class="form-group">
-          <label class="form-label">分類</label>
-          <div class="chips">
-            <button class="chip active" onclick="pickChip(this)">海鮮</button>
-            <button class="chip" onclick="pickChip(this)">肉品</button>
-            <button class="chip" onclick="pickChip(this)">蔬菜</button>
-            <button class="chip" onclick="pickChip(this)">調味料</button>
-            <button class="chip" onclick="pickChip(this)">飲料</button>
-            <button class="chip" onclick="pickChip(this)">其他</button>
-          </div>
-        </div>
         <div class="form-row">
           <div class="form-group">
             <label class="form-label">品名</label>
@@ -833,8 +826,13 @@ textarea.form-input{resize:vertical;line-height:1.5;}
           </div>
           <div class="form-group">
             <label class="form-label">物料編號</label>
-            <input class="form-input" id="pu-code" type="text" placeholder="例：SEA-001">
+            <input class="form-input" id="pu-code" type="text" placeholder="例：SE001">
+            <button class="btn-sm btn-neutral" style="margin-top:6px;padding:6px 10px" onclick="genCode()">🆕 新物料自動編號</button>
           </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">分類</label>
+          <input class="form-input" id="pu-cat" type="text" placeholder="例：水產/生食">
         </div>
         <div class="form-row">
           <div class="form-group">
@@ -852,8 +850,8 @@ textarea.form-input{resize:vertical;line-height:1.5;}
         </div>
         <div class="form-row">
           <div class="form-group">
-            <label class="form-label">總成本（元）</label>
-            <input class="form-input" id="pu-cost" type="number" min="0" placeholder="0">
+            <label class="form-label">總成本（元・折讓可負）</label>
+            <input class="form-input" id="pu-cost" type="number" placeholder="0">
           </div>
           <div class="form-group">
             <label class="form-label">單位成本（元）</label>
@@ -1291,6 +1289,7 @@ function switchTab(name,btn) {
   $('tab-'+name).classList.add('active');
   btn.classList.add('active');
   if(name==='reports')loadReports();
+  if(name==='purchase')loadMaterials();
   if(name==='accounts'){loadPending();loadAccounts();}
   if(name==='expense')renderExpenseList();
   if(name==='tasks')renderTasks();
@@ -1335,26 +1334,49 @@ async function submitRev() {
 }
 
 // ── PURCHASE ──
-let selectedCat='海鮮';
-function pickChip(el) {
-  document.querySelectorAll('.chip').forEach(c=>c.classList.remove('active'));
-  el.classList.add('active');
-  selectedCat=el.textContent;
+// 物料清單：優先讀「物料總表」(物料數據)，讀不到則用進貨歷史建立（purchase-order-tracker SKILL）
+let _materials=[],_matLoaded=false;
+function fillMatSelect(){const sel=$('pu-mat');if(!sel)return;sel.innerHTML='<option value="">— 直接手動輸入 / 選擇物料 —</option>'+_materials.map((m,i)=>`<option value="${i}">${esc((m.code?m.code+' ':'')+m.name+(m.supplier?(' ('+m.supplier+')'):''))}</option>`).join('');}
+async function loadMaterials(force){
+  if(_matLoaded&&!force)return;
+  try{
+    let arr=[];
+    if(syncOn()){try{const d=await kv('materials',{});if(d&&d.status==='ok'&&d.data&&d.data.length)arr=d.data;}catch(e){}}
+    if(!arr.length){
+      const d2=await api({type:'query_purchase',data:{}});const ok=d2&&(d2.status==='ok'||d2.status==='success');
+      const rows=ok?(d2.rows?d2.rows.slice(1):(d2.data||[])):[];const map={};
+      rows.forEach(r=>{const code=r[1]?String(r[1]).trim():'';const name=r[3]?String(r[3]).trim():'';if(!code&&!name)return;map[code||name]={code:code,name:name,cat:r[2]?String(r[2]).trim():'',unit:r[5]?String(r[5]).trim():'',supplier:r[8]?String(r[8]).trim():''};});
+      arr=Object.keys(map).map(k=>map[k]);
+    }
+    _materials=arr.map(m=>({code:String(m.code||'').trim(),name:String(m.name||'').trim(),cat:String(m.cat||'').trim(),unit:String(m.unit||'').trim(),supplier:String(m.supplier||'').trim()})).filter(m=>m.code||m.name).sort((a,b)=>(a.code||'').localeCompare(b.code||''));
+    _matLoaded=true;fillMatSelect();
+  }catch(e){}
 }
+function onPickMaterial(){
+  const v=$('pu-mat')&&$('pu-mat').value;if(v==='')return;const m=_materials[parseInt(v)];if(!m)return;
+  if($('pu-name'))$('pu-name').value=m.name||'';
+  if($('pu-code'))$('pu-code').value=m.code||'';
+  if($('pu-cat'))$('pu-cat').value=m.cat||'';
+  if($('pu-supplier'))$('pu-supplier').value=m.supplier||'';
+  if(m.unit&&$('pu-unit')){const u=$('pu-unit');let found=false;for(let k=0;k<u.options.length;k++){if(u.options[k].value===m.unit||u.options[k].text===m.unit){u.selectedIndex=k;found=true;break;}}if(!found){const op=document.createElement('option');op.text=m.unit;op.value=m.unit;u.add(op);u.value=m.unit;}}
+}
+function codePrefix(cat){cat=cat||'';if(cat.indexOf('水產')===0)return'SE';if(cat.indexOf('肉類')===0)return'ME';if(cat.indexOf('蔬菜')===0)return'VE';if(cat.indexOf('酒水')===0)return'DR';if(cat.indexOf('調味')===0)return'DRY';if(cat.indexOf('冷盤')===0)return'ICE';if(cat.indexOf('半成品')===0)return'HALF';if(cat.indexOf('金額異動')===0)return'M-';if(cat.indexOf('調製')===0)return'PRE';return'SUP';}
+function genCode(){const cat=($('pu-cat')&&$('pu-cat').value.trim())||'';if(!cat){toast('請先填分類，才能依規則產生編號','red');return;}const p=codePrefix(cat);if(p==='M-'){if($('pu-code'))$('pu-code').value='M-';toast('折讓/異動 編號：M-','gold');return;}let max=0;_materials.forEach(m=>{const c=String(m.code||'');if(c.indexOf(p)===0){const n=parseInt(c.slice(p.length).replace(/[^0-9]/g,''));if(!isNaN(n)&&n>max)max=n;}});const code=p+String(max+1).padStart(3,'0');if($('pu-code'))$('pu-code').value=code;toast('已產生新物料編號 '+code,'gold');}
 
 async function submitPu() {
   const date=$('pu-date').value,name=$('pu-name').value.trim();
-  const qty=parseFloat($('pu-qty').value)||0,cost=parseFloat($('pu-cost').value)||0;
-  if(!date||!name||!qty||!cost){toast('請填寫日期、品名、數量、成本','red');return}
+  const qty=parseFloat($('pu-qty').value)||0,cost=parseFloat($('pu-cost').value);
+  if(!date||!name||isNaN(cost)){toast('請填寫日期、品名、總成本（折讓可填負數）','red');return}
+  const unit=qty>0?Math.round(cost/qty*100)/100:cost;
   const row={
     '進貨日期':date,'物料編號':$('pu-code').value,
-    '分類':selectedCat,'物料名稱':name,'進貨數量':qty,
+    '分類':($('pu-cat')?$('pu-cat').value:''),'物料名稱':name,'進貨數量':qty>0?qty:'',
     '單位量詞':$('pu-unit').value,'總成本':cost,
-    '單位成本':qty?Math.round(cost/qty):0,'供應商':$('pu-supplier').value
+    '單位成本':unit,'供應商':$('pu-supplier').value
   };
   try{
     const d=await api({type:'purchase',rows:[row]});
-    if(d.status==='success'){toast('✓ 進貨記錄已儲存','gold');['pu-name','pu-code','pu-qty','pu-cost','pu-ucost','pu-supplier'].forEach(id=>{if($(id))$(id).value=''});}
+    if(d.status==='success'){toast('✓ 進貨記錄已儲存','gold');['pu-name','pu-code','pu-cat','pu-qty','pu-cost','pu-ucost','pu-supplier'].forEach(id=>{if($(id))$(id).value=''});if($('pu-mat'))$('pu-mat').value='';loadMaterials(true);}
     else toast(d.message||'送出失敗','red');
   }catch(e){toast('連線失敗','red');}
 }
