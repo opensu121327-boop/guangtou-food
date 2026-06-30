@@ -1214,7 +1214,7 @@ async function doLogin() {
     } else if(d.status==='pending'){showMsg('l-msg','帳號待審核，請等待老闆批准','error');
     } else if(d.status==='wrong_password'){showMsg('l-msg','密碼錯誤','error');
     } else {showMsg('l-msg','找不到此帳號','error');}
-  }catch(e){showMsg('l-msg','連線失敗（本機開啟常會擋後台，可改用下方測試登入；正式請用 Netlify 網址）','error');}
+  }catch(e){showMsg('l-msg','連線失敗，請檢查網路後再試一次','error');}
   $('btn-login').textContent='登入系統';$('btn-login').disabled=false;
 }
 
@@ -1241,14 +1241,6 @@ function updateRegNote(role) {
   const note=$('r-note');
   if(role==='BOSS'){note.textContent='老闆帳號申請後立即啟用';note.className='msg success';note.style.display='block';}
   else{note.textContent='申請後須等待老闆審核才可登入';note.className='msg success';note.style.display='block';}
-}
-
-// ── 本機測試登入（免後台）──
-function demoLogin(role){
-  const names={BOSS:'老闆',MGR:'店長',EMP:'員工'};
-  CU={name:names[role]+'(測試)',username:'demo_'+role,role,phone:''};
-  enterApp();
-  toast('已用「'+names[role]+'」測試身分登入','gold');
 }
 
 // ── ENTER APP ──
