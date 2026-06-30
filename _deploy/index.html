@@ -528,6 +528,7 @@ select.field-input option,select.form-input option{background:#fff!important;col
 .skin .req{font-size:10px;color:var(--red);font-weight:700;display:block;}
 .task-card,.reward-card{display:flex;align-items:center;gap:14px;background:#fff;border:2px solid var(--border-2);border-radius:18px;padding:14px 16px;margin-bottom:10px;transition:transform .15s,border-color .15s;}
 .task-card:hover,.reward-card:hover{transform:translateY(-2px);border-color:var(--gold);}
+.task-card.locked{opacity:.6;}.task-card.locked:hover{transform:none;border-color:var(--border-2);}
 .tc-emoji{font-size:32px;flex-shrink:0;}
 .tc-body{flex:1;min-width:0;}
 .tc-title{font-weight:700;color:var(--text);font-size:15px;}
@@ -607,6 +608,20 @@ select.field-input option,select.form-input option{background:#fff!important;col
 .quiz-result{padding:13px 16px;border-radius:14px;font-weight:700;font-size:14px;margin-top:4px;}
 .quiz-result.ok{background:#e3f7ea;color:#2f9e5e;}
 .quiz-result.no{background:#fde6e6;color:#d64a4a;}
+/* ===== 提交視窗 ===== */
+.subform-overlay{position:fixed;inset:0;z-index:210;background:rgba(40,24,12,.55);display:none;align-items:center;justify-content:center;padding:18px;}
+.subform-overlay.show{display:flex;}
+.subform-card{background:#fff;border-radius:22px;padding:22px;width:100%;max-width:460px;max-height:88vh;overflow-y:auto;box-shadow:0 20px 50px rgba(0,0,0,.3);}
+.subform-title{font-size:17px;font-weight:800;color:var(--text);margin-bottom:14px;font-family:'Fredoka','Noto Sans TC';}
+textarea.form-input{resize:vertical;line-height:1.5;}
+/* ===== 排行榜 ===== */
+.lb-row{display:flex;align-items:center;gap:12px;padding:10px 12px;border:2px solid var(--border-2);border-radius:16px;margin-bottom:10px;background:#fff;}
+.lb-row.me{border-color:var(--gold);background:linear-gradient(145deg,#fff3e6,#ffe6cf);}
+.lb-rank{width:34px;text-align:center;font-size:18px;font-weight:800;color:#ff6a1a;flex-shrink:0;}
+.lb-ava{width:44px;height:44px;border-radius:50%;overflow:hidden;flex-shrink:0;background:#ffe9cf;}
+.lb-name{font-weight:800;color:var(--text);font-size:15px;}
+.lb-xp{font-weight:800;color:#ff6a1a;font-size:18px;flex-shrink:0;}
+.lb-xp span{font-size:11px;color:var(--text-3);font-weight:600;}
 
 /* ===== 📱 手機介面 ===== */
 @media(max-width:640px){
@@ -1026,6 +1041,7 @@ select.field-input option,select.form-input option{background:#fff!important;col
     <div class="tab-panel" id="tab-tasks">
       <div class="sec-header"><div class="sec-title">任務中心</div><div class="divider"></div><div class="sec-sub">完成任務拍照上傳，主管審核後獲得經驗值</div></div>
       <input type="file" id="task-file-input" accept="image/*" capture="environment" style="display:none">
+      <div id="recommend-wrap"></div>
       <div id="quiz-wrap"></div>
       <div id="mgr-review-wrap"></div>
       <div class="c-card"><div class="c-card-title">🎯 可接任務</div><div id="task-list"></div></div>
@@ -1042,6 +1058,35 @@ select.field-input option,select.form-input option{background:#fff!important;col
       <div class="c-card"><div class="c-card-title">🧾 我的兌換紀錄</div><div id="my-redeems"></div></div>
       <div id="mgr-redeem-wrap"></div>
       <div id="reward-admin-wrap"></div>
+    </div>
+
+    <!-- HANDOVER TAB -->
+    <div class="tab-panel" id="tab-handover">
+      <div class="sec-header"><div class="sec-title">交接表</div><div class="divider"></div><div class="sec-sub">交班填寫、接班查看（完成 +25 XP／每日一次）</div></div>
+      <div class="c-card">
+        <div class="c-card-title">✍️ 填寫交接</div>
+        <div class="form-group"><label class="form-label">營業日</label><input class="form-input" id="ho-date" type="date"></div>
+        <div class="form-group"><label class="form-label">📦 缺貨</label><textarea class="form-input" id="ho-stock" rows="3" placeholder="例：鮭魚剩2份、白飯快用完、可樂只剩半箱"></textarea></div>
+        <div class="form-group"><label class="form-label">🗣️ 客訴與處理</label><textarea class="form-input" id="ho-complaint" rows="3" placeholder="例：8號桌反映上菜慢，已致歉並送甜點"></textarea></div>
+        <div class="form-group"><label class="form-label">🔧 設備狀況與問題</label><textarea class="form-input" id="ho-equip" rows="3" placeholder="例：洗碗機右側出水較慢，待維修"></textarea></div>
+        <div class="form-group"><label class="form-label">🗑️ 今日耗棄食材（實際丟棄）</label><textarea class="form-input" id="ho-waste" rows="3" placeholder="例：生菜2份過期、炸物剩料3份、湯底1鍋"></textarea></div>
+        <div class="form-group"><label class="form-label">其他備註（選填）</label><input class="form-input" id="ho-note" type="text" placeholder="其他補充"></div>
+        <button class="btn-action" onclick="submitHandover()">✓ 送出交接表</button>
+      </div>
+      <div class="c-card"><div class="c-card-title">📜 交接紀錄</div><div class="muted-note">⚠️ 目前僅顯示本機紀錄；接後台同步後跨手機共用。</div><div id="ho-list"></div></div>
+    </div>
+
+    <!-- HANDBOOK TAB -->
+    <div class="tab-panel" id="tab-handbook">
+      <div class="sec-header"><div class="sec-title">員工守則</div><div class="divider"></div><div class="sec-sub">公司規定與公告（主管發布、員工查看）</div></div>
+      <div id="hb-view"></div>
+      <div id="hb-admin-wrap"></div>
+    </div>
+
+    <!-- LEADERBOARD TAB -->
+    <div class="tab-panel" id="tab-leaderboard">
+      <div class="sec-header"><div class="sec-title">排行榜</div><div class="divider"></div><div class="sec-sub">依累積經驗值排名</div></div>
+      <div class="c-card"><div class="muted-note">⚠️ 目前僅顯示「在這台裝置登入過」的人；接後台同步後會顯示全部員工。</div><div id="lb-list"></div></div>
     </div>
 
     <!-- CHARACTER TAB -->
@@ -1071,6 +1116,29 @@ select.field-input option,select.form-input option{background:#fff!important;col
   <div class="dcat-row" id="cc-cats" style="justify-content:center"></div>
   <div id="cc-options" style="max-width:560px;width:100%"></div>
   <button class="btn-action cc-confirm" onclick="confirmCharCreate()">✓ 就決定是你了，開始吧！</button>
+</div>
+
+<div id="rec-modal" class="subform-overlay">
+  <div class="subform-card">
+    <div class="subform-title">📣 請設定今日必推餐點</div>
+    <div class="muted-note">每天上工先設定，員工才知道今天要主推什麼。</div>
+    <textarea class="form-input" id="rec-modal-input" rows="3" placeholder="例：炙燒鮭魚丼、季節限定海膽軍艦"></textarea>
+    <div style="display:flex;gap:10px;margin-top:14px">
+      <button class="btn-sm btn-neutral" style="padding:12px 14px" onclick="$('rec-modal').classList.remove('show')">稍後</button>
+      <button class="btn-action" style="flex:1;justify-content:center" onclick="saveRecommendModal()">儲存</button>
+    </div>
+  </div>
+</div>
+
+<div id="subform" class="subform-overlay">
+  <div class="subform-card">
+    <div class="subform-title" id="subform-title"></div>
+    <div id="subform-body"></div>
+    <div style="display:flex;gap:10px;margin-top:16px">
+      <button class="btn-sm btn-neutral" style="flex:0 0 auto;padding:12px 18px" onclick="closeSubform()">取消</button>
+      <button class="btn-action" style="flex:1;justify-content:center" onclick="submitSubform()">送出</button>
+    </div>
+  </div>
 </div>
 
 <div id="toast"></div>
@@ -1153,6 +1221,7 @@ function enterApp() {
   initApp();
   $('app').classList.add('visible');
   if(!getChar().chosen) showCharCreate();
+  else maybeForceRec();
 }
 
 // ── LOGOUT ──
@@ -1175,7 +1244,7 @@ function initApp() {
   const labels={BOSS:'老闆',MGR:'店長',EMP:'員工'};
   roleTag.textContent=labels[CU.role]||CU.role;
   roleTag.className='role-tag role-'+CU.role;
-  seedGame();wireTaskInput();wirePartInput();updateGameChip();
+  seedGame();wireTaskInput();wirePartInput();recordName(CU.username,CU.name);updateGameChip();
 
   // build nav
   const tabs=ALL_TABS.filter(t=>t.roles.includes(CU.role));
@@ -1186,8 +1255,8 @@ function initApp() {
   document.querySelectorAll('.tab-panel').forEach(p=>p.classList.remove('active'));
   $('tab-'+tabs[0].id).classList.add('active');
 
-  // set default dates
-  const today=new Date().toISOString().split('T')[0];
+  // set default dates（用營業日，跨午夜營業時自動帶正確日期）
+  const today=bizDay();
   if($('rv-date'))$('rv-date').value=today;
   if($('pu-date'))$('pu-date').value=today;
   if($('ex-date'))$('ex-date').value=today;
@@ -1211,6 +1280,9 @@ function switchTab(name,btn) {
   if(name==='tasks')renderTasks();
   if(name==='rewards')renderRewards();
   if(name==='character')renderCharacter();
+  if(name==='leaderboard')renderLeaderboard();
+  if(name==='handover')renderHandover();
+  if(name==='handbook')renderHandbook();
   if(name==='home')renderHome();
 }
 function goTab(id){const b=[...document.querySelectorAll('.nav-btn')].find(x=>x.dataset.tab===id);if(b)b.click();}
@@ -1680,8 +1752,11 @@ const ALL_TABS=[
   {id:'revenue',icon:'💳',label:'每日結帳',roles:['BOSS','MGR','EMP']},
   {id:'purchase',icon:'📦',label:'進貨記錄',roles:['BOSS','MGR','EMP']},
   {id:'reports',icon:'📊',label:'數據報表',roles:['BOSS','MGR']},
+  {id:'handover',icon:'📋',label:'交接表',roles:['BOSS','MGR','EMP']},
+  {id:'handbook',icon:'📖',label:'員工守則',roles:['BOSS','MGR','EMP']},
   {id:'tasks',icon:'✅',label:'任務',roles:['BOSS','MGR','EMP']},
   {id:'rewards',icon:'🎁',label:'獎勵商店',roles:['BOSS','MGR','EMP']},
+  {id:'leaderboard',icon:'🏆',label:'排行榜',roles:['BOSS','MGR','EMP']},
   {id:'character',icon:'🎮',label:'我的角色',roles:['BOSS','MGR','EMP']},
   {id:'accounts',icon:'👥',label:'帳號管理',roles:['BOSS']},
 ];
@@ -1733,8 +1808,26 @@ function setDressCat(cat){_dressCat=cat;if($('dcat-row'))$('dcat-row').innerHTML
 function refreshDressOptions(){if($('dress-options'))$('dress-options').innerHTML=dressOptions(_dressCat);if($('cc-options'))$('cc-options').innerHTML=dressOptions(_dressCat);}
 function paintScene(idn){const el=$(idn);if(!el)return;const c=getChar();el.style.background=c.avatar.bgColor||'#ffe3c4';el.innerHTML=sceneHTML(c,levelOf(c.xp));}
 function updateScenes(){paintScene('dress-scene');paintScene('cc-scene');}
+// ── 排行榜 ──
+function recordName(u,name){if(!u||!name)return;const m=LS.get('rm_names',{})||{};if(m[u]!==name){m[u]=name;LS.set('rm_names',m);}}
+function leaderboard(){const out=[];const names=LS.get('rm_names',{})||{};for(let i=0;i<localStorage.length;i++){const k=localStorage.key(i);if(k&&k.indexOf('rm_char_')===0){const u=k.slice(8);const c=normChar(LS.get(k,null));out.push({u,name:names[u]||u,xp:c.xp,points:c.points,lv:levelOf(c.xp),tasksDone:c.tasksDone,avatar:c.avatar});}}out.sort((a,b)=>b.xp-a.xp||b.points-a.points);return out;}
+function renderLeaderboard(){
+  const wrap=$('lb-list');if(!wrap)return;
+  const list=leaderboard();
+  if(!list.length){wrap.innerHTML='<div class="game-empty">目前還沒有資料</div>';return;}
+  const medals=['🥇','🥈','🥉'];
+  wrap.innerHTML=list.map((r,i)=>{
+    const me=r.u===CU.username;
+    return `<div class="lb-row${me?' me':''}">
+      <div class="lb-rank">${medals[i]||('#'+(i+1))}</div>
+      <div class="lb-ava">${renderAvatar(r.avatar,r.lv)}</div>
+      <div style="flex:1;min-width:0"><div class="lb-name">${esc(r.name)}${me?'（我）':''}</div><div class="xp-text">Lv.${r.lv} ・ 🎫 ${r.points} 點 ・ ✅ ${r.tasksDone} 件</div></div>
+      <div class="lb-xp">${r.xp}<span> XP</span></div>
+    </div>`;
+  }).join('');
+}
 function charExtraHTML(c,lv){
-  const today=new Date().toISOString().split('T')[0];const checked=c.lastCheckin===today;
+  const today=bizDay();const checked=c.lastCheckin===today;
   return `<div class="c-card-title">🎮 我的狀態</div>
     <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">
       <span class="pts-pill">🎫 ${c.points} 點</span>
@@ -1763,7 +1856,7 @@ function normChar(c){c=c||{};const d=defAvatar();const a=c.avatar||{};
   ['outfit','hair','face','eyes'].forEach(k=>{const arr=P[k]||[];if(!arr.find(p=>p.id===parts[k]))parts[k]=d.parts[k];});
   return {
     xp:c.xp||0, points:c.points||0,
-    lastCheckin:c.lastCheckin||'', tasksDone:c.tasksDone||0, chosen:!!c.chosen,
+    lastCheckin:c.lastCheckin||'', tasksDone:c.tasksDone||0, chosen:!!c.chosen, lastHandover:c.lastHandover||'',
     avatar:{bgColor:a.bgColor||d.bgColor,skinColor:a.skinColor||d.skinColor,hairColor:a.hairColor||d.hairColor,parts}
   };
 }
@@ -1780,18 +1873,28 @@ function awardXp(username,amt){
   return {before,after,leveledUp:after>before};
 }
 
+// 員工守則預設內容（來自 RESOURSCES 的 SOP）
+const HANDBOOK_SEED=[
+{title:"帶位服務守則",body:"光頭生魚片店主題居酒屋\n服務精神：把所有人當自己人，別讓自己人失望\n【我們的服務靈魂】 來店的客人不只是消費者，更是來到我們家作客的朋友。 夥伴們請隨時保持主動的眼神接觸與真誠的微笑。我們的目標是透過「充滿活力的招呼」與「體貼的細節觀察」，讓每位踏進店裡的客人，都能感受到漁村特有的熱情與居酒屋的放鬆溫度。\n🍽️ 客人進場服務流程（SOP）\n▍第一步：迎賓與人數確認\n當客人步入餐廳，高聲熱情歡迎，並確認用餐人數。\n服務動作：\n親切問候：「您好！請問幾位用餐？/請問是否有訂位？」\n座位調度原則（關鍵）：\n3人（含）以下： 優先安排至一樓用餐，以維持一樓客滿的熱鬧氛圍與人氣。\n4人（含）以上： 再行引導至適合的大桌或二樓空間。\n▍第二步：帶位與菜單介紹\n將客人引導至座位後，遞上實體菜單。\n服務動作：\n遞上菜單本：「這是我們的菜單，我們菜色依照線上菜單為主，我們統一一台手機掃描桌上【某一個】QR碼。」\n當日推薦（主動出擊）：\n同仁需熟記當日現撈、主打或限定料理，主動向客人推薦。\n話術範例：「今天我們特別推薦***跟***，我們目前也有399喝到飽的活動，有喝酒的朋友可以依照人數去做點選」\n▲399喝到飽會讓客人點選，送啤酒請注意看喝酒人數\n▍第三步：告知低消與服務機制\n在客人翻閱菜單前，務必清晰且有禮貌地說明店內基本消費與呼叫服務的方式。\n低消布達：\n話術範例：「我們店內的基本消費為每人 200 元。餐後再結帳」\n服務鈴說明：\n指給客人看桌上的服務鈴位置。\n話術範例：「旁邊有準備服務鈴，期間有任何服務需求，隨時幫我按下服務鈴，我們就會立刻過來協助您！」\n▍第四步：環境與硬體引導\n離開桌邊前，做最後的環境點檢與指引，讓客人感到安心。\n環境指引話術：\n「我們的餐具都在［具體位置］可以自取。」\n▲請順便視線確認餐具、醬油、哇沙比、衛生紙確定足夠(如果視線看不到請引導完後，馬上去確認\n「洗手間的位置則是在［具體位置］。」\n「祝您用餐愉快，有需要隨時按鈴通知我們！」\n▍第五步：客人最後進場時間\n我們最後收客時間是1點整，即便客人12點59分到，還是要熱情迎接\n謹記以下要留意\n1點15分最後加點時間，請逐桌詢問「現在是我們最後加點的時間，請問有需要最後加點嗎？酒水飲料都還可以續點」\n內外場請勿為了收拾方便拒單\n準時2點請跟客人說「不好意思，我們的營業時間到了喔」\n▲特別留意：請勿讓客人有趕他們走的感受\n▲特別留意：只要客人在！我們應該保持專業，請勿把脾氣帶在身上，即便沒有服務他們，但客人還是感受的到我們的情緒！\n▲特別留意：請堅持所有能服務的機會，入座的客人就是朋友，有機會能聊天或關心他們的，都請把握好，他們不只是客人，有可能是未來你們的【人脈】，也許某一天會對各位有幫助\n★【有關係就是沒關係】★"},
+{title:"接聽電話訂位 SOP 與 客滿應對",body:"【光頭生魚片 - 接聽電話訂位 SOP 與 客滿應對】\n🌟 最高指導原則：聲音與活力是我們的武器，請隨時保持開心與開朗的語氣！ 🌟\n【一、標準訂位流程】\n第一階段：專業開場🗣️「您好！這裡是光頭生魚片！」（語氣保持積極、禮貌、開心）\n第二階段：確認訂位細節\n• 詢問時間：「請問您預計哪一天過來用餐？大約是幾點鐘呢？」\n• 詢問人數：「請問一共是幾位大人、幾位小朋友呢？需要幫您預留兒童椅嗎？」\n• 核對狀態：（確認訂位表）「幫您確認過，那個時段還有位置，沒問題。」\n第三階段：紀錄聯絡資訊\n• 紀錄稱呼：「請問訂位人怎麼稱呼？」\n• 紀錄電話：「方便留一下您的聯絡電話嗎？」\n第四階段：最後確認與結尾\n• 覆核資訊：「幫您核對：[日期]、[時間]、一共 [人數] 位，訂位人是 [稱呼]，電話是 [號碼]。」\n• 溫馨提醒：「我們會為您保留位置 10 分鐘，如果行程有變再請撥電話告知，謝謝您，當天見！」\n【二、客滿與特殊狀況應對話術】\n● 情況一：客人想訂的時間已滿 (例如 7 點滿位)\n🗣️「不好意思，目前 晚上7點訂位已滿。因為我們餐廳用餐不限時間，後面時段比較難保證準時入座。會建議您可以考慮 18:00～18:30 或 20:30之後 的時段，座位會比較好安排。」\n● 情況二：客人堅持要滿位時段 (提供候補)\n🗣️「目前7點的座位已經滿了，如果您方便，我可以幫您登記 候補19:30左右。若有客人提早離席，我們會優先幫您安排。」\n● 情況三：客人訂比較晚的時間 (例如 8 點)\n🗣️「可以先幫您登記 晚上8點的訂位，但因為我們用餐不限時，當天可能會需要稍微等候一下座位，這樣可以嗎？」"}
+];
 // 預設任務 / 獎勵
-const SEED_VER=4;
+const SEED_VER=5;
 function seedGame(){
-  if(!LS.get('rm_tasks',null))LS.set('rm_tasks',[
-    {id:'t1',icon:'🧻',title:'補充廁所衛生紙',xp:20},
-    {id:'t2',icon:'🧹',title:'打烊清潔地板',xp:30},
-    {id:'t3',icon:'🧊',title:'冰箱溫度檢查並記錄',xp:25},
-    {id:'t4',icon:'🍽️',title:'餐具消毒完成',xp:20},
-    {id:'t5',icon:'📋',title:'完成今日交接表',xp:35},
-    {id:'t6',icon:'🗑️',title:'垃圾分類與回收',xp:15},
+  if(!LS.get('rm_tasks',null)||LS.get('rm_seed_v',0)<SEED_VER)LS.set('rm_tasks',[
+    {id:'t1',icon:'🧻',title:'補充廁所衛生紙',xp:15,cat:'daily',type:'photo'},
+    {id:'t2',icon:'🧹',title:'打烊清潔地板',xp:20,cat:'daily',type:'photo'},
+    {id:'t3',icon:'🧊',title:'冰箱溫度檢查並記錄',xp:15,cat:'daily',type:'photo'},
+    {id:'t4',icon:'🍽️',title:'餐具消毒完成',xp:15,cat:'daily',type:'photo'},
+    {id:'t5',icon:'🗑️',title:'垃圾分類與回收',xp:10,cat:'daily',type:'photo'},
+    {id:'tsales',icon:'📊',title:'輸入當日賣最好/最差各5品項',xp:20,cat:'daily',type:'sales'},
+    {id:'ts1',icon:'⭐',title:'取得一則五星好評（截圖）',xp:30,cat:'score',type:'photo'},
+    {id:'ts2',icon:'📣',title:'成功推銷當日必推餐點（拍照/記錄）',xp:25,cat:'score',type:'photo'},
+    {id:'tr1',icon:'🍳',title:'提案一道新菜色',xp:50,cat:'rnd',type:'text'},
+    {id:'tr2',icon:'🎉',title:'提出一個店面活動建議',xp:40,cat:'rnd',type:'text'},
   ]);
   if(!LS.get('rm_parts',null))LS.set('rm_parts',{});
+  if(!LS.get('rm_handbook',null))LS.set('rm_handbook',HANDBOOK_SEED.map((s,i)=>({id:'hbseed'+i,title:s.title,body:s.body})));
   if(!LS.get('rm_quiz',null))LS.set('rm_quiz',[
     {id:'q1',q:'外場接到客訴時，第一步應該做什麼？',opts:['先誠懇道歉並傾聽','直接叫店長處理','假裝沒聽到','跟客人爭辯'],ans:0,xp:15},
     {id:'q2',q:'處理生魚片最重要的原則是？',opts:['全程低溫與衛生','切得越快越好','擺盤越花俏越好','份量給超大'],ans:0,xp:15},
@@ -1884,7 +1987,7 @@ function wirePartInput(){
   };
 }
 function dailyCheckin(){
-  const c=getChar();const today=new Date().toISOString().split('T')[0];
+  const c=getChar();const today=bizDay();
   if(c.lastCheckin===today){toast('今天已經簽到囉','red');return;}
   c.lastCheckin=today;saveChar(c);
   awardXp(CU.username,10);
@@ -1939,6 +2042,7 @@ function confirmCharCreate(){
   $('char-create').classList.remove('show');
   refreshAvatars();goTab('home');renderHome();
   toast('🎉 角色建立完成，歡迎加入！','gold');
+  maybeForceRec();
 }
 
 // ── 任務中心 ──
@@ -1951,7 +2055,8 @@ function wireTaskInput(){
     const tasks=LS.get('rm_tasks',[]);const task=tasks.find(t=>t.id===_pendingTaskId);if(!task)return;
     fileToThumb(file,dataUrl=>{
       const subs=LS.get('rm_submissions',[]);
-      subs.push({id:'s'+Date.now(),taskId:task.id,taskTitle:task.title,icon:task.icon,xp:task.xp,
+      subs.push({id:'s'+Date.now(),taskId:task.id,taskTitle:task.title,icon:task.icon,xp:task.xp||0,
+        cat:task.cat||'daily',type:'photo',
         user:CU.username,userName:CU.name,photo:dataUrl,status:'pending',ts:Date.now()});
       if(LS.set('rm_submissions',subs)){toast('📤 已上傳，等待主管審核','gold');renderTasks();}
     });
@@ -1969,74 +2074,217 @@ function fileToThumb(file,cb,max){
   };img.onerror=()=>toast('圖片讀取失敗','red');img.src=e.target.result;};
   r.readAsDataURL(file);
 }
-function startTask(taskId){_pendingTaskId=taskId;$('task-file-input').click();}
+function dailyBlocked(id){const t=findTask(id);if(t&&t.cat==='daily'&&dailyClaim(id)){toast('今日已有人完成這個每日任務 🙌','red');renderTasks();return true;}return false;}
+function startTask(taskId){if(dailyBlocked(taskId))return;_pendingTaskId=taskId;$('task-file-input').click();}
 function fmtTime(ts){const d=new Date(ts);const p=n=>String(n).padStart(2,'0');return `${p(d.getMonth()+1)}/${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}`;}
 
+const TASK_CATS=[{id:'daily',label:'🗓️ 每日任務'},{id:'score',label:'🔥 搶分任務'},{id:'rnd',label:'💡 研發挑戰'}];
+function catShort(id){return ({daily:'每日',score:'搶分',rnd:'研發'})[id]||'每日';}
+function normTask(t){return Object.assign({cat:'daily',type:'photo'},t);}
+function findTask(id){return LS.get('rm_tasks',[]).map(normTask).find(t=>t.id===id);}
+function esc(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+function sameDayTs(ts){return bizDay(ts)===bizDay();}
+function dailyClaim(taskId){return LS.get('rm_submissions',[]).filter(s=>s.taskId===taskId&&s.status!=='rejected'&&sameDayTs(s.ts)).sort((a,b)=>a.ts-b.ts)[0]||null;}
+let _taskCat='all';
+function setTaskCat(c){_taskCat=c;renderTasks();}
+
+// ── 今日必推餐點 ──
+function recGet(){const r=LS.get('rm_recommend',null);return (r&&r.date===qzToday())?r:null;}
+function recSave(items){LS.set('rm_recommend',{date:qzToday(),items:items,by:CU.name});}
+function renderRecommend(){
+  const wrap=$('recommend-wrap');if(!wrap)return;
+  const r=recGet();
+  if(isMgr()){
+    wrap.innerHTML=`<div class="c-card" style="${r?'':'border-color:var(--red)'}">
+      <div class="c-card-title">📣 今日必推餐點${r?'':' <span style="color:var(--red)">（尚未設定）</span>'}</div>
+      <div class="muted-note">設定後員工才知道今天要主推什麼（每天都要設定）。</div>
+      <textarea class="form-input" id="rec-input" rows="2" placeholder="例：炙燒鮭魚丼、季節限定海膽軍艦">${r?esc(r.items):''}</textarea>
+      <button class="btn-action" style="margin-top:10px" onclick="saveRecommend()">${r?'更新':'儲存'}今日必推</button>
+      ${r?`<div class="muted-note" style="margin-top:8px">由 ${esc(r.by)} 設定</div>`:''}
+    </div>`;
+  }else{
+    wrap.innerHTML=`<div class="c-card"><div class="c-card-title">📣 今日必推餐點</div>${r?`<div class="quiz-q" style="margin:4px 0 0">${esc(r.items)}</div>`:'<div class="muted-note">今日必推尚未公布，請稍候。</div>'}</div>`;
+  }
+}
+function saveRecommend(){const v=($('rec-input')&&$('rec-input').value.trim())||'';if(!v){toast('請輸入必推餐點','red');return;}recSave(v);toast('✓ 今日必推已設定','gold');renderTasks();}
+function saveRecommendModal(){const v=($('rec-modal-input')&&$('rec-modal-input').value.trim())||'';if(!v){toast('請輸入必推餐點','red');return;}recSave(v);toast('✓ 今日必推已設定','gold');$('rec-modal').classList.remove('show');if($('tab-tasks')&&$('tab-tasks').classList.contains('active'))renderTasks();}
+function maybeForceRec(){if(isMgr()&&!recGet()){const i=$('rec-modal-input');if(i)i.value='';$('rec-modal').classList.add('show');}}
+
+// ── 員工守則 ──
+function renderHandbook(){
+  const view=$('hb-view');if(!view)return;
+  const list=LS.get('rm_handbook',[])||[];
+  view.innerHTML=list.length?list.map(s=>`<div class="c-card"><div class="c-card-title">${esc(s.title)}</div><div style="white-space:pre-wrap;font-size:14px;color:var(--text-2);line-height:1.6">${esc(s.body)}</div></div>`).join(''):'<div class="c-card"><div class="game-empty">尚未公布員工守則</div></div>';
+  renderHbAdmin();
+}
+function renderHbAdmin(){
+  const wrap=$('hb-admin-wrap');if(!wrap)return;
+  if(!isMgr()){wrap.innerHTML='';return;}
+  const list=LS.get('rm_handbook',[])||[];
+  wrap.innerHTML=`<div class="c-card"><div class="c-card-title">🛠️ 守則管理（老闆／店長）</div>
+    <div class="muted-note">⚠️ 目前僅顯示本機；接後台同步後全員手機都看得到。</div>
+    <div class="form-group"><label class="form-label">標題</label><input class="form-input" id="hb-title" placeholder="例：上班服裝規定"></div>
+    <div class="form-group"><label class="form-label">內容</label><textarea class="form-input" id="hb-body" rows="5" placeholder="輸入守則內容（可多行）"></textarea></div>
+    <button class="btn-action" onclick="addHbSection()">➕ 發布守則</button>
+    <div style="margin-top:14px">${list.map(s=>`<div class="sub-row"><div style="flex:1;min-width:0"><div class="tc-title" style="font-size:14px">${esc(s.title)}</div></div><button class="btn-sm btn-warn" onclick="delHbSection('${s.id}')">刪除</button></div>`).join('')||'<div class="muted-note">目前沒有守則</div>'}</div>
+  </div>`;
+}
+function addHbSection(){
+  const title=($('hb-title')&&$('hb-title').value.trim())||'';
+  const body=($('hb-body')&&$('hb-body').value.trim())||'';
+  if(!title||!body){toast('請填寫標題與內容','red');return;}
+  const list=LS.get('rm_handbook',[])||[];list.push({id:'hb'+Date.now(),title,body});LS.set('rm_handbook',list);
+  toast('✓ 已發布','gold');if($('hb-title'))$('hb-title').value='';if($('hb-body'))$('hb-body').value='';renderHandbook();
+}
+function delHbSection(id){const list=(LS.get('rm_handbook',[])||[]).filter(s=>s.id!==id);LS.set('rm_handbook',list);toast('已刪除','red');renderHandbook();}
+
+// ── 交接表 ──
+const HANDOVER_XP=25;
+function renderHandover(){
+  if($('ho-date'))$('ho-date').value=bizDay();
+  const wrap=$('ho-list');if(!wrap)return;
+  const list=(LS.get('rm_handovers',[])||[]).slice().sort((a,b)=>b.ts-a.ts);
+  const sec=(emoji,lab,val)=>val?`<div style="margin-top:4px"><b>${emoji} ${lab}</b><div class="muted-note" style="margin:2px 0 0;white-space:pre-wrap">${esc(val)}</div></div>`:'';
+  wrap.innerHTML=list.length?list.map(h=>`<div class="sub-row" style="flex-direction:column;align-items:stretch;gap:2px">
+    <div style="display:flex;justify-content:space-between;flex-wrap:wrap;gap:6px"><div class="tc-title" style="font-size:14px">📅 ${esc(h.date)}</div><div class="xp-text">${esc(h.by)} ・ ${fmtTime(h.ts)}</div></div>
+    ${h.content?`<div class="muted-note" style="white-space:pre-wrap">${esc(h.content)}</div>`:''}
+    ${sec('📦','缺貨',h.stock)}${sec('🗣️','客訴與處理',h.complaint)}${sec('🔧','設備狀況與問題',h.equip)}${sec('🗑️','今日耗棄食材',h.waste)}
+    ${h.note?`<div class="xp-text" style="margin-top:4px">備註：${esc(h.note)}</div>`:''}
+  </div>`).join(''):'<div class="game-empty">尚無交接紀錄</div>';
+}
+function submitHandover(){
+  const date=($('ho-date')&&$('ho-date').value)||bizDay();
+  const stock=($('ho-stock')&&$('ho-stock').value.trim())||'';
+  const complaint=($('ho-complaint')&&$('ho-complaint').value.trim())||'';
+  const equip=($('ho-equip')&&$('ho-equip').value.trim())||'';
+  const waste=($('ho-waste')&&$('ho-waste').value.trim())||'';
+  const note=($('ho-note')&&$('ho-note').value.trim())||'';
+  if(!stock&&!complaint&&!equip&&!waste){toast('請至少填寫一個交接事項','red');return;}
+  const list=LS.get('rm_handovers',[])||[];
+  list.push({id:'h'+Date.now(),date,stock,complaint,equip,waste,note,by:CU.name,byUser:CU.username,ts:Date.now()});
+  if(!LS.set('rm_handovers',list))return;
+  const c=getChar();let msg='✓ 交接表已送出';
+  if(c.lastHandover!==bizDay()){c.lastHandover=bizDay();saveChar(c);const r=awardXp(CU.username,HANDOVER_XP);updateGameChip();msg+=`，+${HANDOVER_XP} XP`+(r.leveledUp?`（升級 Lv.${r.after}！）`:'');}
+  toast(msg,'gold');
+  ['ho-stock','ho-complaint','ho-equip','ho-waste','ho-note'].forEach(id=>{if($(id))$(id).value='';});
+  renderHandover();
+}
+
 function renderTasks(){
-  renderQuiz();renderQuizAdmin();
-  const tasks=LS.get('rm_tasks',[]);
-  $('task-list').innerHTML=tasks.map(t=>`
-    <div class="task-card">
-      <span class="tc-emoji">${t.icon}</span>
-      <div class="tc-body"><div class="tc-title">${t.title}</div><div class="tc-xp">完成可得 +${t.xp} XP</div></div>
-      <button class="btn-action" style="padding:10px 16px" onclick="startTask('${t.id}')">📸 拍照上傳</button>
-    </div>`).join('');
+  renderRecommend();renderQuiz();renderQuizAdmin();
+  const tasks=LS.get('rm_tasks',[]).map(normTask);
+  const filt=_taskCat==='all'?tasks:tasks.filter(t=>t.cat===_taskCat);
+  const catRow=`<div class="dcat-row" style="margin-bottom:12px">`+
+    [['all','全部']].concat(TASK_CATS.map(c=>[c.id,c.label])).map(a=>`<button class="dcat ${_taskCat===a[0]?'active':''}" onclick="setTaskCat('${a[0]}')">${a[1]}</button>`).join('')+`</div>`;
+  const cards=filt.map(t=>{
+    const xpTxt=t.xp>0?('完成可得 +'+t.xp+' XP'):'分數待老闆設定';
+    const claim=t.cat==='daily'?dailyClaim(t.id):null;
+    let btn;
+    if(claim){btn=`<span class="pill done">✅ 今日已完成（${esc(claim.userName)}）</span>`;}
+    else btn=t.type==='text'?`<button class="btn-action" style="padding:10px 16px" onclick="startTextTask('${t.id}')">✍️ 提交</button>`
+            :t.type==='sales'?`<button class="btn-action" style="padding:10px 16px" onclick="startSalesTask('${t.id}')">📊 輸入</button>`
+            :`<button class="btn-action" style="padding:10px 16px" onclick="startTask('${t.id}')">📸 拍照上傳</button>`;
+    return `<div class="task-card${claim?' locked':''}"><span class="tc-emoji">${t.icon}</span><div class="tc-body"><div class="tc-title">${t.title} <span class="badge badge-pending">${catShort(t.cat)}</span></div><div class="tc-xp">${claim?'每日任務・每天限一人完成':xpTxt}</div></div>${btn}</div>`;
+  }).join('')||'<div class="game-empty">此分類目前沒有任務</div>';
+  $('task-list').innerHTML=catRow+cards;
 
   const subs=LS.get('rm_submissions',[]);
+  const subMedia=s=>(s.type==='photo'&&s.photo)?`<img class="photo-thumb" src="${s.photo}" alt="">`:`<span class="tc-emoji">${s.type==='sales'?'📊':'✍️'}</span>`;
+  const subExtra=s=>s.type==='text'?`<div class="muted-note" style="margin-top:6px">${esc(s.text)}</div>`
+    :s.type==='sales'?`<div class="muted-note" style="margin-top:6px">🔝 ${esc((s.sales&&s.sales.best||'').split('\n').join('、'))}<br>🔻 ${esc((s.sales&&s.sales.worst||'').split('\n').join('、'))}</div>`:'';
   const mine=subs.filter(s=>s.user===CU.username).sort((a,b)=>b.ts-a.ts);
   $('my-subs').innerHTML=mine.length?mine.map(s=>`
-    <div class="sub-row">
-      <img class="photo-thumb" src="${s.photo}" alt="">
+    <div class="sub-row" style="flex-wrap:wrap">${subMedia(s)}
       <div style="flex:1;min-width:0"><div class="tc-title" style="font-size:14px">${s.icon} ${s.taskTitle}</div>
-        <div class="xp-text">${fmtTime(s.ts)} ・ +${s.xp} XP</div></div>
+        <div class="xp-text">${fmtTime(s.ts)} ・ +${s.xp} XP</div>${subExtra(s)}</div>
       <span class="pill ${s.status}">${({pending:'審核中',approved:'已通過 ✓',rejected:'未通過'})[s.status]}</span>
-    </div>`).join(''):'<div class="game-empty">還沒有上傳紀錄，快去完成任務吧！</div>';
+    </div>`).join(''):'<div class="game-empty">還沒有紀錄，快去完成任務吧！</div>';
 
-  // 主管審核區
   const wrap=$('mgr-review-wrap');
   if(isMgr()){
     const pending=subs.filter(s=>s.status==='pending').sort((a,b)=>a.ts-b.ts);
     wrap.innerHTML=`<div class="c-card"><div class="c-card-title">🛡️ 待審核任務（主管）</div>${
       pending.length?pending.map(s=>`
-      <div class="sub-row">
-        <img class="photo-thumb" src="${s.photo}" alt="">
+      <div class="sub-row" style="flex-wrap:wrap">${subMedia(s)}
         <div style="flex:1;min-width:0"><div class="tc-title" style="font-size:14px">${s.icon} ${s.taskTitle}</div>
-          <div class="xp-text">${s.userName} ・ ${fmtTime(s.ts)} ・ +${s.xp} XP</div></div>
+          <div class="xp-text">${s.userName} ・ ${fmtTime(s.ts)} ・ +${s.xp} XP</div>${subExtra(s)}</div>
         <div style="display:flex;gap:8px">
           <button class="btn-sm btn-approve" onclick="reviewSub('${s.id}',true)">✓ 通過</button>
           <button class="btn-sm btn-warn" onclick="reviewSub('${s.id}',false)">✗ 退回</button>
         </div>
-      </div>`).join(''):'<div class="game-empty">目前沒有待審核的任務 🎉'+'</div>'
+      </div>`).join(''):'<div class="game-empty">目前沒有待審核的任務 🎉</div>'
     }</div>`;
   }else{wrap.innerHTML='';}
   renderTaskAdmin();
 }
+
+// 提交視窗（文字構想 / 賣最好最差輸入）
+let _subformTask=null;
+function startTextTask(id){const t=findTask(id);if(!t)return;if(dailyBlocked(id))return;_subformTask=t;
+  $('subform-title').textContent=t.icon+' '+t.title;
+  $('subform-body').innerHTML=`<label class="form-label">你的構想 / 建議</label><textarea class="form-input" id="sf-text" rows="6" placeholder="盡量寫清楚，主管審核通過就能得分！"></textarea>`;
+  $('subform').classList.add('show');
+}
+function startSalesTask(id){const t=findTask(id);if(!t)return;if(dailyBlocked(id))return;_subformTask=t;
+  $('subform-title').textContent=t.icon+' '+t.title;
+  $('subform-body').innerHTML=`<label class="form-label">🔝 賣最好（前5名・一行一個）</label><textarea class="form-input" id="sf-best" rows="5" placeholder="鮭魚丼\n炙燒比目魚\n…"></textarea><label class="form-label" style="margin-top:10px">🔻 賣最差（前5名・一行一個）</label><textarea class="form-input" id="sf-worst" rows="5" placeholder="一行一個品項"></textarea>`;
+  $('subform').classList.add('show');
+}
+function closeSubform(){$('subform').classList.remove('show');_subformTask=null;}
+function submitSubform(){
+  const t=_subformTask;if(!t)return;
+  if(t.cat==='daily'&&dailyClaim(t.id)){toast('今日已有人完成這個每日任務 🙌','red');closeSubform();renderTasks();return;}
+  const base={id:'s'+Date.now(),taskId:t.id,taskTitle:t.title,icon:t.icon,xp:t.xp||0,cat:t.cat,type:t.type,user:CU.username,userName:CU.name,status:'pending',ts:Date.now()};
+  if(t.type==='text'){const tx=($('sf-text')&&$('sf-text').value.trim())||'';if(!tx){toast('請先輸入內容','red');return;}base.text=tx;}
+  else if(t.type==='sales'){const b=($('sf-best')&&$('sf-best').value.trim())||'';const w=($('sf-worst')&&$('sf-worst').value.trim())||'';if(!b&&!w){toast('請至少填一邊','red');return;}base.sales={best:b,worst:w};}
+  const subs=LS.get('rm_submissions',[]);subs.push(base);
+  if(LS.set('rm_submissions',subs)){toast('📤 已送出，等待主管審核','gold');closeSubform();renderTasks();}
+}
+
 function renderTaskAdmin(){
   const wrap=$('task-admin-wrap');if(!wrap)return;
-  if(CU.role!=='BOSS'){wrap.innerHTML='';return;}
-  const tasks=LS.get('rm_tasks',[]);
-  wrap.innerHTML=`<div class="c-card"><div class="c-card-title">🛠️ 任務管理（老闆）</div>
+  if(!isMgr()){wrap.innerHTML='';return;}
+  const isBoss=CU.role==='BOSS';
+  const tasks=LS.get('rm_tasks',[]).map(normTask);
+  const cats=isBoss?TASK_CATS:TASK_CATS.filter(c=>c.id!=='rnd');
+  wrap.innerHTML=`<div class="c-card"><div class="c-card-title">🛠️ 任務管理（${isBoss?'老闆':'店長'}）</div>
+    <div class="muted-note">${isBoss?'可新增各分類任務並設定分數。':'可新增「每日／搶分」任務內容；分數一律由老闆設定。'}</div>
     <div class="form-row">
+      <div class="form-group"><label class="form-label">分類</label><select class="form-input" id="nt-cat" onchange="ntTypeSync()">${cats.map(c=>`<option value="${c.id}">${c.label}</option>`).join('')}</select></div>
       <div class="form-group"><label class="form-label">圖示 emoji</label><input class="form-input" id="nt-icon" value="✅"></div>
-      <div class="form-group"><label class="form-label">完成經驗值</label><input class="form-input" id="nt-xp" type="number" min="1" value="20"></div>
     </div>
     <div class="form-group"><label class="form-label">任務名稱</label><input class="form-input" id="nt-title" placeholder="例：擦拭玻璃門"></div>
+    <div class="form-row">
+      <div class="form-group" id="nt-type-wrap"><label class="form-label">提交方式</label><select class="form-input" id="nt-type"><option value="photo">拍照上傳</option><option value="sales">賣最好/最差輸入</option></select></div>
+      ${isBoss?'<div class="form-group"><label class="form-label">完成分數(XP)</label><input class="form-input" id="nt-xp" type="number" min="0" value="20"></div>':''}
+    </div>
     <button class="btn-action" onclick="addTask()">➕ 新增任務</button>
-    <div style="margin-top:14px">${tasks.map(t=>`<div class="sub-row"><span class="tc-emoji">${t.icon}</span><div style="flex:1;min-width:0"><div class="tc-title" style="font-size:14px">${t.title}</div><div class="xp-text">+${t.xp} XP</div></div><button class="btn-sm btn-warn" onclick="delTask('${t.id}')">刪除</button></div>`).join('')||'<div class="muted-note">目前沒有任務</div>'}</div>
+    <div style="margin-top:14px">${TASK_CATS.map(c=>{
+      const ts=tasks.filter(t=>t.cat===c.id);if(!ts.length)return '';
+      return `<div class="dress-label" style="margin-top:10px">${c.label}</div>`+ts.map(t=>`<div class="sub-row"><span class="tc-emoji">${t.icon}</span><div style="flex:1;min-width:0"><div class="tc-title" style="font-size:14px">${t.title}</div><div class="xp-text">${({photo:'拍照',sales:'輸入',text:'文字'})[t.type]||'拍照'} ・ ${t.xp>0?('+'+t.xp+' XP'):'分數待定'}</div></div>${isBoss?`<input class="form-input" style="width:62px;padding:6px;text-align:center" type="number" min="0" value="${t.xp||0}" title="分數" onchange="setTaskXp('${t.id}',this.value)">`:''}<button class="btn-sm btn-warn" onclick="delTask('${t.id}')">刪</button></div>`).join('');
+    }).join('')}</div>
   </div>`;
+  ntTypeSync();
 }
+function ntTypeSync(){const s=$('nt-cat');const w=$('nt-type-wrap');if(!s||!w)return;w.style.display=(s.value==='daily')?'':'none';}
 function addTask(){
+  const isBoss=CU.role==='BOSS';
+  const cat=($('nt-cat')&&$('nt-cat').value)||'daily';
   const icon=($('nt-icon')&&$('nt-icon').value.trim())||'✅';
   const title=($('nt-title')&&$('nt-title').value.trim())||'';
-  const xp=Math.max(1,parseInt($('nt-xp')&&$('nt-xp').value)||20);
   if(!title){toast('請輸入任務名稱','red');return;}
-  const tasks=LS.get('rm_tasks',[]);tasks.push({id:'t'+Date.now(),icon,title,xp});LS.set('rm_tasks',tasks);
-  toast('✓ 已新增任務','gold');renderTasks();
+  let type='photo'; if(cat==='rnd')type='text'; else if(cat==='daily')type=($('nt-type')&&$('nt-type').value)||'photo';
+  const xp=isBoss?Math.max(0,parseInt($('nt-xp')&&$('nt-xp').value)||0):0;
+  const tasks=LS.get('rm_tasks',[]);tasks.push({id:'t'+Date.now(),icon,title,xp,cat,type});LS.set('rm_tasks',tasks);
+  toast(isBoss?'✓ 已新增任務':'✓ 已新增（分數待老闆設定）','gold');renderTasks();
 }
+function setTaskXp(id,val){const tasks=LS.get('rm_tasks',[]);const t=tasks.find(x=>x.id===id);if(!t)return;t.xp=Math.max(0,parseInt(val)||0);LS.set('rm_tasks',tasks);renderTaskAdmin();}
 function delTask(id){const tasks=LS.get('rm_tasks',[]).filter(t=>t.id!==id);LS.set('rm_tasks',tasks);toast('已刪除任務','red');renderTasks();}
 
 // ── 每日問答 ──
-function qzToday(){return new Date().toISOString().split('T')[0];}
+// 營業日：每天 17:00-02:00 跨午夜，以凌晨 5 點為換日界線（5 點前算前一個營業日）
+function bizDay(ts){const d=ts?new Date(ts):new Date();const t=new Date(d.getFullYear(),d.getMonth(),d.getDate());if(d.getHours()<5)t.setDate(t.getDate()-1);const p=n=>String(n).padStart(2,'0');return t.getFullYear()+'-'+p(t.getMonth()+1)+'-'+p(t.getDate());}
+function qzToday(){return bizDay();}
 function todaysQuestion(){const qs=LS.get('rm_quiz',[]);if(!qs.length)return null;const dn=Math.floor(Date.parse(qzToday())/86400000);return qs[((dn%qs.length)+qs.length)%qs.length];}
 function renderQuiz(){
   const wrap=$('quiz-wrap');if(!wrap)return;
@@ -2065,9 +2313,9 @@ function answerQuiz(qid,choice){
 // 老闆：問答管理
 function renderQuizAdmin(){
   const wrap=$('quiz-admin-wrap');if(!wrap)return;
-  if(CU.role!=='BOSS'){wrap.innerHTML='';return;}
+  if(!isMgr()){wrap.innerHTML='';return;}
   const qs=LS.get('rm_quiz',[]);
-  wrap.innerHTML=`<div class="c-card"><div class="c-card-title">🛠️ 每日問答管理（老闆）</div>
+  wrap.innerHTML=`<div class="c-card"><div class="c-card-title">🛠️ 每日問答管理（老闆／店長）</div>
     <div class="muted-note">系統每天自動輪播一題給員工作答。</div>
     <div class="form-group"><label class="form-label">題目</label><input class="form-input" id="qz-q" placeholder="例：看到地板濕滑該怎麼做？"></div>
     <div class="form-row">
@@ -2103,6 +2351,7 @@ function reviewSub(id,ok){
   if(ok){
     const r=awardXp(s.user,s.xp);
     const c=getChar(s.user);c.tasksDone=(c.tasksDone||0)+1;saveChar(c,s.user);
+    recordName(s.user,s.userName);
     toast(`✓ 已通過，給 ${s.userName} +${s.xp} XP`+(r.leveledUp?`（升級 Lv.${r.after}！）`:''),'gold');
   }else{toast('已退回該任務','red');}
   renderTasks();updateGameChip();
