@@ -1062,6 +1062,12 @@ textarea.form-input{resize:vertical;line-height:1.5;}
       <div id="reward-admin-wrap"></div>
     </div>
 
+    <!-- BOM TAB -->
+    <div class="tab-panel" id="tab-bom">
+      <div class="sec-header"><div class="sec-title">BOM 成本表</div><div class="divider"></div><div class="sec-sub">食譜食材組成 × 進貨單位成本 = 各品項成本與總成本</div></div>
+      <div id="bom-wrap"></div>
+    </div>
+
     <!-- HANDOVER TAB -->
     <div class="tab-panel" id="tab-handover">
       <div class="sec-header"><div class="sec-title">交接表</div><div class="divider"></div><div class="sec-sub">交班填寫、接班查看（完成 +25 XP／每日一次）</div></div>
@@ -1290,6 +1296,7 @@ function switchTab(name,btn) {
   btn.classList.add('active');
   if(name==='reports')loadReports();
   if(name==='purchase')loadMaterials();
+  if(name==='bom'){renderBom();Promise.all([loadMaterials(),loadRecipeCosts()]).then(renderBom);}
   if(name==='accounts'){loadPending();loadAccounts();}
   if(name==='expense')renderExpenseList();
   if(name==='tasks')renderTasks();
@@ -1801,6 +1808,7 @@ const ALL_TABS=[
   {id:'revenue',icon:'💳',label:'每日結帳',roles:['BOSS','MGR','EMP']},
   {id:'purchase',icon:'📦',label:'進貨記錄',roles:['BOSS','MGR','EMP']},
   {id:'reports',icon:'📊',label:'數據報表',roles:['BOSS','MGR']},
+  {id:'bom',icon:'🧮',label:'BOM成本',roles:['BOSS','MGR']},
   {id:'handover',icon:'📋',label:'交接表',roles:['BOSS','MGR','EMP']},
   {id:'handbook',icon:'📖',label:'員工守則',roles:['BOSS','MGR','EMP']},
   {id:'tasks',icon:'✅',label:'任務',roles:['BOSS','MGR','EMP']},
@@ -1928,6 +1936,13 @@ const HANDBOOK_SEED=[
 {title:"帶位服務守則",body:"光頭生魚片店主題居酒屋\n服務精神：把所有人當自己人，別讓自己人失望\n【我們的服務靈魂】 來店的客人不只是消費者，更是來到我們家作客的朋友。 夥伴們請隨時保持主動的眼神接觸與真誠的微笑。我們的目標是透過「充滿活力的招呼」與「體貼的細節觀察」，讓每位踏進店裡的客人，都能感受到漁村特有的熱情與居酒屋的放鬆溫度。\n🍽️ 客人進場服務流程（SOP）\n▍第一步：迎賓與人數確認\n當客人步入餐廳，高聲熱情歡迎，並確認用餐人數。\n服務動作：\n親切問候：「您好！請問幾位用餐？/請問是否有訂位？」\n座位調度原則（關鍵）：\n3人（含）以下： 優先安排至一樓用餐，以維持一樓客滿的熱鬧氛圍與人氣。\n4人（含）以上： 再行引導至適合的大桌或二樓空間。\n▍第二步：帶位與菜單介紹\n將客人引導至座位後，遞上實體菜單。\n服務動作：\n遞上菜單本：「這是我們的菜單，我們菜色依照線上菜單為主，我們統一一台手機掃描桌上【某一個】QR碼。」\n當日推薦（主動出擊）：\n同仁需熟記當日現撈、主打或限定料理，主動向客人推薦。\n話術範例：「今天我們特別推薦***跟***，我們目前也有399喝到飽的活動，有喝酒的朋友可以依照人數去做點選」\n▲399喝到飽會讓客人點選，送啤酒請注意看喝酒人數\n▍第三步：告知低消與服務機制\n在客人翻閱菜單前，務必清晰且有禮貌地說明店內基本消費與呼叫服務的方式。\n低消布達：\n話術範例：「我們店內的基本消費為每人 200 元。餐後再結帳」\n服務鈴說明：\n指給客人看桌上的服務鈴位置。\n話術範例：「旁邊有準備服務鈴，期間有任何服務需求，隨時幫我按下服務鈴，我們就會立刻過來協助您！」\n▍第四步：環境與硬體引導\n離開桌邊前，做最後的環境點檢與指引，讓客人感到安心。\n環境指引話術：\n「我們的餐具都在［具體位置］可以自取。」\n▲請順便視線確認餐具、醬油、哇沙比、衛生紙確定足夠(如果視線看不到請引導完後，馬上去確認\n「洗手間的位置則是在［具體位置］。」\n「祝您用餐愉快，有需要隨時按鈴通知我們！」\n▍第五步：客人最後進場時間\n我們最後收客時間是1點整，即便客人12點59分到，還是要熱情迎接\n謹記以下要留意\n1點15分最後加點時間，請逐桌詢問「現在是我們最後加點的時間，請問有需要最後加點嗎？酒水飲料都還可以續點」\n內外場請勿為了收拾方便拒單\n準時2點請跟客人說「不好意思，我們的營業時間到了喔」\n▲特別留意：請勿讓客人有趕他們走的感受\n▲特別留意：只要客人在！我們應該保持專業，請勿把脾氣帶在身上，即便沒有服務他們，但客人還是感受的到我們的情緒！\n▲特別留意：請堅持所有能服務的機會，入座的客人就是朋友，有機會能聊天或關心他們的，都請把握好，他們不只是客人，有可能是未來你們的【人脈】，也許某一天會對各位有幫助\n★【有關係就是沒關係】★"},
 {title:"接聽電話訂位 SOP 與 客滿應對",body:"【光頭生魚片 - 接聽電話訂位 SOP 與 客滿應對】\n🌟 最高指導原則：聲音與活力是我們的武器，請隨時保持開心與開朗的語氣！ 🌟\n【一、標準訂位流程】\n第一階段：專業開場🗣️「您好！這裡是光頭生魚片！」（語氣保持積極、禮貌、開心）\n第二階段：確認訂位細節\n• 詢問時間：「請問您預計哪一天過來用餐？大約是幾點鐘呢？」\n• 詢問人數：「請問一共是幾位大人、幾位小朋友呢？需要幫您預留兒童椅嗎？」\n• 核對狀態：（確認訂位表）「幫您確認過，那個時段還有位置，沒問題。」\n第三階段：紀錄聯絡資訊\n• 紀錄稱呼：「請問訂位人怎麼稱呼？」\n• 紀錄電話：「方便留一下您的聯絡電話嗎？」\n第四階段：最後確認與結尾\n• 覆核資訊：「幫您核對：[日期]、[時間]、一共 [人數] 位，訂位人是 [稱呼]，電話是 [號碼]。」\n• 溫馨提醒：「我們會為您保留位置 10 分鐘，如果行程有變再請撥電話告知，謝謝您，當天見！」\n【二、客滿與特殊狀況應對話術】\n● 情況一：客人想訂的時間已滿 (例如 7 點滿位)\n🗣️「不好意思，目前 晚上7點訂位已滿。因為我們餐廳用餐不限時間，後面時段比較難保證準時入座。會建議您可以考慮 18:00～18:30 或 20:30之後 的時段，座位會比較好安排。」\n● 情況二：客人堅持要滿位時段 (提供候補)\n🗣️「目前7點的座位已經滿了，如果您方便，我可以幫您登記 候補19:30左右。若有客人提早離席，我們會優先幫您安排。」\n● 情況三：客人訂比較晚的時間 (例如 8 點)\n🗣️「可以先幫您登記 晚上8點的訂位，但因為我們用餐不限時，當天可能會需要稍微等候一下座位，這樣可以嗎？」"}
 ];
+// 預設食譜（來自「商品配方」）
+const RECIPE_SEED=[
+{dish:'豬肉丼',items:[{code:'ME011',name:'豬肉片-前腿',qty:136,unit:'克'},{code:'VE007',name:'二等米(30公斤)',qty:0.127,unit:'公斤'},{code:'DRY013',name:'廚房用醬油',qty:70,unit:'克'},{code:'DRY014',name:'水',qty:65,unit:'克'},{code:'VE004',name:'洋蔥',qty:73,unit:'克'},{code:'ICE008',name:'調味毛豆(1KG)',qty:20,unit:'克'},{code:'ICE005',name:'野菜園和風蘿蔔(3KG)',qty:25,unit:'克'}]},
+{dish:'牛肉丼',items:[{code:'ME003',name:'牛肉片-前腿(全)',qty:150,unit:'克'},{code:'VE007',name:'二等米(30公斤)',qty:0.127,unit:'公斤'},{code:'DRY013',name:'廚房用醬油',qty:70,unit:'克'},{code:'DRY014',name:'水',qty:65,unit:'克'},{code:'VE004',name:'洋蔥',qty:73,unit:'克'},{code:'ICE008',name:'調味毛豆(1KG)',qty:20,unit:'克'},{code:'ICE005',name:'野菜園和風蘿蔔(3KG)',qty:25,unit:'克'}]},
+{dish:'三色丼',items:[{code:'SE012',name:'大目鮪',qty:0.06,unit:'公斤'},{code:'SE019',name:'旗魚',qty:0.11,unit:'公斤'},{code:'SE007',name:'8/9挪威鮭魚菲力',qty:0.1,unit:'公斤'},{code:'VE001',name:'白蘿蔔',qty:0.0233,unit:'台斤'},{code:'VE005',name:'金拮',qty:0.005,unit:'台斤'},{code:'HALF002',name:'甜薑',qty:8,unit:'克'},{code:'SE004',name:'醬油漬鮭魚卵 (500G)',qty:10,unit:'克'}]},
+{dish:'散壽司丼',items:[{code:'SE020',name:'散壽司用魚肉混和',qty:0.187,unit:'公斤'},{code:'SE004',name:'醬油漬鮭魚卵 (500G)',qty:4,unit:'克'},{code:'VE005',name:'金拮',qty:0.005,unit:'台斤'},{code:'HALF002',name:'甜薑',qty:7,unit:'克'}]},
+];
 // 預設任務 / 獎勵
 const SEED_VER=5;
 function seedGame(){
@@ -1945,6 +1960,7 @@ function seedGame(){
   ]);
   if(!LS.get('rm_parts',null))LS.set('rm_parts',{});
   if(!LS.get('rm_handbook',null))LS.set('rm_handbook',HANDBOOK_SEED.map((s,i)=>({id:'hbseed'+i,title:s.title,body:s.body})));
+  if(!LS.get('rm_recipes',null))LS.set('rm_recipes',RECIPE_SEED.map((r,i)=>({id:'rcseed'+i,dish:r.dish,items:r.items})));
   if(!LS.get('rm_quiz',null))LS.set('rm_quiz',[
     {id:'q1',q:'外場接到客訴時，第一步應該做什麼？',opts:['先誠懇道歉並傾聽','直接叫店長處理','假裝沒聽到','跟客人爭辯'],ans:0,xp:15},
     {id:'q2',q:'處理生魚片最重要的原則是？',opts:['全程低溫與衛生','切得越快越好','擺盤越花俏越好','份量給超大'],ans:0,xp:15},
@@ -2241,6 +2257,49 @@ function renderChAdmin(){
   </div>`;
 }
 function saveChallengeCfg(){const cfg={dailyTargetWeekday:Math.max(0,parseInt($('ch-dtw').value)||0),dailyTargetWeekend:Math.max(0,parseInt($('ch-dte').value)||0),dailyReward:Math.max(0,parseInt($('ch-dr').value)||0),monthlyTarget:Math.max(0,parseInt($('ch-mt').value)||0),monthlyReward:Math.max(0,parseInt($('ch-mr').value)||0)};LS.set('rm_challenge',cfg);toast('✓ 目標已儲存','gold');renderChallenge();}
+
+// ── BOM 成本表 ──
+let _costMap={};
+async function loadRecipeCosts(){
+  try{
+    const d=await api({type:'query_purchase',data:{}});const ok=d&&(d.status==='ok'||d.status==='success');
+    const rows=ok?(d.rows?d.rows.slice(1):(d.data||[])):[];const map={};
+    rows.forEach(r=>{const code=r[1]?String(r[1]).trim():'';if(!code)return;const uc=parseFloat(r[7]);const unit=r[5]?String(r[5]).trim():'';if(!isNaN(uc))map[code]={cost:uc,unit:unit};});
+    _costMap=map;
+  }catch(e){}
+}
+function weightKg(u){return ({'克':0.001,'公克':0.001,'g':0.001,'公斤':1,'kg':1,'台斤':0.6,'斤':0.6})[u]||null;}
+function itemCost(it){const m=_costMap[it.code];if(!m||isNaN(m.cost))return null;const q=parseFloat(it.qty)||0;if(it.unit===m.unit)return q*m.cost;const a=weightKg(it.unit),b=weightKg(m.unit);if(a!=null&&b!=null)return (q*a/b)*m.cost;return null;}
+function renderBom(){
+  const wrap=$('bom-wrap');if(!wrap)return;
+  const recipes=LS.get('rm_recipes',[])||[];
+  let html='';
+  if(isMgr()){
+    html+=`<div class="c-card"><div class="c-card-title">➕ 新增食譜</div><div class="form-group"><label class="form-label">商品/食譜名稱</label><input class="form-input" id="bom-dish" placeholder="例：鮭魚丼"></div><button class="btn-action" onclick="addRecipe()">建立食譜</button> <button class="btn-sm btn-neutral" style="margin-left:8px;padding:8px 12px" onclick="loadRecipeCosts().then(renderBom)">🔄 同步進貨成本</button></div>`;
+  }
+  if(!recipes.length)html+='<div class="c-card"><div class="game-empty">尚無食譜</div></div>';
+  recipes.forEach(rc=>{
+    let total=0,miss=false;
+    const rows=(rc.items||[]).map((it,idx)=>{
+      const c=itemCost(it);if(c==null)miss=true;else total+=c;const cm=_costMap[it.code];
+      return `<tr><td>${esc(it.name)}</td><td>${it.qty}${esc(it.unit)}</td><td>${cm?('$'+(Math.round(cm.cost*100)/100)+'/'+esc(cm.unit)):'—'}</td><td style="font-weight:700;color:#ff6a1a">${c==null?'⚠️':('$'+(Math.round(c*100)/100))}</td>${isMgr()?`<td><button class="btn-sm btn-warn" onclick="delIngredient('${rc.id}',${idx})">刪</button></td>`:''}</tr>`;
+    }).join('');
+    html+=`<div class="c-card"><div class="c-card-title" style="display:flex;align-items:center">🍱 ${esc(rc.dish)}${isMgr()?`<button class="btn-sm btn-warn" style="margin-left:auto" onclick="delRecipe('${rc.id}')">刪除</button>`:''}</div>
+      <div style="overflow-x:auto"><table class="data-table"><thead><tr><th>食材</th><th>用量</th><th>單位成本</th><th>小計</th>${isMgr()?'<th></th>':''}</tr></thead><tbody>${rows||`<tr><td colspan="${isMgr()?5:4}" style="text-align:center;color:var(--text-3);padding:14px">尚無食材</td></tr>`}</tbody></table></div>
+      <div style="text-align:right;font-weight:800;font-size:16px;margin-top:10px">總成本：<span style="color:#ff6a1a">$${Math.round(total*100)/100}</span>${miss?' <span class="muted-note">（⚠️ 有食材無進貨成本或單位無法換算）</span>':''}</div>
+      ${isMgr()?ingredientAdder(rc.id):''}</div>`;
+  });
+  wrap.innerHTML=html;
+}
+function ingredientAdder(rid){
+  const opts=_materials.map((m,i)=>`<option value="${i}">${esc((m.code?m.code+' ':'')+m.name)}</option>`).join('');
+  return `<div class="form-row" style="margin-top:10px"><div class="form-group"><label class="form-label">加食材</label><select class="form-input" id="bi-mat-${rid}" onchange="biUnit('${rid}')"><option value="">選物料</option>${opts}</select></div><div class="form-group"><label class="form-label">用量</label><input class="form-input" id="bi-qty-${rid}" type="number" min="0" placeholder="0"></div></div><div class="form-row"><div class="form-group"><label class="form-label">單位</label><input class="form-input" id="bi-unit-${rid}" placeholder="克 / 公斤 / 台斤…"></div><div class="form-group" style="display:flex;align-items:flex-end"><button class="btn-action" onclick="addIngredient('${rid}')">＋ 加入食材</button></div></div>`;
+}
+function biUnit(rid){const v=$('bi-mat-'+rid)&&$('bi-mat-'+rid).value;if(v==='')return;const m=_materials[parseInt(v)];if(m&&$('bi-unit-'+rid)&&!$('bi-unit-'+rid).value)$('bi-unit-'+rid).value=m.unit||'';}
+function addRecipe(){const dish=($('bom-dish')&&$('bom-dish').value.trim())||'';if(!dish){toast('請輸入食譜名稱','red');return;}const rs=LS.get('rm_recipes',[])||[];rs.push({id:'rc'+Date.now(),dish:dish,items:[]});LS.set('rm_recipes',rs);if($('bom-dish'))$('bom-dish').value='';toast('✓ 已建立食譜','gold');renderBom();}
+function delRecipe(id){const rs=(LS.get('rm_recipes',[])||[]).filter(r=>r.id!==id);LS.set('rm_recipes',rs);toast('已刪除食譜','red');renderBom();}
+function addIngredient(rid){const rs=LS.get('rm_recipes',[])||[];const rc=rs.find(r=>r.id===rid);if(!rc)return;const v=$('bi-mat-'+rid)&&$('bi-mat-'+rid).value;const qty=parseFloat($('bi-qty-'+rid)&&$('bi-qty-'+rid).value)||0;let unit=($('bi-unit-'+rid)&&$('bi-unit-'+rid).value.trim())||'';if(v===''||!qty){toast('請選物料並填用量','red');return;}const m=_materials[parseInt(v)];if(!m)return;if(!unit)unit=m.unit||'克';rc.items=rc.items||[];rc.items.push({code:m.code,name:m.name,qty:qty,unit:unit});LS.set('rm_recipes',rs);toast('✓ 已加入食材','gold');renderBom();}
+function delIngredient(rid,idx){const rs=LS.get('rm_recipes',[])||[];const rc=rs.find(r=>r.id===rid);if(!rc||!rc.items)return;rc.items.splice(idx,1);LS.set('rm_recipes',rs);renderBom();}
 
 // ── 員工守則 ──
 function renderHandbook(){
