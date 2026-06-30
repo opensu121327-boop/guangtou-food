@@ -2357,37 +2357,98 @@ async function loadRecipeCosts(){
     _costMap=map;
   }catch(e){}
 }
-function weightKg(u){return ({'克':0.001,'公克':0.001,'g':0.001,'公斤':1,'kg':1,'台斤':0.6,'斤':0.6})[u]||null;}
-function itemCost(it){const m=_costMap[it.code];if(!m||isNaN(m.cost))return null;const q=parseFloat(it.qty)||0;if(it.unit===m.unit)return q*m.cost;const a=weightKg(it.unit),b=weightKg(m.unit);if(a!=null&&b!=null)return (q*a/b)*m.cost;return null;}
+// 單位換算（同維度才可換算）：重量→克、容量→毫升
+const W2G={'克':1,'公克':1,'g':1,'公斤':1000,'kg':1000,'台斤':600,'斤':600,'兩':37.5};
+const V2ML={'cc':1,'ml':1,'毫升':1,'公升':1000,'l':1000,'L':1000};
+function weightKg(u){return (W2G[u]!=null)?W2G[u]/1000:null;}
+function convFactor(fromU,toU){fromU=fromU||'';toU=toU||'';if(fromU===toU)return 1;if(W2G[fromU]!=null&&W2G[toU]!=null)return W2G[fromU]/W2G[toU];if(V2ML[fromU]!=null&&V2ML[toU]!=null)return V2ML[fromU]/V2ML[toU];return null;}
+function findRecipe(id){return (LS.get('rm_recipes',[])||[]).find(r=>r.id===id);}
+function round2(n){return Math.round((n||0)*100)/100;}
+// 單一食材成本（物料 or 半成品，含遞迴與循環防呆）
+function itemCost(it,stack){
+  if(it&&it.semiId){
+    const semi=findRecipe(it.semiId);if(!semi)return null;
+    const yq=parseFloat(semi.yieldQty)||0,yu=semi.yieldUnit||'';if(!(yq>0)||!yu)return null;
+    const rc=recipeCost(semi,stack);if(rc.miss)return null;
+    const f=convFactor(it.unit,yu);if(f==null)return null;
+    const q=parseFloat(it.qty)||0;return q*f*(rc.cost/yq);
+  }
+  const m=_costMap[it.code];if(!m||isNaN(m.cost))return null;const q=parseFloat(it.qty)||0;
+  const f=convFactor(it.unit,m.unit);if(f==null)return null;return q*f*m.cost;
+}
+// 整份配方成本（遞迴展開半成品）
+function recipeCost(rc,stack){stack=stack||[];if(!rc||stack.indexOf(rc.id)>=0)return{cost:0,miss:true};const st=stack.concat(rc.id);let total=0,miss=false;(rc.items||[]).forEach(it=>{const c=itemCost(it,st);if(c==null)miss=true;else total+=c;});return{cost:total,miss:miss};}
 function renderBom(){
   const wrap=$('bom-wrap');if(!wrap)return;
   const recipes=LS.get('rm_recipes',[])||[];
+  const dishes=recipes.filter(r=>!r.isSemi),semis=recipes.filter(r=>r.isSemi);
   let html='';
   if(isMgr()){
-    html+=`<div class="c-card"><div class="c-card-title">➕ 新增食譜</div><div class="form-group"><label class="form-label">商品/食譜名稱</label><input class="form-input" id="bom-dish" placeholder="例：鮭魚丼"></div><button class="btn-action" onclick="addRecipe()">建立食譜</button> <button class="btn-sm btn-neutral" style="margin-left:8px;padding:8px 12px" onclick="loadRecipeCosts().then(renderBom)">🔄 同步進貨成本</button></div>`;
+    html+=`<div class="c-card"><div class="c-card-title">➕ 新增菜品 / 半成品</div>
+      <div class="form-group"><label class="form-label">名稱</label><input class="form-input" id="bom-dish" placeholder="例：鮭魚丼 ／ 生魚片醬油"></div>
+      <label style="display:flex;align-items:center;gap:8px;font-size:14px;margin-bottom:12px;cursor:pointer"><input type="checkbox" id="bom-issemi" style="width:18px;height:18px"> 這是半成品（醬汁/醃料…可被菜品引用）</label>
+      <button class="btn-action" onclick="addRecipe()">建立</button>
+      <button class="btn-sm btn-neutral" style="margin-left:8px;padding:8px 12px" onclick="loadRecipeCosts().then(renderBom)">🔄 同步進貨成本</button>
+      <button class="btn-sm" style="margin-left:8px;padding:8px 12px;background:#16a34a;color:#fff;border:none;border-radius:8px" onclick="bomWriteSheet()">📤 寫入 Google Sheet</button></div>`;
   }
-  if(!recipes.length)html+='<div class="c-card"><div class="game-empty">尚無食譜</div></div>';
-  recipes.forEach(rc=>{
-    let total=0,miss=false;
-    const rows=(rc.items||[]).map((it,idx)=>{
-      const c=itemCost(it);if(c==null)miss=true;else total+=c;const cm=_costMap[it.code];
-      return `<tr><td>${esc(it.name)}</td><td>${it.qty}${esc(it.unit)}</td><td>${cm?('$'+(Math.round(cm.cost*100)/100)+'/'+esc(cm.unit)):'—'}</td><td style="font-weight:700;color:#ff6a1a">${c==null?'⚠️':('$'+(Math.round(c*100)/100))}</td>${isMgr()?`<td><button class="btn-sm btn-warn" onclick="delIngredient('${rc.id}',${idx})">刪</button></td>`:''}</tr>`;
-    }).join('');
-    html+=`<div class="c-card"><div class="c-card-title" style="display:flex;align-items:center">🍱 ${esc(rc.dish)}${isMgr()?`<button class="btn-sm btn-warn" style="margin-left:auto" onclick="delRecipe('${rc.id}')">刪除</button>`:''}</div>
-      <div style="overflow-x:auto"><table class="data-table"><thead><tr><th>食材</th><th>用量</th><th>單位成本</th><th>小計</th>${isMgr()?'<th></th>':''}</tr></thead><tbody>${rows||`<tr><td colspan="${isMgr()?5:4}" style="text-align:center;color:var(--text-3);padding:14px">尚無食材</td></tr>`}</tbody></table></div>
-      <div style="text-align:right;font-weight:800;font-size:16px;margin-top:10px">總成本：<span style="color:#ff6a1a">$${Math.round(total*100)/100}</span>${miss?' <span class="muted-note">（⚠️ 有食材無進貨成本或單位無法換算）</span>':''}</div>
-      ${isMgr()?ingredientAdder(rc.id):''}</div>`;
-  });
+  if(semis.length){html+='<div class="sec-sub" style="margin:6px 2px 4px">🧪 半成品</div>';semis.forEach(rc=>html+=recipeCard(rc,true));}
+  html+='<div class="sec-sub" style="margin:12px 2px 4px">🍱 菜品</div>';
+  if(!dishes.length)html+='<div class="c-card"><div class="game-empty">尚無菜品</div></div>';
+  dishes.forEach(rc=>html+=recipeCard(rc,false));
   wrap.innerHTML=html;
 }
-function ingredientAdder(rid){
-  const opts=_materials.map((m,i)=>`<option value="${i}">${esc((m.code?m.code+' ':'')+m.name)}</option>`).join('');
-  return `<div class="form-row" style="margin-top:10px"><div class="form-group"><label class="form-label">加食材</label><select class="form-input" id="bi-mat-${rid}" onchange="biUnit('${rid}')"><option value="">選物料</option>${opts}</select></div><div class="form-group"><label class="form-label">用量</label><input class="form-input" id="bi-qty-${rid}" type="number" min="0" placeholder="0"></div></div><div class="form-row"><div class="form-group"><label class="form-label">單位</label><input class="form-input" id="bi-unit-${rid}" placeholder="克 / 公斤 / 台斤…"></div><div class="form-group" style="display:flex;align-items:flex-end"><button class="btn-action" onclick="addIngredient('${rid}')">＋ 加入食材</button></div></div>`;
+function recipeCard(rc,isSemi){
+  const r=recipeCost(rc);const total=r.cost,miss=r.miss;
+  const rows=(rc.items||[]).map((it,idx)=>{
+    const c=itemCost(it);const cm=it.semiId?null:_costMap[it.code];const semi=it.semiId?findRecipe(it.semiId):null;
+    const unitInfo=it.semiId?((semi&&parseFloat(semi.yieldQty)>0)?('$'+round2(recipeCost(semi).cost/parseFloat(semi.yieldQty))+'/'+esc(semi.yieldUnit||'')):'半成品'):(cm?('$'+round2(cm.cost)+'/'+esc(cm.unit)):'—');
+    return `<tr><td>${esc(it.name)}${it.semiId?' <span style="color:#a855f7;font-size:11px">半成品</span>':''}</td><td>${it.qty}${esc(it.unit)}</td><td>${unitInfo}</td><td style="font-weight:700;color:#ff6a1a">${c==null?'⚠️':('$'+round2(c))}</td>${isMgr()?`<td><button class="btn-sm btn-warn" onclick="delIngredient('${rc.id}',${idx})">刪</button></td>`:''}</tr>`;
+  }).join('');
+  let html=`<div class="c-card"><div class="c-card-title" style="display:flex;align-items:center">${isSemi?'🧪':'🍱'} ${esc(rc.dish)}${isMgr()?`<button class="btn-sm btn-warn" style="margin-left:auto" onclick="delRecipe('${rc.id}')">刪除</button>`:''}</div>
+    <div style="overflow-x:auto"><table class="data-table"><thead><tr><th>食材</th><th>用量</th><th>單位成本</th><th>小計</th>${isMgr()?'<th></th>':''}</tr></thead><tbody>${rows||`<tr><td colspan="${isMgr()?5:4}" style="text-align:center;color:var(--text-3);padding:14px">尚無食材</td></tr>`}</tbody></table></div>
+    <div style="text-align:right;font-weight:800;font-size:16px;margin-top:10px">總成本：<span style="color:#ff6a1a">$${round2(total)}</span>${miss?' <span class="muted-note">（⚠️ 有食材無成本／單位無法換算／半成品未設產出）</span>':''}</div>`;
+  if(isSemi){
+    html+=`<div class="form-row" style="margin-top:8px"><div class="form-group"><label class="form-label">產出量（這鍋做出多少）</label><input class="form-input" type="number" min="0" id="yq-${rc.id}" value="${rc.yieldQty!=null?rc.yieldQty:''}" placeholder="例：1500" ${isMgr()?'':'disabled'}></div><div class="form-group"><label class="form-label">產出單位</label><input class="form-input" id="yu-${rc.id}" value="${esc(rc.yieldUnit||'')}" placeholder="克／毫升…" ${isMgr()?'':'disabled'}></div></div>${isMgr()?`<button class="btn-sm btn-neutral" style="padding:6px 12px" onclick="setYield('${rc.id}')">儲存產出量</button>`:''}`;
+    if(parseFloat(rc.yieldQty)>0&&rc.yieldUnit&&!miss)html+=`<div class="muted-note" style="margin-top:6px">每 ${esc(rc.yieldUnit)} 成本 ≈ $${round2(total/parseFloat(rc.yieldQty))}</div>`;
+  }else{
+    const price=parseFloat(rc.price)||0,profit=price-total,margin=price>0?Math.round(profit/price*100):0,suggest=Math.round(total*3);
+    html+=`<div class="form-row" style="margin-top:8px"><div class="form-group"><label class="form-label">售價</label><input class="form-input" type="number" min="0" id="pr-${rc.id}" value="${rc.price!=null?rc.price:''}" placeholder="建議 $${suggest}" ${isMgr()?'':'disabled'}></div>${isMgr()?`<div class="form-group" style="display:flex;align-items:flex-end"><button class="btn-sm btn-neutral" style="padding:9px 12px" onclick="setPrice('${rc.id}')">儲存售價</button></div>`:'<div class="form-group"></div>'}</div>`;
+    if(price>0)html+=`<div style="display:flex;gap:16px;justify-content:flex-end;font-weight:700;margin-top:6px"><span>毛利：<span style="color:${profit>=0?'#15803d':'#dc2626'}">$${round2(profit)}</span></span><span>毛利率：<span style="color:${margin>=50?'#15803d':(margin>=30?'#d97706':'#dc2626')}">${margin}%</span></span></div>`;
+    else html+=`<div class="muted-note" style="text-align:right;margin-top:6px">💡 建議售價 $${suggest}（成本×3，約 67% 毛利）</div>`;
+  }
+  html+=`${isMgr()?ingredientAdder(rc.id):''}</div>`;
+  return html;
 }
-function biUnit(rid){const v=$('bi-mat-'+rid)&&$('bi-mat-'+rid).value;if(v==='')return;const m=_materials[parseInt(v)];if(m&&$('bi-unit-'+rid)&&!$('bi-unit-'+rid).value)$('bi-unit-'+rid).value=m.unit||'';}
-function addRecipe(){const dish=($('bom-dish')&&$('bom-dish').value.trim())||'';if(!dish){toast('請輸入食譜名稱','red');return;}const rs=LS.get('rm_recipes',[])||[];rs.push({id:'rc'+Date.now(),dish:dish,items:[]});LS.set('rm_recipes',rs);if($('bom-dish'))$('bom-dish').value='';toast('✓ 已建立食譜','gold');renderBom();}
-function delRecipe(id){const rs=(LS.get('rm_recipes',[])||[]).filter(r=>r.id!==id);LS.set('rm_recipes',rs);toast('已刪除食譜','red');renderBom();}
-function addIngredient(rid){const rs=LS.get('rm_recipes',[])||[];const rc=rs.find(r=>r.id===rid);if(!rc)return;const v=$('bi-mat-'+rid)&&$('bi-mat-'+rid).value;const qty=parseFloat($('bi-qty-'+rid)&&$('bi-qty-'+rid).value)||0;let unit=($('bi-unit-'+rid)&&$('bi-unit-'+rid).value.trim())||'';if(v===''||!qty){toast('請選物料並填用量','red');return;}const m=_materials[parseInt(v)];if(!m)return;if(!unit)unit=m.unit||'克';rc.items=rc.items||[];rc.items.push({code:m.code,name:m.name,qty:qty,unit:unit});LS.set('rm_recipes',rs);toast('✓ 已加入食材','gold');renderBom();}
+function ingredientAdder(rid){
+  const matOpts=_materials.map((m,i)=>`<option value="m:${i}">${esc((m.code?m.code+' ':'')+m.name)}</option>`).join('');
+  const semis=(LS.get('rm_recipes',[])||[]).filter(r=>r.isSemi&&r.id!==rid);
+  const semiOpts=semis.map(s=>`<option value="s:${s.id}">${esc(s.dish)}</option>`).join('');
+  return `<div class="form-row" style="margin-top:10px"><div class="form-group"><label class="form-label">加食材</label><select class="form-input" id="bi-mat-${rid}" onchange="biUnit('${rid}')"><option value="">選物料／半成品</option>${semiOpts?`<optgroup label="🧪 半成品">${semiOpts}</optgroup>`:''}<optgroup label="📦 物料">${matOpts}</optgroup></select></div><div class="form-group"><label class="form-label">用量</label><input class="form-input" id="bi-qty-${rid}" type="number" min="0" placeholder="0"></div></div><div class="form-row"><div class="form-group"><label class="form-label">單位</label><input class="form-input" id="bi-unit-${rid}" placeholder="克 / 公斤 / 台斤 / 毫升…"></div><div class="form-group" style="display:flex;align-items:flex-end"><button class="btn-action" onclick="addIngredient('${rid}')">＋ 加入食材</button></div></div>`;
+}
+function biUnit(rid){const v=$('bi-mat-'+rid)&&$('bi-mat-'+rid).value;if(!v)return;const ui=$('bi-unit-'+rid);if(!ui||ui.value)return;if(v.charAt(0)==='m'){const m=_materials[parseInt(v.slice(2))];if(m)ui.value=m.unit||'';}else if(v.charAt(0)==='s'){const s=findRecipe(v.slice(2));if(s)ui.value=s.yieldUnit||'克';}}
+function addRecipe(){const dish=($('bom-dish')&&$('bom-dish').value.trim())||'';if(!dish){toast('請輸入名稱','red');return;}const isSemi=!!($('bom-issemi')&&$('bom-issemi').checked);const rs=LS.get('rm_recipes',[])||[];rs.push({id:'rc'+Date.now(),dish:dish,items:[],isSemi:isSemi,price:null,yieldQty:null,yieldUnit:isSemi?'克':null});LS.set('rm_recipes',rs);if($('bom-dish'))$('bom-dish').value='';if($('bom-issemi'))$('bom-issemi').checked=false;toast('✓ 已建立'+(isSemi?'半成品':'菜品'),'gold');renderBom();}
+function delRecipe(id){const rs=(LS.get('rm_recipes',[])||[]).filter(r=>r.id!==id);LS.set('rm_recipes',rs);toast('已刪除','red');renderBom();}
+function addIngredient(rid){const rs=LS.get('rm_recipes',[])||[];const rc=rs.find(r=>r.id===rid);if(!rc)return;const v=$('bi-mat-'+rid)&&$('bi-mat-'+rid).value;const qty=parseFloat($('bi-qty-'+rid)&&$('bi-qty-'+rid).value)||0;let unit=($('bi-unit-'+rid)&&$('bi-unit-'+rid).value.trim())||'';if(!v||!qty){toast('請選物料並填用量','red');return;}rc.items=rc.items||[];if(v.charAt(0)==='s'){const s=findRecipe(v.slice(2));if(!s)return;if(!unit)unit=s.yieldUnit||'克';rc.items.push({semiId:s.id,name:s.dish,qty:qty,unit:unit});}else{const m=_materials[parseInt(v.slice(2))];if(!m)return;if(!unit)unit=m.unit||'克';rc.items.push({code:m.code,name:m.name,qty:qty,unit:unit});}LS.set('rm_recipes',rs);toast('✓ 已加入食材','gold');renderBom();}
+function setPrice(id){const rs=LS.get('rm_recipes',[])||[];const rc=rs.find(r=>r.id===id);if(!rc)return;const v=$('pr-'+id)&&$('pr-'+id).value;rc.price=(v===''||v==null)?null:(parseFloat(v)||0);LS.set('rm_recipes',rs);toast('✓ 已儲存售價','gold');renderBom();}
+function setYield(id){const rs=LS.get('rm_recipes',[])||[];const rc=rs.find(r=>r.id===id);if(!rc)return;const q=$('yq-'+id)&&$('yq-'+id).value;const u=($('yu-'+id)&&$('yu-'+id).value.trim())||'';rc.yieldQty=(q===''||q==null)?null:(parseFloat(q)||0);rc.yieldUnit=u||null;LS.set('rm_recipes',rs);toast('✓ 已儲存產出量','gold');renderBom();}
+async function bomWriteSheet(){
+  if(!syncOn()){toast('未設定同步後台','red');return;}
+  const recipes=LS.get('rm_recipes',[])||[];
+  if(!recipes.length){toast('尚無配方可寫入','red');return;}
+  const rows=recipes.map(rc=>{
+    const cost=round2(recipeCost(rc).cost);
+    const itemsTxt=(rc.items||[]).map(it=>it.name+' '+it.qty+(it.unit||'')).join('; ');
+    const out={dish:rc.dish,type:rc.isSemi?'半成品':'菜品',items:itemsTxt,cost:cost,yield:rc.isSemi?((rc.yieldQty!=null?rc.yieldQty:'')+(rc.yieldUnit||'')):''};
+    if(!rc.isSemi){const price=parseFloat(rc.price)||0;out.price=price||'';if(price>0){out.profit=round2(price-cost);out.margin=Math.round((price-cost)/price*100);}}
+    return out;
+  });
+  toast('寫入中…','gold');
+  try{
+    const res=await kv('bom_write',{rows:rows});
+    if(res&&(res.status==='ok'||res.status==='success'))toast('✓ 已寫入 Google Sheet「菜品BOM」共 '+(res.rows_added||rows.length)+' 筆','gold');
+    else toast('寫入失敗：'+((res&&res.message)||'後台需先更新程式'),'red');
+  }catch(e){toast('寫入失敗（請先更新同步後台程式）','red');}
+}
 function delIngredient(rid,idx){const rs=LS.get('rm_recipes',[])||[];const rc=rs.find(r=>r.id===rid);if(!rc||!rc.items)return;rc.items.splice(idx,1);LS.set('rm_recipes',rs);renderBom();}
 
 // ── 員工守則 ──
