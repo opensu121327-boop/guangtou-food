@@ -814,8 +814,11 @@ img,canvas,table,video{max-width:100%;}
       <div class="c-card">
         <div class="c-card-title">📦 進貨資訊</div>
         <div class="form-group">
-          <label class="form-label">🔍 選擇物料（自動帶入編號/分類/供應商）</label>
-          <select class="form-input" id="pu-mat" onchange="onPickMaterial()"><option value="">— 載入中… 或直接手動輸入 —</option></select>
+          <label class="form-label">🔍 選擇物料（先選分類 → 再選物料，自動帶入編號/供應商）</label>
+          <div class="form-row">
+            <select class="form-input" id="pu-mat-cat" onchange="onPickMatCat()"><option value="">— 先選分類 —</option></select>
+            <select class="form-input" id="pu-mat" onchange="onPickMaterial()"><option value="">— 請先選分類，或直接手動輸入 —</option></select>
+          </div>
         </div>
         <div class="form-row">
           <div class="form-group">
@@ -1358,7 +1361,24 @@ async function submitRev() {
 // ── PURCHASE ──
 // 物料清單：優先讀「物料總表」(物料數據)，讀不到則用進貨歷史建立（purchase-order-tracker SKILL）
 let _materials=[],_matLoaded=false;
-function fillMatSelect(){const sel=$('pu-mat');if(!sel)return;sel.innerHTML='<option value="">— 直接手動輸入 / 選擇物料 —</option>'+_materials.map((m,i)=>`<option value="${i}">${esc((m.code?m.code+' ':'')+m.name+(m.supplier?(' ('+m.supplier+')'):''))}</option>`).join('');}
+function fillMatCatSelect(){
+  const sel=$('pu-mat-cat');if(!sel)return;
+  const cats=Array.from(new Set(_materials.map(m=>m.cat).filter(c=>c))).sort((a,b)=>a.localeCompare(b));
+  const hasNone=_materials.some(m=>!m.cat);
+  sel.innerHTML='<option value="">— 先選分類 —</option>'+cats.map(c=>`<option value="${esc(c)}">${esc(c)}</option>`).join('')+(hasNone?'<option value="__none">未分類</option>':'')+'<option value="__all">全部物料</option>';
+}
+function fillMatSelect(){
+  const sel=$('pu-mat');if(!sel)return;
+  const cat=($('pu-mat-cat')&&$('pu-mat-cat').value)||'';
+  let list=_materials.map((m,i)=>({m:m,i:i}));
+  if(cat==='__all'){/* 全部 */}
+  else if(cat==='__none')list=list.filter(x=>!x.m.cat);
+  else if(cat)list=list.filter(x=>x.m.cat===cat);
+  else list=[];
+  const prompt=cat?'— 選擇物料 —':'— 請先選分類，或直接手動輸入 —';
+  sel.innerHTML='<option value="">'+prompt+'</option>'+list.map(x=>`<option value="${x.i}">${esc((x.m.code?x.m.code+' ':'')+x.m.name+(x.m.supplier?(' ('+x.m.supplier+')'):''))}</option>`).join('');
+}
+function onPickMatCat(){if($('pu-mat'))$('pu-mat').value='';fillMatSelect();}
 async function loadMaterials(force){
   if(_matLoaded&&!force)return;
   try{
@@ -1371,7 +1391,7 @@ async function loadMaterials(force){
       arr=Object.keys(map).map(k=>map[k]);
     }
     _materials=arr.map(m=>({code:String(m.code||'').trim(),name:String(m.name||'').trim(),cat:String(m.cat||'').trim(),unit:String(m.unit||'').trim(),supplier:String(m.supplier||'').trim()})).filter(m=>m.code||m.name).sort((a,b)=>(a.code||'').localeCompare(b.code||''));
-    _matLoaded=true;fillMatSelect();
+    _matLoaded=true;fillMatCatSelect();fillMatSelect();
   }catch(e){}
 }
 function onPickMaterial(){
@@ -1398,7 +1418,7 @@ async function submitPu() {
   };
   try{
     const d=await api({type:'purchase',rows:[row]});
-    if(d.status==='success'){toast('✓ 進貨記錄已儲存','gold');['pu-name','pu-code','pu-cat','pu-qty','pu-cost','pu-ucost','pu-supplier'].forEach(id=>{if($(id))$(id).value=''});if($('pu-mat'))$('pu-mat').value='';loadMaterials(true);}
+    if(d.status==='success'){toast('✓ 進貨記錄已儲存','gold');['pu-name','pu-code','pu-cat','pu-qty','pu-cost','pu-ucost','pu-supplier'].forEach(id=>{if($(id))$(id).value=''});if($('pu-mat'))$('pu-mat').value='';if($('pu-mat-cat'))$('pu-mat-cat').value='';loadMaterials(true);}
     else toast(d.message||'送出失敗','red');
   }catch(e){toast('連線失敗','red');}
 }
