@@ -599,6 +599,14 @@ select.field-input option,select.form-input option{background:#fff!important;col
 .opt.sel{border-color:var(--gold);background:linear-gradient(145deg,#fff3e6,#ffe6cf);box-shadow:0 4px 12px rgba(255,122,26,.22);}
 .opt img{width:100%;height:100%;object-fit:contain;}
 .cc-scene{width:300px;max-width:88vw;height:300px;margin-bottom:8px;flex-shrink:0;}
+/* ===== 每日問答 ===== */
+.quiz-q{font-size:16px;font-weight:700;color:var(--text);margin:4px 0 14px;line-height:1.5;}
+.quiz-opts{display:flex;flex-direction:column;gap:10px;}
+.quiz-opt{text-align:left;padding:13px 16px;border:2px solid var(--border-2);background:#fff7ef;border-radius:14px;font-family:inherit;font-size:14px;font-weight:600;color:var(--text);cursor:pointer;transition:transform .12s,border-color .12s;}
+.quiz-opt:hover{transform:translateY(-2px);border-color:var(--gold);}
+.quiz-result{padding:13px 16px;border-radius:14px;font-weight:700;font-size:14px;margin-top:4px;}
+.quiz-result.ok{background:#e3f7ea;color:#2f9e5e;}
+.quiz-result.no{background:#fde6e6;color:#d64a4a;}
 
 /* ===== 📱 手機介面 ===== */
 @media(max-width:640px){
@@ -1018,10 +1026,12 @@ select.field-input option,select.form-input option{background:#fff!important;col
     <div class="tab-panel" id="tab-tasks">
       <div class="sec-header"><div class="sec-title">任務中心</div><div class="divider"></div><div class="sec-sub">完成任務拍照上傳，主管審核後獲得經驗值</div></div>
       <input type="file" id="task-file-input" accept="image/*" capture="environment" style="display:none">
+      <div id="quiz-wrap"></div>
       <div id="mgr-review-wrap"></div>
       <div class="c-card"><div class="c-card-title">🎯 可接任務</div><div id="task-list"></div></div>
       <div class="c-card"><div class="c-card-title">📸 我的上傳紀錄</div><div id="my-subs"></div></div>
       <div id="task-admin-wrap"></div>
+      <div id="quiz-admin-wrap"></div>
     </div>
 
     <!-- REWARDS TAB -->
@@ -1782,6 +1792,15 @@ function seedGame(){
     {id:'t6',icon:'🗑️',title:'垃圾分類與回收',xp:15},
   ]);
   if(!LS.get('rm_parts',null))LS.set('rm_parts',{});
+  if(!LS.get('rm_quiz',null))LS.set('rm_quiz',[
+    {id:'q1',q:'外場接到客訴時，第一步應該做什麼？',opts:['先誠懇道歉並傾聽','直接叫店長處理','假裝沒聽到','跟客人爭辯'],ans:0,xp:15},
+    {id:'q2',q:'處理生魚片最重要的原則是？',opts:['全程低溫與衛生','切得越快越好','擺盤越花俏越好','份量給超大'],ans:0,xp:15},
+    {id:'q3',q:'打烊結帳發現帳目對不起來，應該？',opts:['立即回報主管並記錄','自己默默補錢','明天再說','忽略它'],ans:0,xp:15},
+    {id:'q4',q:'食材「先進先出(FIFO)」的主要目的是？',opts:['減少過期與浪費','增加庫存量','方便擺放','沒特別目的'],ans:0,xp:15},
+    {id:'q5',q:'看到地板濕滑時應該？',opts:['立即清理並放警示牌','小心繞過去','等別人處理','下班再說'],ans:0,xp:15},
+    {id:'q6',q:'冰箱溫度檢查發現異常，正確做法是？',opts:['記錄並立即通報主管','關門當沒看到','自己亂調溫度','忽略'],ans:0,xp:15},
+    {id:'q7',q:'顧客點餐後，理想的上菜原則是？',opts:['兼顧速度與品質','越快越好不管品質','不重要','等廚房有空再說'],ans:0,xp:15},
+  ]);
   // 獎勵：版本升級時重置為最新預設（老闆之後可自行增刪）
   if(!LS.get('rm_rewards',null)||LS.get('rm_seed_v',0)<SEED_VER)LS.set('rm_rewards',[
     {id:'rw_meal',icon:'🍽️',title:'免費套餐券（家庭套餐）',cost:20,type:'perk'},
@@ -1954,6 +1973,7 @@ function startTask(taskId){_pendingTaskId=taskId;$('task-file-input').click();}
 function fmtTime(ts){const d=new Date(ts);const p=n=>String(n).padStart(2,'0');return `${p(d.getMonth()+1)}/${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}`;}
 
 function renderTasks(){
+  renderQuiz();renderQuizAdmin();
   const tasks=LS.get('rm_tasks',[]);
   $('task-list').innerHTML=tasks.map(t=>`
     <div class="task-card">
@@ -2014,6 +2034,68 @@ function addTask(){
   toast('✓ 已新增任務','gold');renderTasks();
 }
 function delTask(id){const tasks=LS.get('rm_tasks',[]).filter(t=>t.id!==id);LS.set('rm_tasks',tasks);toast('已刪除任務','red');renderTasks();}
+
+// ── 每日問答 ──
+function qzToday(){return new Date().toISOString().split('T')[0];}
+function todaysQuestion(){const qs=LS.get('rm_quiz',[]);if(!qs.length)return null;const dn=Math.floor(Date.parse(qzToday())/86400000);return qs[((dn%qs.length)+qs.length)%qs.length];}
+function renderQuiz(){
+  const wrap=$('quiz-wrap');if(!wrap)return;
+  const q=todaysQuestion();
+  if(!q){wrap.innerHTML='';return;}
+  const st=LS.get('rm_quiz_'+CU.username,{});
+  const done=st.date===qzToday()&&st.qid===q.id;
+  let body;
+  if(done){
+    body=`<div class="quiz-q">${q.q}</div><div class="quiz-result ${st.correct?'ok':'no'}">${st.correct?('✅ 答對了！已獲得 +'+q.xp+' XP'):('❌ 答錯了，正確答案：'+q.opts[q.ans])}</div><div class="muted-note" style="margin-top:8px">明天再來挑戰新題目！</div>`;
+  }else{
+    body=`<div class="quiz-q">${q.q}</div><div class="quiz-opts">`+q.opts.map((o,i)=>`<button class="quiz-opt" onclick="answerQuiz('${q.id}',${i})">${String.fromCharCode(65+i)}. ${o}</button>`).join('')+`</div>`;
+  }
+  wrap.innerHTML=`<div class="c-card"><div class="c-card-title">📅 每日問答（答對 +XP）</div>${body}</div>`;
+}
+function answerQuiz(qid,choice){
+  const q=todaysQuestion();if(!q||q.id!==qid)return;
+  const st=LS.get('rm_quiz_'+CU.username,{});
+  if(st.date===qzToday()&&st.qid===q.id)return; // 今天已作答
+  const correct=(choice===q.ans);
+  LS.set('rm_quiz_'+CU.username,{date:qzToday(),qid:q.id,correct});
+  if(correct){const r=awardXp(CU.username,q.xp);updateGameChip();toast('🎉 答對 +'+q.xp+' XP'+(r.leveledUp?('（升級 Lv.'+r.after+'！）'):''),'gold');}
+  else{toast('答錯了，明天再挑戰','red');}
+  renderQuiz();
+}
+// 老闆：問答管理
+function renderQuizAdmin(){
+  const wrap=$('quiz-admin-wrap');if(!wrap)return;
+  if(CU.role!=='BOSS'){wrap.innerHTML='';return;}
+  const qs=LS.get('rm_quiz',[]);
+  wrap.innerHTML=`<div class="c-card"><div class="c-card-title">🛠️ 每日問答管理（老闆）</div>
+    <div class="muted-note">系統每天自動輪播一題給員工作答。</div>
+    <div class="form-group"><label class="form-label">題目</label><input class="form-input" id="qz-q" placeholder="例：看到地板濕滑該怎麼做？"></div>
+    <div class="form-row">
+      <div class="form-group"><label class="form-label">選項 A（正確答案）</label><input class="form-input" id="qz-a" placeholder="正確答案"></div>
+      <div class="form-group"><label class="form-label">選項 B</label><input class="form-input" id="qz-b"></div>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label class="form-label">選項 C</label><input class="form-input" id="qz-c"></div>
+      <div class="form-group"><label class="form-label">選項 D</label><input class="form-input" id="qz-d"></div>
+    </div>
+    <div class="form-group"><label class="form-label">答對經驗值</label><input class="form-input" id="qz-xp" type="number" min="1" value="15"></div>
+    <button class="btn-action" onclick="addQuiz()">➕ 新增題目（A 為正解）</button>
+    <div style="margin-top:14px">${qs.map(x=>`<div class="sub-row"><div style="flex:1;min-width:0"><div class="tc-title" style="font-size:14px">${x.q}</div><div class="xp-text">正解：${x.opts[x.ans]} ・ +${x.xp} XP</div></div><button class="btn-sm btn-warn" onclick="delQuiz('${x.id}')">刪除</button></div>`).join('')||'<div class="muted-note">目前沒有題目</div>'}</div>
+  </div>`;
+}
+function addQuiz(){
+  const q=($('qz-q')&&$('qz-q').value.trim())||'';
+  const a=($('qz-a')&&$('qz-a').value.trim())||'';
+  const b=($('qz-b')&&$('qz-b').value.trim())||'';
+  const c=($('qz-c')&&$('qz-c').value.trim())||'';
+  const d=($('qz-d')&&$('qz-d').value.trim())||'';
+  const xp=Math.max(1,parseInt($('qz-xp')&&$('qz-xp').value)||15);
+  if(!q||!a||!b){toast('請至少填題目與選項 A、B','red');return;}
+  const opts=[a,b,c,d].filter(o=>o);
+  const list=LS.get('rm_quiz',[]);list.push({id:'q'+Date.now(),q,opts,ans:0,xp});LS.set('rm_quiz',list);
+  toast('✓ 已新增題目','gold');renderTasks();
+}
+function delQuiz(id){const list=LS.get('rm_quiz',[]).filter(x=>x.id!==id);LS.set('rm_quiz',list);toast('已刪除題目','red');renderTasks();}
 function reviewSub(id,ok){
   const subs=LS.get('rm_submissions',[]);const s=subs.find(x=>x.id===id);if(!s||s.status!=='pending')return;
   s.status=ok?'approved':'rejected';s.reviewer=CU.name;
