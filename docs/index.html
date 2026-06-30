@@ -2401,12 +2401,12 @@ function renderChProgress(){
   d.innerHTML=`<div class="c-card"><div class="c-card-title">🎯 今日業績挑戰（${dayType}）${db.done?'<span class="pill done">已達標 🎉</span>':''}</div>
     <div class="xp-text">今日營收 ${fmt(tRev)} ／ ${dayType}目標 ${dTarget?('$'+dTarget.toLocaleString()):'未設定'}</div>
     <div class="xp-bar" style="margin:8px 0"><div class="xp-fill" style="width:${db.pct}%"></div></div>
-    ${isMgr()?`<button class="btn-action" style="padding:10px 16px;${dCan?'':'opacity:.5'}" ${dCan?'':'disabled'} onclick="payChallenge('daily')">達標派發 +${cfg.dailyReward} 給今日上班人員（${rosterToday().length}人）</button>${paid.daily[bizDay()]?'<div class="muted-note" style="margin-top:6px">今日已派發 ✓</div>':''}`:''}
+    ${CU.role==='BOSS'?`<button class="btn-action" style="padding:10px 16px;${dCan?'':'opacity:.5'}" ${dCan?'':'disabled'} onclick="payChallenge('daily')">達標派發 +${cfg.dailyReward} 給今日上班人員（${rosterToday().length}人）</button>${paid.daily[bizDay()]?'<div class="muted-note" style="margin-top:6px">今日已派發 ✓</div>':''}`:''}
   </div>`;
   m.innerHTML=`<div class="c-card"><div class="c-card-title">📅 本月業績挑戰 ${mb.done?'<span class="pill done">已達標 🎉</span>':''}</div>
     <div class="xp-text">本月營收 ${fmt(mRev)} ／ 目標 ${cfg.monthlyTarget?('$'+cfg.monthlyTarget.toLocaleString()):'未設定'}</div>
     <div class="xp-bar" style="margin:8px 0"><div class="xp-fill" style="width:${mb.pct}%"></div></div>
-    ${isMgr()?`<button class="btn-action" style="padding:10px 16px;${mCan?'':'opacity:.5'}" ${mCan?'':'disabled'} onclick="payChallenge('monthly')">達標派發 +${cfg.monthlyReward} 給今日上班人員</button>${paid.monthly[monthKey()]?'<div class="muted-note" style="margin-top:6px">本月已派發 ✓</div>':''}`:''}
+    ${CU.role==='BOSS'?`<button class="btn-action" style="padding:10px 16px;${mCan?'':'opacity:.5'}" ${mCan?'':'disabled'} onclick="payChallenge('monthly')">達標派發 +${cfg.monthlyReward} 給全體員工</button>${paid.monthly[monthKey()]?'<div class="muted-note" style="margin-top:6px">本月已派發 ✓</div>':''}`:''}
   </div>`;
 }
 function fetchChRevenue(){
@@ -2419,10 +2419,10 @@ function fetchChRevenue(){
   }).catch(()=>{_chRev={today:null,month:null};renderChProgress();});
 }
 function payChallenge(kind){
-  const cfg=chCfg();const roster=rosterToday();
-  if(!roster.length){toast('請先設定今日上班人員','red');return;}
-  const paid=chPaid();
+  const cfg=chCfg();const paid=chPaid();
   if(kind==='daily'){
+    const roster=rosterToday();
+    if(!roster.length){toast('請先設定今日上班人員','red');return;}
     if(paid.daily[bizDay()]){toast('今日已派發','red');return;}
     const dT=dailyTargetNow();if(!(dT>0&&_chRev&&_chRev.today>=dT)){toast('今日尚未達標','red');return;}
     roster.forEach(u=>awardXp(u,cfg.dailyReward));paid.daily[bizDay()]=true;LS.set('rm_challenge_paid',paid);
@@ -2430,8 +2430,10 @@ function payChallenge(kind){
   }else{
     if(paid.monthly[monthKey()]){toast('本月已派發','red');return;}
     if(!(cfg.monthlyTarget>0&&_chRev&&_chRev.month>=cfg.monthlyTarget)){toast('本月尚未達標','red');return;}
-    roster.forEach(u=>awardXp(u,cfg.monthlyReward));paid.monthly[monthKey()]=true;LS.set('rm_challenge_paid',paid);
-    toast(`✓ 本月達標！已派發 +${cfg.monthlyReward} 給 ${roster.length} 人`,'gold');
+    const everyone=Object.keys(LS.get('rm_names',{})||{});
+    if(!everyone.length){toast('尚無員工資料','red');return;}
+    everyone.forEach(u=>awardXp(u,cfg.monthlyReward));paid.monthly[monthKey()]=true;LS.set('rm_challenge_paid',paid);
+    toast(`✓ 本月達標！已派發 +${cfg.monthlyReward} 給全體 ${everyone.length} 人`,'gold');
   }
   updateGameChip();renderChProgress();
 }
@@ -2859,7 +2861,7 @@ function renderRewards(){
     </div>`).join(''):'<div class="game-empty">還沒有兌換紀錄</div>';
 
   const wrap=$('mgr-redeem-wrap');
-  if(isMgr()){
+  if(CU.role==='BOSS'){
     const pend=reds.filter(x=>x.status==='pending').sort((a,b)=>a.ts-b.ts);
     wrap.innerHTML=`<div class="c-card"><div class="c-card-title">🛡️ 待處理兌換（主管實際執行）</div>${
       pend.length?pend.map(x=>`
