@@ -2958,10 +2958,10 @@ function renderTasks(){
     const claim=t.cat==='daily'?dailyClaim(t.id):null;
     let btn;
     if(claim){btn=`<span class="pill done">✅ 今日已完成（${esc(claim.userName)}）</span>`;}
-    else btn=t.type==='text'?`<button class="btn-action" style="padding:10px 16px" onclick="startTextTask('${t.id}')">✍️ 提交</button>`
-            :t.type==='sales'?`<button class="btn-action" style="padding:10px 16px" onclick="startSalesTask('${t.id}')">📊 輸入</button>`
-            :`<button class="btn-action" style="padding:10px 16px" onclick="startTask('${t.id}')">📸 拍照上傳</button>`;
-    return `<div class="task-card${claim?' locked':''}"><span class="tc-emoji">${cicon(t.icon)}</span><div class="tc-body"><div class="tc-title">${t.title} <span class="badge badge-pending">${catShort(t.cat)}</span></div><div class="tc-xp">${claim?'每日任務・每天限一人完成':xpTxt}</div></div>${btn}</div>`;
+    else btn=t.type==='text'?`<button class="btn-action" style="padding:10px 16px" onclick="startTextTask('${t.id}')">提交</button>`
+            :t.type==='sales'?`<button class="btn-action" style="padding:10px 16px" onclick="startSalesTask('${t.id}')">提交</button>`
+            :`<button class="btn-action" style="padding:10px 16px" onclick="startTask('${t.id}')">上傳圖片</button>`;
+    return `<div class="task-card${claim?' locked':''}"><div class="tc-body"><div class="tc-title">${esc(t.title)} <span class="badge badge-pending">${catShort(t.cat)}</span></div><div class="tc-xp">${claim?'每日任務・每天限一人完成':xpTxt}</div></div>${btn}</div>`;
   }).join('')||'<div class="game-empty">此分類目前沒有任務</div>';
   $('task-list').innerHTML=catRow+cards;
 
@@ -2998,12 +2998,12 @@ function renderTasks(){
 // 提交視窗（文字構想 / 賣最好最差輸入）
 let _subformTask=null;
 function startTextTask(id){const t=findTask(id);if(!t)return;if(dailyBlocked(id))return;_subformTask=t;
-  $('subform-title').innerHTML=cicon(t.icon)+' '+esc(t.title);
+  $('subform-title').innerHTML=esc(t.title);
   $('subform-body').innerHTML=`<label class="form-label">你的構想 / 建議</label><textarea class="form-input" id="sf-text" rows="6" placeholder="盡量寫清楚，主管審核通過就能得分！"></textarea>`;
   $('subform').classList.add('show');
 }
 function startSalesTask(id){const t=findTask(id);if(!t)return;if(dailyBlocked(id))return;_subformTask=t;
-  $('subform-title').innerHTML=cicon(t.icon)+' '+esc(t.title);
+  $('subform-title').innerHTML=esc(t.title);
   $('subform-body').innerHTML=`<label class="form-label">🔝 賣最好（前5名・一行一個）</label><textarea class="form-input" id="sf-best" rows="5" placeholder="鮭魚丼\n炙燒比目魚\n…"></textarea><label class="form-label" style="margin-top:10px">🔻 賣最差（前5名・一行一個）</label><textarea class="form-input" id="sf-worst" rows="5" placeholder="一行一個品項"></textarea>`;
   $('subform').classList.add('show');
 }
@@ -3034,17 +3034,16 @@ function renderTaskAdmin(){
     <div class="muted-note">${isBoss?'可新增各分類任務並設定分數。':'可新增「每日／搶分」任務內容；分數一律由老闆設定。'}</div>
     <div class="form-row">
       <div class="form-group"><label class="form-label">分類</label><select class="form-input" id="nt-cat" onchange="ntTypeSync()">${cats.map(c=>`<option value="${c.id}">${c.label}</option>`).join('')}</select></div>
-      <div class="form-group"><label class="form-label">圖示</label><select class="form-input" id="nt-icon">${CICON_OPTS}</select></div>
     </div>
     <div class="form-group"><label class="form-label">任務名稱</label><input class="form-input" id="nt-title" placeholder="例：擦拭玻璃門"></div>
     <div class="form-row">
-      <div class="form-group" id="nt-type-wrap"><label class="form-label">提交方式</label><select class="form-input" id="nt-type"><option value="photo">拍照上傳</option><option value="sales">賣最好/最差輸入</option></select></div>
+      <div class="form-group" id="nt-type-wrap"><label class="form-label">提交方式</label><select class="form-input" id="nt-type"><option value="photo">上傳圖片</option><option value="sales">提交</option></select></div>
       ${isBoss?'<div class="form-group"><label class="form-label">完成分數(XP)</label><input class="form-input" id="nt-xp" type="number" min="0" value="20"></div>':''}
     </div>
     <button class="btn-action" onclick="addTask()">➕ 新增任務</button>
     <div style="margin-top:14px">${TASK_CATS.map(c=>{
       const ts=tasks.filter(t=>t.cat===c.id);if(!ts.length)return '';
-      return `<div class="dress-label" style="margin-top:10px">${c.label}</div>`+ts.map(t=>`<div class="sub-row"><span class="tc-emoji">${cicon(t.icon)}</span><div style="flex:1;min-width:0"><div class="tc-title" style="font-size:14px">${esc(t.title)}${t.locked?' <span style="color:#800020;font-size:11px;font-weight:700">🔒必填</span>':''}</div><div class="xp-text">${({photo:'拍照',sales:'輸入',text:'文字'})[t.type]||'拍照'} ・ ${t.xp>0?('+'+t.xp+' XP'):'分數待定'}</div></div>${(isBoss&&!t.locked)?`<input class="form-input" style="width:62px;padding:6px;text-align:center" type="number" min="0" value="${t.xp||0}" title="分數" onchange="setTaskXp('${t.id}',this.value)">`:''}${t.locked?'':`<button class="btn-sm btn-warn" onclick="delTask('${t.id}')">刪</button>`}</div>`).join('');
+      return `<div class="dress-label" style="margin-top:10px">${c.label}</div>`+ts.map(t=>`<div class="sub-row"><div style="flex:1;min-width:0"><div class="tc-title" style="font-size:14px">${esc(t.title)}${t.locked?' <span style="color:#800020;font-size:11px;font-weight:700">🔒必填</span>':''}</div><div class="xp-text">${({photo:'拍照',sales:'輸入',text:'文字'})[t.type]||'拍照'} ・ ${t.xp>0?('+'+t.xp+' XP'):'分數待定'}</div></div>${(isBoss&&!t.locked)?`<input class="form-input" style="width:62px;padding:6px;text-align:center" type="number" min="0" value="${t.xp||0}" title="分數" onchange="setTaskXp('${t.id}',this.value)">`:''}${t.locked?'':`<button class="btn-sm btn-warn" onclick="delTask('${t.id}')">刪</button>`}</div>`).join('');
     }).join('')}</div>
   </div>`;
   ntTypeSync();
@@ -3053,7 +3052,7 @@ function ntTypeSync(){const s=$('nt-cat');const w=$('nt-type-wrap');if(!s||!w)re
 function addTask(){
   const isBoss=CU.role==='BOSS';
   const cat=($('nt-cat')&&$('nt-cat').value)||'daily';
-  const icon=($('nt-icon')&&$('nt-icon').value.trim())||'check';
+  const icon='';
   const title=($('nt-title')&&$('nt-title').value.trim())||'';
   if(!title){toast('請輸入任務名稱','red');return;}
   let type='photo'; if(cat==='rnd')type='text'; else if(cat==='daily')type=($('nt-type')&&$('nt-type').value)||'photo';
