@@ -553,6 +553,73 @@ select.field-input option,select.form-input option{background:#1c150d!important;
 .drawer-item.active{border:1px solid rgba(201,169,110,0.28);}
 .di-icon{font-size:17px;width:24px;text-align:center;}
 
+/* ═══════════════ 🍷 勃根地紅 × 米白（覆蓋前面深咖色）═══════════════ */
+:root{
+  --wine:#800020;--wine-2:#9a1730;--cream:#dcd2c6;--ink:#2b1519;
+  --gold:#800020;--gold-light:#9a1730;
+  --text:#2b1519;--text-2:rgba(43,21,25,0.62);--text-3:rgba(43,21,25,0.44);
+  --border:rgba(128,0,32,0.20);--border-2:rgba(128,0,32,0.14);
+}
+body,html{background:#33000e!important;color:var(--ink)!important;}
+#app{background:radial-gradient(1100px 720px at 85% -12%,#5c0018 0%,transparent 55%),linear-gradient(165deg,#4a0014 0%,#2c000b 100%)!important;}
+.scene-bg::after{background:linear-gradient(160deg,rgba(45,0,12,0.90),rgba(30,0,8,0.80) 50%,rgba(45,0,12,0.92))!important;}
+
+/* 卡片＝米白、文字＝深酒墨（高對比、清楚）*/
+.glass-card,.c-card,.stat-card,.kpi-card,.reward-card,.sub-row,.skin{
+  background:#ece4d8!important;border:1px solid rgba(128,0,32,0.16)!important;
+  box-shadow:0 12px 30px rgba(0,0,0,0.35)!important;color:var(--ink)!important;
+}
+.c-card-title,.sec-title,.cc-title{color:#800020!important;}
+.sec-sub,.muted-note,.kpi-label,.game-empty,.empty-state{color:var(--text-3)!important;}
+.kpi-val,.stat-value{color:#800020!important;}
+.kpi-note{color:var(--text-2)!important;}
+.divider{background:rgba(128,0,32,0.14)!important;}
+
+/* 頂欄（酒紅底、米白字）*/
+.topbar-title,.brand-name{color:#f3e9dc!important;-webkit-text-fill-color:#f3e9dc!important;}
+.brand-sub,.login-bg-caption{color:rgba(220,210,198,0.7)!important;}
+.user-badge{background:rgba(128,0,32,0.35)!important;border:1px solid rgba(220,210,198,0.25)!important;}
+.user-name{color:#eaddcc!important;}
+.user-avatar{background:linear-gradient(145deg,#9a1730,#5a0016)!important;color:#f3e9dc!important;}
+.btn-logout{background:rgba(220,210,198,0.14)!important;border:1px solid rgba(220,210,198,0.28)!important;color:#eaddcc!important;}
+.topbar-icon,.brand-icon{background:#f3e9dc!important;}
+
+/* 輸入框（米白底、深字）*/
+.field-input,.form-input{background:#f5efe6!important;border:1px solid rgba(128,0,32,0.22)!important;color:var(--ink)!important;}
+.field-input:focus,.form-input:focus{border-color:#800020!important;background:#fff!important;}
+.field-input::placeholder,.form-input::placeholder{color:var(--text-3)!important;}
+select.field-input option,select.form-input option{background:#f5efe6!important;color:var(--ink)!important;}
+
+/* 表格 */
+.data-table th{color:#800020!important;border-color:rgba(128,0,32,0.20)!important;background:rgba(128,0,32,0.05)!important;}
+.data-table td{border-color:rgba(128,0,32,0.10)!important;color:var(--text-2)!important;}
+
+/* 按鈕（酒紅）*/
+.btn-primary,.btn-action{background:linear-gradient(145deg,#9a1730,#800020)!important;color:#f3e9dc!important;border:none!important;box-shadow:0 8px 20px rgba(128,0,32,.28)!important;}
+.btn-sm.btn-neutral{background:#f0e8dc!important;border:1px solid rgba(128,0,32,0.22)!important;color:var(--ink)!important;}
+.refresh-btn,.range-btn{background:#f0e8dc!important;border:1px solid rgba(128,0,32,0.20)!important;color:var(--text-2)!important;}
+.range-btn.active{background:#800020!important;color:#f3e9dc!important;border-color:transparent!important;}
+
+/* 徽章 / 角色 chip */
+.game-chip{background:rgba(128,0,32,0.32)!important;border:1px solid rgba(220,210,198,0.3)!important;}
+.badge-active{background:rgba(60,150,90,0.18)!important;color:#2e7d4f!important;}
+.badge-pending{background:rgba(128,0,32,0.12)!important;color:#800020!important;}
+
+/* ── 抽屜（酒紅底、米白字、線性ICON）── */
+.hamb{background:rgba(220,210,198,0.14)!important;border:1px solid rgba(220,210,198,0.3)!important;color:#eaddcc!important;}
+.drawer-panel{background:linear-gradient(168deg,#4a0014,#28000a)!important;border-right:1px solid rgba(220,210,198,0.18)!important;}
+.drawer-sys{color:#f3e9dc!important;}
+.drawer-sys small{color:rgba(220,210,198,0.6)!important;}
+.drawer-close{background:rgba(220,210,198,0.12)!important;color:#eaddcc!important;}
+.drawer-label{color:rgba(220,210,198,0.55)!important;border-bottom:1px solid rgba(220,210,198,0.16)!important;}
+.drawer-item{color:#d8ccbb!important;}
+.drawer-item:hover,.drawer-item.active{background:rgba(220,210,198,0.12)!important;color:#f3e9dc!important;}
+.drawer-item.active{border:1px solid rgba(220,210,198,0.28)!important;}
+.di-icon{width:26px;display:flex;align-items:center;justify-content:center;color:#e0b7bf;}
+.di-icon svg{width:20px;height:20px;}
+/* 首頁磚上的線性 ICON */
+.fb-ico svg{width:30px;height:30px;stroke-width:1.5;color:#800020;}
+
 .btn-primary,.btn-action{background:linear-gradient(135deg,#ff9d3d,#ff6a1a)!important;color:#fff!important;border-radius:16px!important;box-shadow:0 8px 18px rgba(255,122,26,0.30)!important;letter-spacing:.04em;}
 .btn-primary:active,.btn-action:active{transform:translateY(1px) scale(.99);}
 .btn-logout{border:2px solid var(--border-2)!important;border-radius:99px!important;color:var(--text-2)!important;}
@@ -1383,7 +1450,7 @@ function initApp() {
       <span class="nav-icon">${t.icon}</span>${t.label}
     </button>`).join('');
   if($('drawer-list'))$('drawer-list').innerHTML=tabs.map((t,i)=>
-    `<button class="drawer-item${i===0?' active':''}" data-tab="${t.id}" onclick="goTab('${t.id}');closeDrawer()"><span class="di-icon">${t.icon}</span>${t.label}</button>`).join('');
+    `<button class="drawer-item${i===0?' active':''}" data-tab="${t.id}" onclick="goTab('${t.id}');closeDrawer()"><span class="di-icon">${tabIcon(t.id)}</span>${t.label}</button>`).join('');
   document.querySelectorAll('.tab-panel').forEach(p=>p.classList.remove('active'));
   $('tab-'+tabs[0].id).classList.add('active');
 
@@ -1424,6 +1491,24 @@ function switchTab(name,btn) {
 function goTab(id){const b=[...document.querySelectorAll('.nav-btn')].find(x=>x.dataset.tab===id);if(b)b.click();}
 function openDrawer(){const d=$('nav-drawer');if(d)d.classList.add('open');}
 function closeDrawer(){const d=$('nav-drawer');if(d)d.classList.remove('open');}
+// 線性 ICON（取代 tab emoji）
+function _svg(p){return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">'+p+'</svg>';}
+const ICONS={
+  home:_svg('<path d="M3 11l9-7 9 7"/><path d="M5 10v10h14V10"/>'),
+  revenue:_svg('<rect x="3" y="6" width="18" height="12" rx="2"/><circle cx="12" cy="12" r="2.2"/>'),
+  purchase:_svg('<path d="M3 7l9-4 9 4-9 4-9-4z"/><path d="M3 7v10l9 4 9-4V7"/><path d="M12 11v10"/>'),
+  reports:_svg('<path d="M4 4v16h16"/><path d="M8 15l3-4 3 2 4-6"/>'),
+  bom:_svg('<rect x="5" y="3" width="14" height="18" rx="2"/><path d="M8 7h8M8 11h2M12 11h4M8 15h4M15 15h1"/>'),
+  handover:_svg('<rect x="6" y="4" width="12" height="17" rx="2"/><path d="M9 4h6v3H9z"/><path d="M9 12h6M9 16h4"/>'),
+  handbook:_svg('<path d="M5 5a2 2 0 012-2h11v16H7a2 2 0 00-2 2z"/><path d="M9 7h6M9 11h5"/>'),
+  tasks:_svg('<circle cx="12" cy="12" r="9"/><path d="M8 12.5l2.5 2.5L16 9"/>'),
+  rewards:_svg('<rect x="4" y="9" width="16" height="11" rx="1.5"/><path d="M4 13h16M12 9v11"/><path d="M12 9C10.5 5.5 6.5 6.5 8.5 9M12 9c1.5-3.5 5.5-2.5 3.5 0"/>'),
+  challenge:_svg('<path d="M6 21V4h11l-2 3.5L17 11H6"/>'),
+  leaderboard:_svg('<path d="M8 4h8v3a4 4 0 01-8 0z"/><path d="M8 5H5.5v1.5A2.5 2.5 0 008 9M16 5h2.5v1.5A2.5 2.5 0 0116 9"/><path d="M10 15h4l1 4H9z"/>'),
+  character:_svg('<circle cx="12" cy="8" r="4"/><path d="M4.5 20a7.5 7.5 0 0115 0"/>'),
+  accounts:_svg('<circle cx="9" cy="9" r="3.2"/><path d="M3.5 19a5.5 5.5 0 0111 0"/><path d="M16 6.2a3.2 3.2 0 010 5.6M15.5 19a5.5 5.5 0 015.5-5.5"/>')
+};
+function tabIcon(id){return ICONS[id]||'';}
 
 // ── REVENUE CALC ──
 function calcRev() {
@@ -2383,7 +2468,7 @@ function renderHome(){
       <div class="xp-text">🎫 ${c.points} 點 ・ 經驗 ${c.xp} XP</div>
     </div>`;
   const btns=`<div class="home-btns">`+items.map(b=>
-    `<button class="float-btn" onclick="goTab('${b.id}')"><span class="fb-ico">${b.icon}</span><span class="fb-lbl">${b.label}</span></button>`).join('')+`</div>`;
+    `<button class="float-btn" onclick="goTab('${b.id}')"><span class="fb-ico">${tabIcon(b.id)}</span><span class="fb-lbl">${b.label}</span></button>`).join('')+`</div>`;
   const wide=window.innerWidth>=760;
   stage.className='home-stage '+(wide?'orbit':'stack');
   stage.innerHTML=center+btns;
