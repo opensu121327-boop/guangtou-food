@@ -825,7 +825,7 @@ img,canvas,table,video{max-width:100%;}
 .sec-title{color:#f3e9dc!important;}
 .cc-title{color:#f3e9dc!important;}
 .sec-sub,.home-name,.xp-text,.home-center,.hero-name{color:#efe6d6!important;}
-.home-name{color:#f3e9dc!important;}
+.home-name{color:#fdf6ea!important;text-shadow:0 2px 8px rgba(45,0,12,.85)!important;font-weight:800!important;}
 .brand-name{-webkit-text-fill-color:#f3e9dc!important;color:#f3e9dc!important;}
 /* 頂欄簡化：隱藏 logo/等級/使用者資訊，只留標題 */
 .topbar-icon,.game-chip,.user-badge{display:none!important;}
@@ -1248,7 +1248,7 @@ img,canvas,table,video{max-width:100%;}
     <!-- REWARDS TAB -->
     <div class="tab-panel" id="tab-rewards">
       <div class="sec-header"><div class="sec-title">獎勵商店</div><div class="divider"></div><div class="sec-sub">用點數兌換獎勵 ・ 每月 10 號截止、15 號發放（由主管實際執行）</div></div>
-      <div class="c-card"><div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px"><div class="c-card-title" style="margin:0">🎁 我的點數</div><span class="pts-pill" id="rw-balance">🎫 0 點</span></div></div>
+      <div class="c-card"><div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px"><div class="c-card-title" style="margin:0">🎁 我的 EXP</div><span class="pts-pill" id="rw-balance">0 EXP</span></div></div>
       <div class="c-card"><div class="c-card-title">🛒 可兌換</div><div id="reward-list"></div></div>
       <div class="c-card"><div class="c-card-title">🧾 我的兌換紀錄</div><div id="my-redeems"></div></div>
       <div id="mgr-redeem-wrap"></div>
@@ -2308,7 +2308,7 @@ function renderLeaderboard(){
     return `<div class="lb-row${me?' me':''}">
       <div class="lb-rank">${medals[i]||('#'+(i+1))}</div>
       <div class="lb-ava">${renderAvatar(r.avatar,r.lv)}</div>
-      <div style="flex:1;min-width:0"><div class="lb-name">${esc(r.name)}${me?'（我）':''}</div><div class="xp-text">Lv.${r.lv} ・ 🎫 ${r.points} 點 ・ ✅ ${r.tasksDone} 件</div></div>
+      <div style="flex:1;min-width:0"><div class="lb-name">${esc(r.name)}${me?'（我）':''}</div><div class="xp-text">Lv.${r.lv} ・ ${r.points} EXP ・ ✅ ${r.tasksDone} 件</div></div>
       <div class="lb-xp">${r.xp}<span> XP</span></div>
     </div>`;
   }).join('');
@@ -2317,11 +2317,10 @@ function charExtraHTML(c,lv){
   const today=bizDay();const checked=c.lastCheckin===today;
   return `<div class="c-card-title">🎮 我的狀態</div>
     <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">
-      <span class="pts-pill">🎫 ${c.points} 點</span>
+      <span class="pts-pill">${c.points} EXP</span>
       <span class="xp-text">✅ 已完成任務 ${c.tasksDone} 件</span>
-      <button class="btn-action" style="padding:9px 18px${checked?';opacity:.5':''}" ${checked?'disabled':''} onclick="dailyCheckin()">${checked?'今日已簽到 ✓':'每日簽到 +10 XP'}</button>
-    </div>
-    <div class="muted-note" style="margin-top:12px">🎖️ 等級裝備：${equipNote(lv)}</div>`;
+      <button class="btn-action" style="padding:9px 18px${checked?';opacity:.5':''}" ${checked?'disabled':''} onclick="dailyCheckin()">${checked?'今日已簽到 ✓':'每日簽到 +10 EXP'}</button>
+    </div>`;
 }
 function setAvatarColor(key,val){const c=getChar();c.avatar[key]=val;saveChar(c);updateScenes();updateGameChip();if(_dressCat==='bg')refreshDressOptions();const hm=$('tab-home');if(hm&&hm.classList.contains('active'))renderHome();}
 function pickPart(cat,id){const c=getChar();c.avatar.parts[cat]=id;saveChar(c);updateScenes();updateGameChip();document.querySelectorAll('.opt[data-cat="'+cat+'"]').forEach(el=>el.classList.toggle('sel',el.dataset.id===id));const hm=$('tab-home');if(hm&&hm.classList.contains('active'))renderHome();}
@@ -2431,7 +2430,7 @@ function updateGameChip(){
     const tr=document.querySelector('.topbar-right');if(tr)tr.insertBefore(chip,tr.firstChild);
   }
   const face=`<span class="gc-emoji" style="width:26px;height:26px;border-radius:50%;overflow:hidden;display:inline-block">${renderAvatar(c.avatar,lv)}</span>`;
-  chip.innerHTML=`${face}<span class="gc-lv">Lv.${lv}</span><span class="gc-pts">🎫${c.points}</span>`;
+  chip.innerHTML=`${face}<span class="gc-lv">Lv.${lv}</span><span class="gc-pts">${c.points}</span>`;
 }
 
 // ── 我的角色（換裝編輯器）──
@@ -2441,7 +2440,7 @@ function renderCharacter(){
   if($('dcat-row'))$('dcat-row').innerHTML=dressTabs(_dressCat);
   if($('dress-options'))$('dress-options').innerHTML=dressOptions(_dressCat);
   if($('char-extra'))$('char-extra').innerHTML=charExtraHTML(c,lv);
-  renderPartAdmin();
+  if($('skin-admin-wrap'))$('skin-admin-wrap').innerHTML='';
 }
 
 // 老闆：部件管理（分類上傳圖片）
@@ -2501,7 +2500,7 @@ function renderHome(){
       <div class="home-avatar">${renderAvatar(c.avatar,lv)}</div>
       <div class="home-name">${CU.name} <span class="lv-badge">⭐ Lv.${lv}</span></div>
       <div class="xp-bar" style="max-width:240px;margin:10px auto 4px"><div class="xp-fill" style="width:${pct}%"></div></div>
-      <div class="xp-text">🎫 ${c.points} 點 ・ 經驗 ${c.xp} XP</div>
+      <div class="xp-text">${c.points} EXP</div>
     </div>`;
   const btns=`<div class="home-btns">`+items.map(b=>
     `<button class="float-btn" onclick="goTab('${b.id}')"><span class="fb-ico">${tabIcon(b.id)}</span><span class="fb-lbl">${b.label}</span></button>`).join('')+`</div>`;
@@ -3070,14 +3069,14 @@ function reviewSub(id,ok){
 // ── 獎勵商店 ──
 function renderRewards(){
   const c=getChar();
-  $('rw-balance').textContent='🎫 '+c.points+' 點';
+  $('rw-balance').textContent=c.points+' EXP';
   const rewards=LS.get('rm_rewards',[]);
   $('reward-list').innerHTML=rewards.map(r=>{
     const afford=c.points>=r.cost;
     return `<div class="reward-card">
       <span class="tc-emoji">${cicon(r.icon)}</span>
-      <div class="tc-body"><div class="tc-title">${r.title}</div><div class="tc-xp">需要 ${r.cost} 點</div></div>
-      <button class="btn-action" style="padding:10px 16px;${afford?'':'opacity:.45'}" ${afford?'':'disabled'} onclick="redeem('${r.id}')">🎫 ${r.cost} 兌換</button></div>`;
+      <div class="tc-body"><div class="tc-title">${r.title}</div><div class="tc-xp">需要 ${r.cost} EXP</div></div>
+      <button class="btn-action" style="padding:10px 16px;${afford?'':'opacity:.45'}" ${afford?'':'disabled'} onclick="redeem('${r.id}')">${r.cost} EXP 兌換</button></div>`;
   }).join('');
 
   const reds=LS.get('rm_redemptions',[]);
@@ -3085,7 +3084,7 @@ function renderRewards(){
   $('my-redeems').innerHTML=mine.length?mine.map(x=>`
     <div class="sub-row"><span class="tc-emoji">${cicon(x.icon)}</span>
       <div style="flex:1;min-width:0"><div class="tc-title" style="font-size:14px">${x.title}</div>
-        <div class="xp-text">${fmtTime(x.ts)} ・ -${x.cost} 點</div></div>
+        <div class="xp-text">${fmtTime(x.ts)} ・ -${x.cost} EXP</div></div>
       <span class="pill ${x.status}">${({pending:'待主管處理',done:'已發放 ✓'})[x.status]}</span>
     </div>`).join(''):'<div class="game-empty">還沒有兌換紀錄</div>';
 
@@ -3096,7 +3095,7 @@ function renderRewards(){
       pend.length?pend.map(x=>`
       <div class="sub-row"><span class="tc-emoji">${cicon(x.icon)}</span>
         <div style="flex:1;min-width:0"><div class="tc-title" style="font-size:14px">${x.title}</div>
-          <div class="xp-text">${x.userName} ・ ${fmtTime(x.ts)} ・ ${x.cost} 點</div></div>
+          <div class="xp-text">${x.userName} ・ ${fmtTime(x.ts)} ・ ${x.cost} EXP</div></div>
         <button class="btn-sm btn-approve" onclick="markRedeemDone('${x.id}')">✓ 已發放</button>
       </div>`).join(''):'<div class="game-empty">沒有待處理的兌換</div>'
     }</div>`;
@@ -3114,7 +3113,7 @@ function renderRewardAdmin(){
     </div>
     <div class="form-group"><label class="form-label">獎勵名稱</label><input class="form-input" id="nr-title" placeholder="例：電影票一張"></div>
     <button class="btn-action" onclick="addReward()">➕ 新增獎勵</button>
-    <div style="margin-top:14px">${rewards.map(r=>`<div class="sub-row"><span class="tc-emoji">${cicon(r.icon)}</span><div style="flex:1;min-width:0"><div class="tc-title" style="font-size:14px">${r.title}</div><div class="xp-text">${r.cost} 點${r.type==='skin'?' ・ 皮膚':''}</div></div><button class="btn-sm btn-warn" onclick="delReward('${r.id}')">刪除</button></div>`).join('')||'<div class="muted-note">目前沒有獎勵</div>'}</div>
+    <div style="margin-top:14px">${rewards.map(r=>`<div class="sub-row"><span class="tc-emoji">${cicon(r.icon)}</span><div style="flex:1;min-width:0"><div class="tc-title" style="font-size:14px">${r.title}</div><div class="xp-text">${r.cost} EXP${r.type==='skin'?' ・ 皮膚':''}</div></div><button class="btn-sm btn-warn" onclick="delReward('${r.id}')">刪除</button></div>`).join('')||'<div class="muted-note">目前沒有獎勵</div>'}</div>
   </div>`;
 }
 function addReward(){
@@ -3129,7 +3128,7 @@ function delReward(id){const rewards=LS.get('rm_rewards',[]).filter(r=>r.id!==id
 function redeem(id){
   const rewards=LS.get('rm_rewards',[]);const r=rewards.find(x=>x.id===id);if(!r)return;
   const c=getChar();
-  if(c.points<r.cost){toast('點數不足','red');return;}
+  if(c.points<r.cost){toast('EXP 不足','red');return;}
   c.points-=r.cost;saveChar(c);
   const reds=LS.get('rm_redemptions',[]);
   reds.push({id:'rd'+Date.now(),rewardId:r.id,title:r.title,icon:r.icon,cost:r.cost,
