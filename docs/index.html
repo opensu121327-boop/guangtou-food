@@ -3038,7 +3038,7 @@ function renderTaskAdmin(){
     </div>
     <div class="form-group"><label class="form-label">任務名稱</label><input class="form-input" id="nt-title" placeholder="例：擦拭玻璃門"></div>
     <div class="form-row">
-      <div class="form-group" id="nt-type-wrap"><label class="form-label">提交方式</label><select class="form-input" id="nt-type"><option value="photo">上傳圖片</option><option value="sales">提交</option></select></div>
+      <div class="form-group" id="nt-type-wrap"><label class="form-label">提交方式</label><select class="form-input" id="nt-type"><option value="photo">上傳圖片</option><option value="text">文字提交</option></select></div>
       ${isBoss?'<div class="form-group"><label class="form-label">完成分數(XP)</label><input class="form-input" id="nt-xp" type="number" min="0" value="20"></div>':''}
     </div>
     <button class="btn-action" onclick="addTask()">➕ 新增任務</button>
@@ -3049,14 +3049,14 @@ function renderTaskAdmin(){
   </div>`;
   ntTypeSync();
 }
-function ntTypeSync(){const s=$('nt-cat');const w=$('nt-type-wrap');if(!s||!w)return;w.style.display=(s.value==='daily')?'':'none';}
+function ntTypeSync(){const w=$('nt-type-wrap');if(w)w.style.display='';}
 function addTask(){
   const isBoss=CU.role==='BOSS';
   const cat=($('nt-cat')&&$('nt-cat').value)||'daily';
   const icon='';
   const title=($('nt-title')&&$('nt-title').value.trim())||'';
   if(!title){toast('請輸入任務名稱','red');return;}
-  let type='photo'; if(cat==='rnd')type='text'; else if(cat==='daily')type=($('nt-type')&&$('nt-type').value)||'photo';
+  let type=($('nt-type')&&$('nt-type').value)||'photo';
   const xp=isBoss?Math.max(0,parseInt($('nt-xp')&&$('nt-xp').value)||0):0;
   const tasks=LS.get('rm_tasks',[]);tasks.push({id:'t'+Date.now(),icon,title,xp,cat,type});LS.set('rm_tasks',tasks);
   toast(isBoss?'✓ 已新增任務':'✓ 已新增（分數待老闆設定）','gold');renderTasks();
