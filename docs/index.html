@@ -7,7 +7,7 @@
 <link rel="icon" type="image/png" href="logo.png">
 <link rel="apple-touch-icon" href="logo.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Noto+Sans+TC:wght@300;400;500;600;700;800&family=Fredoka:wght@500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Noto+Sans+TC:wght@300;400;500;600;700;800&family=Noto+Serif+TC:wght@500;600;700;900&family=Fredoka:wght@500;600;700&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/pinyin-pro@3.26.0/dist/index.js"></script>
 <style>
@@ -475,6 +475,84 @@ input[type="date"],input[type="time"],input[type="datetime-local"]{-webkit-appea
 input[type="date"].form-input,input[type="time"].form-input,input[type="datetime-local"].form-input{text-align:left;min-height:0;line-height:1.4;}
 input[type="date"]::-webkit-date-and-time-value{text-align:left;}
 
+/* ═══════════════ 🖤 深色高級感 OVERRIDE（營運系統 OS 風）═══════════════ */
+:root{
+  --gold:#c9a96e;--gold-light:#e2c48c;--gold-dim:rgba(201,169,110,0.12);
+  --text:#efe6d6;--text-2:rgba(239,230,214,0.66);--text-3:rgba(239,230,214,0.42);
+  --border:rgba(201,169,110,0.22);--border-2:rgba(201,169,110,0.14);
+}
+body,html{background:#0e0a06!important;color:var(--text)!important;font-family:'Noto Sans TC','Inter',sans-serif!important;}
+.brand-name,.topbar-title,.sec-title,.c-card-title,.cc-title,.hero-name,.drawer-sys,.kpi-val{font-family:'Noto Serif TC','Noto Sans TC',serif!important;letter-spacing:.02em;}
+#app{background:radial-gradient(1200px 720px at 85% -12%,#241a0f 0%,transparent 58%),linear-gradient(165deg,#17110b 0%,#0d0906 100%)!important;}
+.content{background:transparent!important;}
+.noise{opacity:0.02!important;}
+.scene-bg::after{background:linear-gradient(160deg,rgba(8,6,3,0.90),rgba(8,6,3,0.78) 50%,rgba(8,6,3,0.92))!important;}
+
+/* 卡片 */
+.glass-card,.c-card,.stat-card,.kpi-card,.reward-card,.sub-row,.skin{
+  background:linear-gradient(162deg,rgba(44,33,20,0.94),rgba(28,21,13,0.94))!important;
+  border:1px solid rgba(201,169,110,0.20)!important;border-radius:18px!important;
+  box-shadow:0 14px 32px rgba(0,0,0,0.45)!important;color:var(--text)!important;backdrop-filter:none!important;
+}
+.c-card-title,.sec-title,.cc-title{color:#f3ead9!important;}
+.sec-sub,.muted-note{color:var(--text-3)!important;}
+.kpi-label{color:var(--text-3)!important;text-transform:uppercase;letter-spacing:.14em;font-size:10px;}
+.kpi-val,.stat-value{color:var(--gold-light)!important;}
+.kpi-note{color:var(--text-2)!important;}
+.divider{background:rgba(201,169,110,0.14)!important;}
+
+/* 頂欄 */
+.topbar-title,.brand-name{-webkit-text-fill-color:#f3ead9!important;color:#f3ead9!important;}
+.brand-sub,.login-bg-caption{color:rgba(201,169,110,0.55)!important;}
+.user-badge{background:rgba(44,33,20,0.9)!important;border:1px solid rgba(201,169,110,0.22)!important;}
+.user-name{color:var(--text-2)!important;}
+.user-avatar{background:linear-gradient(145deg,#c9a96e,#8f6f3e)!important;color:#1a1206!important;}
+.btn-logout{background:rgba(44,33,20,0.9)!important;border:1px solid rgba(201,169,110,0.22)!important;color:var(--text-2)!important;}
+.topbar-icon,.brand-icon{background:#241a10!important;box-shadow:0 6px 16px rgba(0,0,0,.4)!important;}
+
+/* 舊的頂部橫向導覽列隱藏，改用抽屜 */
+.nav-bar{display:none!important;}
+
+/* 輸入框 */
+.field-input,.form-input{background:rgba(18,13,8,0.92)!important;border:1px solid rgba(201,169,110,0.22)!important;color:var(--text)!important;border-radius:12px!important;}
+.field-input:focus,.form-input:focus{border-color:var(--gold)!important;background:rgba(28,21,13,1)!important;}
+.field-input::placeholder,.form-input::placeholder{color:var(--text-3)!important;}
+select.field-input option,select.form-input option{background:#1c150d!important;color:var(--text)!important;}
+
+/* 表格 */
+.data-table th{color:var(--gold-light)!important;border-color:rgba(201,169,110,0.20)!important;background:rgba(201,169,110,0.05)!important;}
+.data-table td{border-color:rgba(201,169,110,0.10)!important;color:var(--text-2)!important;}
+
+/* 按鈕 */
+.btn-primary,.btn-action{background:linear-gradient(145deg,#d9b877,#a5834a)!important;color:#1a1206!important;border:none!important;font-weight:700!important;}
+.btn-sm.btn-neutral{background:rgba(44,33,20,0.92)!important;border:1px solid rgba(201,169,110,0.22)!important;color:var(--text)!important;}
+.refresh-btn,.range-btn{background:rgba(44,33,20,0.85)!important;border:1px solid rgba(201,169,110,0.20)!important;color:var(--text-2)!important;}
+.range-btn.active{background:linear-gradient(145deg,#c9a96e,#8f6f3e)!important;color:#1a1206!important;border-color:transparent!important;}
+
+/* 角色 chip / 徽章 */
+.game-chip{background:rgba(44,33,20,0.92)!important;border:1px solid rgba(201,169,110,0.30)!important;}
+.badge-active{background:rgba(60,186,110,0.16)!important;color:#7fe0a5!important;}
+.badge-pending{background:rgba(201,169,110,0.16)!important;color:#e2c48c!important;}
+
+/* ── ALL PAGES 抽屜選單 ── */
+.hamb{background:rgba(44,33,20,0.85);border:1px solid rgba(201,169,110,0.28);color:#e2c48c;width:42px;height:42px;border-radius:12px;font-size:18px;cursor:pointer;flex-shrink:0;margin-right:10px;display:flex;align-items:center;justify-content:center;}
+.hamb:active{background:rgba(201,169,110,0.2);}
+#nav-drawer{position:fixed;inset:0;z-index:200;visibility:hidden;}
+#nav-drawer.open{visibility:visible;}
+.drawer-backdrop{position:absolute;inset:0;background:rgba(0,0,0,0.55);opacity:0;transition:opacity .25s;}
+#nav-drawer.open .drawer-backdrop{opacity:1;}
+.drawer-panel{position:absolute;left:0;top:0;bottom:0;width:84%;max-width:340px;background:linear-gradient(168deg,#1d160d,#0f0b07);border-right:1px solid rgba(201,169,110,0.22);box-shadow:10px 0 40px rgba(0,0,0,.6);transform:translateX(-100%);transition:transform .3s cubic-bezier(.4,0,.2,1);padding:22px 16px;overflow-y:auto;}
+#nav-drawer.open .drawer-panel{transform:translateX(0);}
+.drawer-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;}
+.drawer-sys{font-size:19px;color:#f3ead9;font-weight:600;}
+.drawer-sys small{display:block;font-size:9px;letter-spacing:.3em;color:rgba(201,169,110,0.55);margin-bottom:4px;font-family:'Inter';}
+.drawer-close{background:rgba(201,169,110,0.12);border:none;color:#e2c48c;width:36px;height:36px;border-radius:10px;font-size:15px;cursor:pointer;}
+.drawer-label{font-size:11px;letter-spacing:0.24em;color:rgba(201,169,110,0.55);margin:18px 4px 10px;border-bottom:1px solid rgba(201,169,110,0.14);padding-bottom:10px;}
+.drawer-item{display:flex;align-items:center;gap:13px;width:100%;text-align:left;background:transparent;border:none;color:#d9ccb8;font-size:15.5px;padding:13px 12px;border-radius:12px;cursor:pointer;font-family:inherit;transition:background .15s;}
+.drawer-item:hover,.drawer-item.active{background:rgba(201,169,110,0.12);color:#f3ead9;}
+.drawer-item.active{border:1px solid rgba(201,169,110,0.28);}
+.di-icon{font-size:17px;width:24px;text-align:center;}
+
 .btn-primary,.btn-action{background:linear-gradient(135deg,#ff9d3d,#ff6a1a)!important;color:#fff!important;border-radius:16px!important;box-shadow:0 8px 18px rgba(255,122,26,0.30)!important;letter-spacing:.04em;}
 .btn-primary:active,.btn-action:active{transform:translateY(1px) scale(.99);}
 .btn-logout{border:2px solid var(--border-2)!important;border-radius:99px!important;color:var(--text-2)!important;}
@@ -738,6 +816,7 @@ img,canvas,table,video{max-width:100%;}
 <div id="app">
   <!-- Top bar -->
   <div class="topbar">
+    <button class="hamb" onclick="openDrawer()" aria-label="選單">☰</button>
     <div class="topbar-brand">
       <div class="topbar-icon"><img src="logo.png" alt=""></div>
       <div class="topbar-title">光頭餐飲集團</div>
@@ -754,6 +833,19 @@ img,canvas,table,video{max-width:100%;}
 
   <!-- Nav -->
   <div class="nav-bar" id="main-nav"></div>
+
+  <!-- ALL PAGES 抽屜選單 -->
+  <div id="nav-drawer">
+    <div class="drawer-backdrop" onclick="closeDrawer()"></div>
+    <div class="drawer-panel">
+      <div class="drawer-top">
+        <div class="drawer-sys"><small>SYSTEM</small>光頭營運系統 OS</div>
+        <button class="drawer-close" onclick="closeDrawer()">✕</button>
+      </div>
+      <div class="drawer-label">ALL PAGES</div>
+      <div id="drawer-list"></div>
+    </div>
+  </div>
 
   <!-- Content -->
   <div class="content">
@@ -1290,6 +1382,8 @@ function initApp() {
     `<button class="nav-btn${i===0?' active':''}" data-tab="${t.id}" onclick="switchTab('${t.id}',this)">
       <span class="nav-icon">${t.icon}</span>${t.label}
     </button>`).join('');
+  if($('drawer-list'))$('drawer-list').innerHTML=tabs.map((t,i)=>
+    `<button class="drawer-item${i===0?' active':''}" data-tab="${t.id}" onclick="goTab('${t.id}');closeDrawer()"><span class="di-icon">${t.icon}</span>${t.label}</button>`).join('');
   document.querySelectorAll('.tab-panel').forEach(p=>p.classList.remove('active'));
   $('tab-'+tabs[0].id).classList.add('active');
 
@@ -1325,8 +1419,11 @@ function switchTab(name,btn) {
   if(name==='handbook')renderHandbook();
   if(name==='challenge')renderChallenge();
   if(name==='home')renderHome();
+  document.querySelectorAll('.drawer-item').forEach(b=>b.classList.toggle('active',b.dataset.tab===name));
 }
 function goTab(id){const b=[...document.querySelectorAll('.nav-btn')].find(x=>x.dataset.tab===id);if(b)b.click();}
+function openDrawer(){const d=$('nav-drawer');if(d)d.classList.add('open');}
+function closeDrawer(){const d=$('nav-drawer');if(d)d.classList.remove('open');}
 
 // ── REVENUE CALC ──
 function calcRev() {
