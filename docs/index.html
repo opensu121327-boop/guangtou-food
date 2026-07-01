@@ -1280,7 +1280,7 @@ body,html,button,input,select,textarea,.brand-name,.topbar-title,.sec-title,.c-c
         <div class="form-group"><label class="form-label">其他備註（選填）</label><input class="form-input" id="ho-note" type="text" placeholder="其他補充"></div>
         <button class="btn-action" onclick="submitHandover()">✓ 送出交接表</button>
       </div>
-      <div class="c-card"><div class="c-card-title">📜 交接紀錄</div><div class="muted-note">⚠️ 目前僅顯示本機紀錄；接後台同步後跨手機共用。</div><div id="ho-list"></div></div>
+      <div class="c-card"><div class="c-card-title">📜 交接紀錄</div><div class="muted-note">☁️ 已雲端同步，全店跨手機共用、永久保存於 Google Sheet。</div><div id="ho-list"></div></div>
     </div>
 
     <!-- HANDBOOK TAB -->
@@ -1293,7 +1293,7 @@ body,html,button,input,select,textarea,.brand-name,.topbar-title,.sec-title,.c-c
     <!-- CHALLENGE TAB -->
     <div class="tab-panel" id="tab-challenge">
       <div class="sec-header"><div class="sec-title">共同挑戰</div><div class="divider"></div><div class="sec-sub">全店業績目標達標，當日上班人員一起加分</div></div>
-      <div class="c-card"><div class="muted-note">業績取自 Google Sheet 營收；「上班名單／點數派發」目前存本機，跨裝置同步後全店一致。</div></div>
+      <div class="c-card"><div class="muted-note">業績取自 Google Sheet 營收；上班名單／點數派發已雲端同步，全店一致。</div></div>
       <div id="ch-daily"></div>
       <div id="ch-monthly"></div>
       <div id="ch-roster"></div>
@@ -1303,7 +1303,7 @@ body,html,button,input,select,textarea,.brand-name,.topbar-title,.sec-title,.c-c
     <!-- LEADERBOARD TAB -->
     <div class="tab-panel" id="tab-leaderboard">
       <div class="sec-header"><div class="sec-title">排行榜</div><div class="divider"></div><div class="sec-sub">依累積經驗值排名</div></div>
-      <div class="c-card"><div class="muted-note">⚠️ 目前僅顯示「在這台裝置登入過」的人；接後台同步後會顯示全部員工。</div><div id="lb-list"></div></div>
+      <div class="c-card"><div class="muted-note">☁️ 已雲端同步，顯示全店員工（每位員工登入過即會出現）。</div><div id="lb-list"></div></div>
     </div>
 
     <!-- CHARACTER TAB -->
@@ -1362,7 +1362,7 @@ body,html,button,input,select,textarea,.brand-name,.topbar-title,.sec-title,.c-c
 
 <script>
 // ── 自動更新：開啟時比對版本，有新版就自動重載（免無痕）──
-const APP_VER='20260702011320';
+const APP_VER='20260702012805';
 function checkVersion(){try{fetch('ver.txt?_='+Date.now(),{cache:'no-store'}).then(function(r){return r.ok?r.text():null;}).then(function(v){if(!v)return;v=v.trim();if(v&&v!==APP_VER&&location.search.indexOf('v='+v)<0){location.replace(location.pathname+'?v='+encodeURIComponent(v));}}).catch(function(){});}catch(e){}}
 checkVersion();
 document.addEventListener('visibilitychange',function(){if(document.visibilityState==='visible')checkVersion();});
@@ -2920,7 +2920,7 @@ function renderHbAdmin(){
   if(!isMgr()){wrap.innerHTML='';return;}
   const list=LS.get('rm_handbook',[])||[];
   wrap.innerHTML=`<div class="c-card"><div class="c-card-title">🛠️ 守則管理（老闆／店長）</div>
-    <div class="muted-note">⚠️ 目前僅顯示本機；接後台同步後全員手機都看得到。</div>
+    <div class="muted-note">☁️ 已雲端同步，發布後全員手機都看得到。</div>
     <div class="form-group"><label class="form-label">標題</label><input class="form-input" id="hb-title" placeholder="例：上班服裝規定"></div>
     <div class="form-group"><label class="form-label">內容</label><textarea class="form-input" id="hb-body" rows="5" placeholder="輸入守則內容（可多行）"></textarea></div>
     <button class="btn-action" onclick="addHbSection()">➕ 發布守則</button>
@@ -2938,10 +2938,26 @@ function delHbSection(id){const list=(LS.get('rm_handbook',[])||[]).filter(s=>s.
 
 // ── 交接表 ──
 const HANDOVER_XP=25;
-function renderHandover(){
+async function renderHandover(){
   if($('ho-date'))$('ho-date').value=bizDay();
   const wrap=$('ho-list');if(!wrap)return;
-  const list=(LS.get('rm_handovers',[])||[]).slice().sort((a,b)=>b.ts-a.ts);
+  let list=(LS.get('rm_handovers',[])||[]).slice();
+  if(syncOn()){
+    try{
+      const d=await authApi({type:'query_handover'});
+      if(d&&(d.status==='ok'||d.status==='success')&&d.rows&&d.rows.length>1){
+        const cloud=d.rows.slice(1).map(r=>({
+          ts:Number(r[10])||Date.parse(r[0])||0,date:normDate(r[1]),by:String(r[2]||''),
+          stock:String(r[3]||''),complaint:String(r[4]||''),equip:String(r[5]||''),
+          waste:String(r[6]||''),note:String(r[7]||''),byUser:String(r[8]||''),
+          id:String(r[9]||('c'+(Number(r[10])||0)))
+        }));
+        const seen=new Set(cloud.map(h=>h.id));
+        list=cloud.concat(list.filter(h=>!seen.has(h.id)));  // 雲端為準，補上尚未上傳的本機紀錄
+      }
+    }catch(e){/* 離線 → 只顯示本機 */}
+  }
+  list=list.sort((a,b)=>b.ts-a.ts);
   const sec=(emoji,lab,val)=>val?`<div style="margin-top:4px"><b>${emoji} ${lab}</b><div class="muted-note" style="margin:2px 0 0;white-space:pre-wrap">${esc(val)}</div></div>`:'';
   wrap.innerHTML=list.length?list.map(h=>`<div class="sub-row" style="flex-direction:column;align-items:stretch;gap:2px">
     <div style="display:flex;justify-content:space-between;flex-wrap:wrap;gap:6px"><div class="tc-title" style="font-size:14px">📅 ${esc(h.date)}</div><div class="xp-text">${esc(h.by)} ・ ${fmtTime(h.ts)}</div></div>
@@ -2959,8 +2975,11 @@ function submitHandover(){
   const note=($('ho-note')&&$('ho-note').value.trim())||'';
   if(!stock&&!complaint&&!equip&&!waste){toast('請至少填寫一個交接事項','red');return;}
   const list=LS.get('rm_handovers',[])||[];
-  list.push({id:'h'+Date.now(),date,stock,complaint,equip,waste,note,by:CU.name,byUser:CU.username,ts:Date.now()});
+  const entry={id:'h'+Date.now(),date,stock,complaint,equip,waste,note,by:CU.name,byUser:CU.username,ts:Date.now()};
+  list.push(entry);
   if(!LS.set('rm_handovers',list))return;
+  // 寫入雲端 Sheet（永久保存、跨手機共用）
+  if(syncOn())authApi({type:'handover_write',row:entry}).then(()=>{renderHandover();}).catch(()=>{});
   const c=getChar();let msg='✓ 交接表已送出';
   if(c.lastHandover!==bizDay()){c.lastHandover=bizDay();saveChar(c);const r=awardXp(CU.username,HANDOVER_XP);updateGameChip();msg+=`，+${HANDOVER_XP} XP`+(r.leveledUp?`（升級 Lv.${r.after}！）`:'');}
   toast(msg,'gold');
