@@ -2,7 +2,7 @@
 <html lang="zh-TW">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
 <title>光頭餐飲集團・營運中樞</title>
 <link rel="icon" type="image/png" href="logo.png">
 <link rel="apple-touch-icon" href="logo.png">
@@ -620,7 +620,7 @@ select.field-input option,select.form-input option{background:#f5efe6!important;
 /* 首頁磚上的線性 ICON */
 .fb-ico svg{width:30px;height:30px;stroke-width:1.5;color:#800020;}
 
-.btn-primary,.btn-action{background:linear-gradient(135deg,#ff9d3d,#ff6a1a)!important;color:#fff!important;border-radius:16px!important;box-shadow:0 8px 18px rgba(255,122,26,0.30)!important;letter-spacing:.04em;}
+.btn-primary,.btn-action{background:linear-gradient(135deg,#ff9d3d,#ff6a1a)!important;color:#fff!important;border-radius:16px!important;box-shadow:0 8px 18px rgba(128,0,32,0.28)!important;letter-spacing:.04em;}
 .btn-primary:active,.btn-action:active{transform:translateY(1px) scale(.99);}
 .btn-logout{border:2px solid var(--border-2)!important;border-radius:99px!important;color:var(--text-2)!important;}
 .btn-logout:hover{border-color:var(--red)!important;color:var(--red)!important;}
@@ -811,6 +811,31 @@ img,canvas,table,video{max-width:100%;}
   .data-table{font-size:12px;}
   .data-table th,.data-table td{padding:8px 8px;white-space:nowrap;}
 }
+/* ═══════════════ 🍷 最終覆蓋（放最後才會贏，清除所有橘色）═══════════════ */
+.btn-primary,.btn-action{background:linear-gradient(145deg,#9a1730,#800020)!important;color:#f3e9dc!important;box-shadow:0 8px 18px rgba(128,0,32,.28)!important;border:none!important;}
+.auth-tab-btn.active{background:#f3e9dc!important;color:#800020!important;border:2px solid #800020!important;box-shadow:none!important;}
+.lv-badge,.cc-badge,.dcat.active,.hb-motto{background:linear-gradient(135deg,#9a1730,#800020)!important;color:#f3e9dc!important;box-shadow:0 6px 14px rgba(128,0,32,.28)!important;}
+.xp-fill,.mini-xp-fill{background:linear-gradient(90deg,#c0405a,#800020)!important;}
+.user-avatar{background:linear-gradient(145deg,#9a1730,#5a0016)!important;color:#f3e9dc!important;}
+#toast.gold{color:#800020!important;border-color:#800020!important;}
+#char-create{background:linear-gradient(160deg,#4a0014,#2c000b)!important;}
+/* 卡片內文字＝酒紅 */
+.c-card-title,.total-item strong,.lb-rank,.lb-xp{color:#800020!important;}
+/* 背景（酒紅底）上的文字＝米白 */
+.sec-title{color:#f3e9dc!important;}
+.cc-title{color:#f3e9dc!important;}
+.sec-sub,.home-name,.xp-text,.home-center,.hero-name{color:#efe6d6!important;}
+.home-name{color:#f3e9dc!important;}
+.brand-name{-webkit-text-fill-color:#f3e9dc!important;color:#f3e9dc!important;}
+/* 頂欄簡化：隱藏 logo/等級/使用者資訊，只留標題 */
+.topbar-icon,.game-chip,.user-badge{display:none!important;}
+.topbar-title{display:block!important;color:#f3e9dc!important;font-size:16px!important;white-space:nowrap;letter-spacing:.02em;font-family:'Noto Serif TC','Noto Sans TC',serif!important;}
+.topbar-brand{min-width:0;flex:1;}
+/* 內容 ICON（任務/獎勵卡）*/
+.cico{display:inline-flex;align-items:center;justify-content:center;vertical-align:middle;}
+.cico svg{width:22px;height:22px;color:#800020;}
+.tc-emoji .cico svg{width:24px;height:24px;}
+.cico-emoji{font-size:20px;}
 </style>
 </head>
 <body>
@@ -885,8 +910,7 @@ img,canvas,table,video{max-width:100%;}
   <div class="topbar">
     <button class="hamb" onclick="openDrawer()" aria-label="選單">☰</button>
     <div class="topbar-brand">
-      <div class="topbar-icon"><img src="logo.png" alt=""></div>
-      <div class="topbar-title">光頭餐飲集團</div>
+      <div class="topbar-title">光頭餐飲・員工管理系統</div>
     </div>
     <div class="topbar-right">
       <div class="user-badge">
@@ -1509,6 +1533,19 @@ const ICONS={
   accounts:_svg('<circle cx="9" cy="9" r="3.2"/><path d="M3.5 19a5.5 5.5 0 0111 0"/><path d="M16 6.2a3.2 3.2 0 010 5.6M15.5 19a5.5 5.5 0 015.5-5.5"/>')
 };
 function tabIcon(id){return ICONS[id]||'';}
+// 任務/獎勵「內容 ICON」（下拉選單用）
+const CICONS={
+  check:_svg('<circle cx="12" cy="12" r="9"/><path d="M8 12.5l2.5 2.5L16 9"/>'),
+  clean:_svg('<path d="M12 3v6"/><path d="M9 6h6"/><path d="M6.5 21l2-9h7l2 9z"/><path d="M6 21h12"/>'),
+  food:_svg('<path d="M4 11h16a8 8 0 01-16 0z"/><path d="M12 3v3M9 4v2M15 4v2"/>'),
+  star:_svg('<path d="M12 3.5l2.6 5.3 5.9.9-4.3 4.1 1 5.8L12 17.1 6.8 19.6l1-5.8L3.5 9.7l5.9-.9z"/>'),
+  gift:_svg('<rect x="4" y="9" width="16" height="11" rx="1.5"/><path d="M4 13h16M12 9v11"/><path d="M12 9C10.5 5.5 6.5 6.5 8.5 9M12 9c1.5-3.5 5.5-2.5 3.5 0"/>'),
+  cash:_svg('<circle cx="12" cy="12" r="8.5"/><path d="M12 7.5v9"/><path d="M14.5 9.8c-.4-1-3.9-1.4-4 .4-.1 1.6 4 .9 4 2.6 0 1.8-3.6 1.5-4.2.2"/>'),
+  trophy:_svg('<path d="M8 4h8v3a4 4 0 01-8 0z"/><path d="M8 5H5.5v1.5A2.5 2.5 0 008 9M16 5h2.5v1.5A2.5 2.5 0 0116 9"/><path d="M10 15h4l1 4H9z"/>')
+};
+const EMOJI_ALIAS={'🧻':'clean','🧹':'clean','🧊':'clean','🗑️':'clean','🍽️':'food','🍳':'food','📊':'star','⭐':'star','📣':'star','🎓':'star','🎉':'gift','🎁':'gift','📱':'gift','👕':'gift','🎫':'gift','🏖️':'gift','💰':'cash','🏆':'trophy','✅':'check'};
+function cicon(v){if(!v)return '';if(CICONS[v])return '<span class="cico">'+CICONS[v]+'</span>';if(EMOJI_ALIAS[v])return '<span class="cico">'+CICONS[EMOJI_ALIAS[v]]+'</span>';return '<span class="cico-emoji">'+v+'</span>';}
+const CICON_OPTS='<option value="check">完成 / 打勾</option><option value="clean">清潔 / 整理</option><option value="food">餐點 / 出餐</option><option value="star">好評 / 亮點</option><option value="gift">禮物 / 獎勵</option><option value="cash">現金 / 獎金</option><option value="trophy">獎盃 / 大獎</option>';
 
 // ── REVENUE CALC ──
 function calcRev() {
@@ -1791,11 +1828,11 @@ function renderReports() {
     if (trendChart) trendChart.destroy();
     const ctx = $('chart-trend').getContext('2d');
     const grad = ctx.createLinearGradient(0,0,0,220);
-    grad.addColorStop(0,'rgba(255,122,26,0.30)');
-    grad.addColorStop(1,'rgba(255,122,26,0)');
+    grad.addColorStop(0,'rgba(128,0,32,0.28)');
+    grad.addColorStop(1,'rgba(128,0,32,0)');
     trendChart = new Chart(ctx, {
       type:'line',
-      data:{labels,datasets:[{label:'營收',data:vals,borderColor:'#ff7a1a',backgroundColor:grad,borderWidth:3,pointRadius:displayRows.length>20?0:3,pointBackgroundColor:'#ff7a1a',tension:0.4,fill:true}]},
+      data:{labels,datasets:[{label:'營收',data:vals,borderColor:'#800020',backgroundColor:grad,borderWidth:3,pointRadius:displayRows.length>20?0:3,pointBackgroundColor:'#800020',tension:0.4,fill:true}]},
       options:{
         plugins:{legend:{display:false},tooltip:{callbacks:{label:ctx=>'$'+ctx.raw.toLocaleString()}}},
         scales:{
@@ -1874,7 +1911,7 @@ function drawTop5(top5){
 }
 function drawPriceHistory(byAmt){
   const cv=$('price-chart');if(!cv)return;if(_priceChart){_priceChart.destroy();_priceChart=null;}
-  const cols=['#ff7a1a','#2563eb','#16a34a','#a855f7','#dc2626'];
+  const cols=['#800020','#2563eb','#16a34a','#a855f7','#dc2626'];
   const dset={};byAmt.forEach(f=>f.recs.forEach(r=>dset[r.d]=1));const dates=Object.keys(dset).sort();
   const ds=byAmt.map((f,i)=>{const mm={};f.recs.forEach(r=>mm[r.d]=r.uc);return {label:f.name,data:dates.map(d=>mm[d]!=null?mm[d]:null),borderColor:cols[i%cols.length],backgroundColor:cols[i%cols.length],spanGaps:true,tension:0.3,pointRadius:3,borderWidth:2};});
   _priceChart=new Chart(cv.getContext('2d'),{type:'line',data:{labels:dates.map(d=>{const p=d.split('-');return p.length>=3?p[1]+'/'+p[2]:d;}),datasets:ds},options:{plugins:{legend:{display:true,position:'bottom',labels:{font:{size:10},boxWidth:10}}},scales:{x:{ticks:{font:{size:9},maxTicksLimit:8}},y:{ticks:{font:{size:9},callback:v=>'$'+v}}},responsive:true}});
@@ -2731,11 +2768,14 @@ function recipeCard(rc,isSemi){
   const rows=(rc.items||[]).map((it,idx)=>{
     const c=itemCost(it);const cm=it.semiId?null:_costMap[it.code];const semi=it.semiId?findRecipe(it.semiId):null;
     const unitInfo=it.semiId?((semi&&parseFloat(semi.yieldQty)>0)?('$'+round2(recipeCost(semi).cost/parseFloat(semi.yieldQty))+'/'+esc(semi.yieldUnit||'')):'半成品'):(cm?('$'+round2(cm.cost)+'/'+esc(cm.unit)):'—');
-    return `<tr><td>${esc(it.name)}${it.semiId?' <span style="color:#a855f7;font-size:11px">半成品</span>':''}</td><td>${it.qty}${esc(it.unit)}</td><td>${unitInfo}</td><td style="font-weight:700;color:#ff6a1a">${c==null?'⚠️':('$'+round2(c))}</td>${isMgr()?`<td><button class="btn-sm btn-warn" onclick="delIngredient('${rc.id}',${idx})">刪</button></td>`:''}</tr>`;
+    return `<div style="background:#f5efe6;border:1px solid rgba(128,0,32,.12);border-radius:12px;padding:10px 12px;margin-bottom:8px;display:flex;align-items:center;gap:10px">
+      <div style="flex:1;min-width:0"><div style="font-weight:700;color:#2b1519">${esc(it.name)}${it.semiId?' <span style="color:#a855f7;font-size:11px">半成品</span>':''}</div><div style="font-size:12px;color:rgba(43,21,25,.55);margin-top:2px">用量 ${it.qty}${esc(it.unit)} ・ 單價 ${unitInfo}</div></div>
+      <div style="text-align:right;flex-shrink:0"><div style="font-weight:800;color:#800020;font-size:15px">${c==null?'⚠️':('$'+round2(c))}</div>${isMgr()?`<button class="btn-sm btn-warn" style="margin-top:5px;padding:3px 10px" onclick="delIngredient('${rc.id}',${idx})">刪</button>`:''}</div>
+    </div>`;
   }).join('');
   let html=`<div class="c-card"><div class="c-card-title" style="display:flex;align-items:center">${isSemi?'🧪':'🍱'} ${esc(rc.dish)}${isMgr()?`<button class="btn-sm btn-warn" style="margin-left:auto" onclick="delRecipe('${rc.id}')">刪除</button>`:''}</div>
-    <div style="overflow-x:auto"><table class="data-table"><thead><tr><th>食材</th><th>用量</th><th>單位成本</th><th>小計</th>${isMgr()?'<th></th>':''}</tr></thead><tbody>${rows||`<tr><td colspan="${isMgr()?5:4}" style="text-align:center;color:var(--text-3);padding:14px">尚無食材</td></tr>`}</tbody></table></div>
-    <div style="text-align:right;font-weight:800;font-size:16px;margin-top:10px">總成本：<span style="color:#ff6a1a">$${round2(total)}</span>${miss?' <span class="muted-note">（⚠️ 有食材無成本／單位無法換算／半成品未設產出）</span>':''}</div>`;
+    <div style="margin-top:10px">${rows||'<div class="muted-note" style="text-align:center;padding:14px">尚無食材</div>'}</div>
+    <div style="text-align:right;font-weight:800;font-size:16px;margin-top:8px;color:#2b1519">總成本：<span style="color:#800020">$${round2(total)}</span>${miss?' <span class="muted-note">（⚠️ 有食材無成本／單位無法換算／半成品未設產出）</span>':''}</div>`;
   if(isSemi){
     html+=`<div class="form-row" style="margin-top:8px"><div class="form-group"><label class="form-label">產出量（這鍋做出多少）</label><input class="form-input" type="number" min="0" id="yq-${rc.id}" value="${rc.yieldQty!=null?rc.yieldQty:''}" placeholder="例：1500" ${isMgr()?'':'disabled'}></div><div class="form-group"><label class="form-label">產出單位</label><input class="form-input" id="yu-${rc.id}" value="${esc(rc.yieldUnit||'')}" placeholder="克／毫升…" ${isMgr()?'':'disabled'}></div></div>${isMgr()?`<button class="btn-sm btn-neutral" style="padding:6px 12px" onclick="setYield('${rc.id}')">儲存產出量</button>`:''}`;
     if(parseFloat(rc.yieldQty)>0&&rc.yieldUnit&&!miss)html+=`<div class="muted-note" style="margin-top:6px">每 ${esc(rc.yieldUnit)} 成本 ≈ $${round2(total/parseFloat(rc.yieldQty))}</div>`;
@@ -2855,7 +2895,7 @@ function renderTasks(){
     else btn=t.type==='text'?`<button class="btn-action" style="padding:10px 16px" onclick="startTextTask('${t.id}')">✍️ 提交</button>`
             :t.type==='sales'?`<button class="btn-action" style="padding:10px 16px" onclick="startSalesTask('${t.id}')">📊 輸入</button>`
             :`<button class="btn-action" style="padding:10px 16px" onclick="startTask('${t.id}')">📸 拍照上傳</button>`;
-    return `<div class="task-card${claim?' locked':''}"><span class="tc-emoji">${t.icon}</span><div class="tc-body"><div class="tc-title">${t.title} <span class="badge badge-pending">${catShort(t.cat)}</span></div><div class="tc-xp">${claim?'每日任務・每天限一人完成':xpTxt}</div></div>${btn}</div>`;
+    return `<div class="task-card${claim?' locked':''}"><span class="tc-emoji">${cicon(t.icon)}</span><div class="tc-body"><div class="tc-title">${t.title} <span class="badge badge-pending">${catShort(t.cat)}</span></div><div class="tc-xp">${claim?'每日任務・每天限一人完成':xpTxt}</div></div>${btn}</div>`;
   }).join('')||'<div class="game-empty">此分類目前沒有任務</div>';
   $('task-list').innerHTML=catRow+cards;
 
@@ -2866,7 +2906,7 @@ function renderTasks(){
   const mine=subs.filter(s=>s.user===CU.username).sort((a,b)=>b.ts-a.ts);
   $('my-subs').innerHTML=mine.length?mine.map(s=>`
     <div class="sub-row" style="flex-wrap:wrap">${subMedia(s)}
-      <div style="flex:1;min-width:0"><div class="tc-title" style="font-size:14px">${s.icon} ${s.taskTitle}</div>
+      <div style="flex:1;min-width:0"><div class="tc-title" style="font-size:14px">${cicon(s.icon)} ${s.taskTitle}</div>
         <div class="xp-text">${fmtTime(s.ts)} ・ +${s.xp} XP</div>${subExtra(s)}</div>
       <span class="pill ${s.status}">${({pending:'審核中',approved:'已通過 ✓',rejected:'未通過'})[s.status]}</span>
     </div>`).join(''):'<div class="game-empty">還沒有紀錄，快去完成任務吧！</div>';
@@ -2877,7 +2917,7 @@ function renderTasks(){
     wrap.innerHTML=`<div class="c-card"><div class="c-card-title">🛡️ 待審核任務（主管）</div>${
       pending.length?pending.map(s=>`
       <div class="sub-row" style="flex-wrap:wrap">${subMedia(s)}
-        <div style="flex:1;min-width:0"><div class="tc-title" style="font-size:14px">${s.icon} ${s.taskTitle}</div>
+        <div style="flex:1;min-width:0"><div class="tc-title" style="font-size:14px">${cicon(s.icon)} ${s.taskTitle}</div>
           <div class="xp-text">${s.userName} ・ ${fmtTime(s.ts)} ・ +${s.xp} XP</div>${subExtra(s)}</div>
         <div style="display:flex;gap:8px">
           <button class="btn-sm btn-approve" onclick="reviewSub('${s.id}',true)">✓ 通過</button>
@@ -2892,12 +2932,12 @@ function renderTasks(){
 // 提交視窗（文字構想 / 賣最好最差輸入）
 let _subformTask=null;
 function startTextTask(id){const t=findTask(id);if(!t)return;if(dailyBlocked(id))return;_subformTask=t;
-  $('subform-title').textContent=t.icon+' '+t.title;
+  $('subform-title').innerHTML=cicon(t.icon)+' '+esc(t.title);
   $('subform-body').innerHTML=`<label class="form-label">你的構想 / 建議</label><textarea class="form-input" id="sf-text" rows="6" placeholder="盡量寫清楚，主管審核通過就能得分！"></textarea>`;
   $('subform').classList.add('show');
 }
 function startSalesTask(id){const t=findTask(id);if(!t)return;if(dailyBlocked(id))return;_subformTask=t;
-  $('subform-title').textContent=t.icon+' '+t.title;
+  $('subform-title').innerHTML=cicon(t.icon)+' '+esc(t.title);
   $('subform-body').innerHTML=`<label class="form-label">🔝 賣最好（前5名・一行一個）</label><textarea class="form-input" id="sf-best" rows="5" placeholder="鮭魚丼\n炙燒比目魚\n…"></textarea><label class="form-label" style="margin-top:10px">🔻 賣最差（前5名・一行一個）</label><textarea class="form-input" id="sf-worst" rows="5" placeholder="一行一個品項"></textarea>`;
   $('subform').classList.add('show');
 }
@@ -2922,7 +2962,7 @@ function renderTaskAdmin(){
     <div class="muted-note">${isBoss?'可新增各分類任務並設定分數。':'可新增「每日／搶分」任務內容；分數一律由老闆設定。'}</div>
     <div class="form-row">
       <div class="form-group"><label class="form-label">分類</label><select class="form-input" id="nt-cat" onchange="ntTypeSync()">${cats.map(c=>`<option value="${c.id}">${c.label}</option>`).join('')}</select></div>
-      <div class="form-group"><label class="form-label">圖示 emoji</label><input class="form-input" id="nt-icon" value="✅"></div>
+      <div class="form-group"><label class="form-label">圖示</label><select class="form-input" id="nt-icon">${CICON_OPTS}</select></div>
     </div>
     <div class="form-group"><label class="form-label">任務名稱</label><input class="form-input" id="nt-title" placeholder="例：擦拭玻璃門"></div>
     <div class="form-row">
@@ -2941,7 +2981,7 @@ function ntTypeSync(){const s=$('nt-cat');const w=$('nt-type-wrap');if(!s||!w)re
 function addTask(){
   const isBoss=CU.role==='BOSS';
   const cat=($('nt-cat')&&$('nt-cat').value)||'daily';
-  const icon=($('nt-icon')&&$('nt-icon').value.trim())||'✅';
+  const icon=($('nt-icon')&&$('nt-icon').value.trim())||'check';
   const title=($('nt-title')&&$('nt-title').value.trim())||'';
   if(!title){toast('請輸入任務名稱','red');return;}
   let type='photo'; if(cat==='rnd')type='text'; else if(cat==='daily')type=($('nt-type')&&$('nt-type').value)||'photo';
@@ -3036,7 +3076,7 @@ function renderRewards(){
   $('reward-list').innerHTML=rewards.map(r=>{
     const afford=c.points>=r.cost;
     return `<div class="reward-card">
-      <span class="tc-emoji">${r.icon}</span>
+      <span class="tc-emoji">${cicon(r.icon)}</span>
       <div class="tc-body"><div class="tc-title">${r.title}</div><div class="tc-xp">需要 ${r.cost} 點</div></div>
       <button class="btn-action" style="padding:10px 16px;${afford?'':'opacity:.45'}" ${afford?'':'disabled'} onclick="redeem('${r.id}')">🎫 ${r.cost} 兌換</button></div>`;
   }).join('');
@@ -3044,7 +3084,7 @@ function renderRewards(){
   const reds=LS.get('rm_redemptions',[]);
   const mine=reds.filter(x=>x.user===CU.username).sort((a,b)=>b.ts-a.ts);
   $('my-redeems').innerHTML=mine.length?mine.map(x=>`
-    <div class="sub-row"><span class="tc-emoji">${x.icon}</span>
+    <div class="sub-row"><span class="tc-emoji">${cicon(x.icon)}</span>
       <div style="flex:1;min-width:0"><div class="tc-title" style="font-size:14px">${x.title}</div>
         <div class="xp-text">${fmtTime(x.ts)} ・ -${x.cost} 點</div></div>
       <span class="pill ${x.status}">${({pending:'待主管處理',done:'已發放 ✓'})[x.status]}</span>
@@ -3055,7 +3095,7 @@ function renderRewards(){
     const pend=reds.filter(x=>x.status==='pending').sort((a,b)=>a.ts-b.ts);
     wrap.innerHTML=`<div class="c-card"><div class="c-card-title">🛡️ 待處理兌換（主管實際執行）</div>${
       pend.length?pend.map(x=>`
-      <div class="sub-row"><span class="tc-emoji">${x.icon}</span>
+      <div class="sub-row"><span class="tc-emoji">${cicon(x.icon)}</span>
         <div style="flex:1;min-width:0"><div class="tc-title" style="font-size:14px">${x.title}</div>
           <div class="xp-text">${x.userName} ・ ${fmtTime(x.ts)} ・ ${x.cost} 點</div></div>
         <button class="btn-sm btn-approve" onclick="markRedeemDone('${x.id}')">✓ 已發放</button>
@@ -3070,16 +3110,16 @@ function renderRewardAdmin(){
   const rewards=LS.get('rm_rewards',[]);
   wrap.innerHTML=`<div class="c-card"><div class="c-card-title">🛠️ 獎勵管理（老闆）</div>
     <div class="form-row">
-      <div class="form-group"><label class="form-label">圖示 emoji</label><input class="form-input" id="nr-icon" value="🎁"></div>
+      <div class="form-group"><label class="form-label">圖示</label><select class="form-input" id="nr-icon">${CICON_OPTS}</select></div>
       <div class="form-group"><label class="form-label">所需點數</label><input class="form-input" id="nr-cost" type="number" min="1" value="200"></div>
     </div>
     <div class="form-group"><label class="form-label">獎勵名稱</label><input class="form-input" id="nr-title" placeholder="例：電影票一張"></div>
     <button class="btn-action" onclick="addReward()">➕ 新增獎勵</button>
-    <div style="margin-top:14px">${rewards.map(r=>`<div class="sub-row"><span class="tc-emoji">${r.icon}</span><div style="flex:1;min-width:0"><div class="tc-title" style="font-size:14px">${r.title}</div><div class="xp-text">${r.cost} 點${r.type==='skin'?' ・ 皮膚':''}</div></div><button class="btn-sm btn-warn" onclick="delReward('${r.id}')">刪除</button></div>`).join('')||'<div class="muted-note">目前沒有獎勵</div>'}</div>
+    <div style="margin-top:14px">${rewards.map(r=>`<div class="sub-row"><span class="tc-emoji">${cicon(r.icon)}</span><div style="flex:1;min-width:0"><div class="tc-title" style="font-size:14px">${r.title}</div><div class="xp-text">${r.cost} 點${r.type==='skin'?' ・ 皮膚':''}</div></div><button class="btn-sm btn-warn" onclick="delReward('${r.id}')">刪除</button></div>`).join('')||'<div class="muted-note">目前沒有獎勵</div>'}</div>
   </div>`;
 }
 function addReward(){
-  const icon=($('nr-icon')&&$('nr-icon').value.trim())||'🎁';
+  const icon=($('nr-icon')&&$('nr-icon').value.trim())||'gift';
   const title=($('nr-title')&&$('nr-title').value.trim())||'';
   const cost=Math.max(1,parseInt($('nr-cost')&&$('nr-cost').value)||200);
   if(!title){toast('請輸入獎勵名稱','red');return;}
