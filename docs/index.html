@@ -1367,7 +1367,7 @@ body,html,button,input,select,textarea,.brand-name,.topbar-title,.sec-title,.c-c
 
 <script>
 // ── 自動更新：開啟時比對版本，有新版就自動重載（免無痕）──
-const APP_VER='20260702021822';
+const APP_VER='20260702023203';
 function checkVersion(){try{fetch('ver.txt?_='+Date.now(),{cache:'no-store'}).then(function(r){return r.ok?r.text():null;}).then(function(v){if(!v)return;v=v.trim();if(v&&v!==APP_VER&&location.search.indexOf('v='+v)<0){location.replace(location.pathname+'?v='+encodeURIComponent(v));}}).catch(function(){});}catch(e){}}
 checkVersion();
 document.addEventListener('visibilitychange',function(){if(document.visibilityState==='visible')checkVersion();});
@@ -1710,9 +1710,12 @@ async function renderRecentPurchases(){
     const d=await apiGet('query_purchase');const ok=d&&(d.status==='ok'||d.status==='success');
     const rows=(ok&&d.rows)?d.rows:[];_recentPu=rows;
     if(rows.length<=1){box.innerHTML='<div class="game-empty">尚無進貨記錄</div>';return;}
-    let html='';const start=Math.max(1,rows.length-15);
+    let html='';
     const names=LS.get('rm_names',{})||{};const today=bizDay();
-    for(let k=rows.length-1;k>=start;k--){const r=rows[k];
+    // 依進貨日期新到舊排序（保留原始 Sheet 列索引 k 供刪除；同日期則新輸入者在前）
+    const ordered=[];for(let i=1;i<rows.length;i++)ordered.push(i);
+    ordered.sort((a,b)=>{const da=normDate(rows[a][0]),db=normDate(rows[b][0]);if(da!==db)return da<db?1:-1;return b-a;});
+    for(const k of ordered.slice(0,15)){const r=rows[k];
       const date=normDate(r[0]),name=String(r[3]||''),qty=r[4],unit=String(r[5]||''),cost=r[6],supplier=String(r[8]||''),by=String(r[9]||'');
       const canDel=isMgr()||(!!by&&by===CU.username&&date===today);
       const byName=by?(names[by]||by):'';
@@ -1925,7 +1928,7 @@ function renderReports() {
   }
 
   if (purRows.length > 0) {
-    $('pur-tbody').innerHTML = purRows.slice(-20).reverse().map(r=>
+    $('pur-tbody').innerHTML = purRows.slice().sort((a,b)=>{const da=normDate(a.date),db=normDate(b.date);return da<db?1:(da>db?-1:0);}).slice(0,20).map(r=>
       `<tr><td>${normDate(r.date)}</td><td><span class="badge badge-pending">${r.category}</span></td><td>${r.name}</td><td>${r.qty}${r.unit}</td><td style="color:var(--gold-light)">${r.cost?'$'+r.cost.toLocaleString():'-'}</td><td>${r.supplier||'-'}</td></tr>`
     ).join('');
   } else {
@@ -2784,6 +2787,7 @@ function toggleRoster(u,on){const r=LS.get('rm_roster',{})||{};const d=bizDay();
 function renderChAdmin(){
   const wrap=$('ch-admin');if(!wrap)return;
   if(CU.role!=='BOSS'){wrap.innerHTML='';return;}
+  if(wrap.querySelector('#ch-dtw'))return; // 已建立就不重繪，避免背景同步洗掉未儲存的輸入
   const cfg=chCfg();
   wrap.innerHTML=`<div class="c-card"><div class="c-card-title">🛠️ 目標設定（老闆）</div>
     <div class="form-row"><div class="form-group"><label class="form-label">平日業績目標($)</label><input class="form-input" id="ch-dtw" type="number" min="0" value="${cfg.dailyTargetWeekday}"></div><div class="form-group"><label class="form-label">假日業績目標($)</label><input class="form-input" id="ch-dte" type="number" min="0" value="${cfg.dailyTargetWeekend}"></div></div>
