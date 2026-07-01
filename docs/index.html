@@ -1724,7 +1724,7 @@ async function delPurchase(k){
 // ── REPORTS ──
 let _reportRange = 'today';
 let _customFrom = null, _customTo = null;
-let _allRevData = [], _allPurData = [], _summaryData = null;
+let _allRevData = [], _allPurData = [], _allSalesData = [], _summaryData = null;
 
 function setRange(range, btn) {
   _reportRange = range;
@@ -1993,9 +1993,9 @@ function renderAnalysis(revRows,purRows,totalRev,cc){
   h+=`<div class="c-card"><div class="c-card-title">💡 營運建議</div>`+(tips.length?tips.map(t=>`<div style="border-left:4px solid ${t.c};background:#fff7ef;border-radius:10px;padding:10px 12px;margin-bottom:8px"><div style="font-weight:700;font-size:13px;color:${t.c}">${t.tag} ${esc(t.title)}</div><div style="font-size:12px;color:var(--text-2);margin-top:3px">${t.body}</div></div>`).join(''):'<div class="game-empty">資料不足，無法產生建議</div>')+`</div>`;
   // 熱銷/滯銷統計（來自「當日銷售回報」）
   const _sb=getDateBounds();
-  const _subs=(LS.get('rm_submissions',[])||[]).filter(s=>s.type==='sales'&&s.sales);
+  const _sales=(_allSalesData||[]).filter(s=>s.date>=_sb.from&&s.date<=_sb.to);
   const _bc={},_wc={};
-  _subs.forEach(s=>{const d=normDate(new Date(s.ts));if(d<_sb.from||d>_sb.to)return;String(s.sales.best||'').split('\n').map(x=>x.trim()).filter(Boolean).slice(0,5).forEach(it=>_bc[it]=(_bc[it]||0)+1);String(s.sales.worst||'').split('\n').map(x=>x.trim()).filter(Boolean).slice(0,5).forEach(it=>_wc[it]=(_wc[it]||0)+1);});
+  _sales.forEach(s=>{(s.best||[]).forEach(x=>{x=String(x||'').trim();if(x)_bc[x]=(_bc[x]||0)+1;});(s.worst||[]).forEach(x=>{x=String(x||'').trim();if(x)_wc[x]=(_wc[x]||0)+1;});});
   const bestTop=Object.keys(_bc).map(k=>({name:k,n:_bc[k]})).sort((a,b)=>b.n-a.n).slice(0,8);
   const worstTop=Object.keys(_wc).map(k=>({name:k,n:_wc[k]})).sort((a,b)=>b.n-a.n).slice(0,8);
   h+=`<div class="c-card"><div class="c-card-title">🍜 賣最好 / 賣最差統計</div>`;
@@ -2035,6 +2035,7 @@ async function loadReports() {
           ? purRes.rows.slice(1).map(r=>({date:r[0],cost:Number(r[6])||0,name:String(r[3]||''),category:String(r[2]||''),qty:Number(r[4])||0,unit:String(r[5]||''),unitCost:Number(r[7])||0,supplier:String(r[8]||'')}))
           : (purRes.data||[]))
       : [];
+    try{const sres=await authApi({type:'query_sales'});_allSalesData=(sres&&sres.rows)?sres.rows.slice(1).map(r=>({date:normDate(r[0]),best:[r[3],r[4],r[5],r[6],r[7]],worst:[r[8],r[9],r[10],r[11],r[12]]})):[];}catch(e){_allSalesData=[];}
     renderReports();
     const now=new Date();
     $('report-last-update').textContent='最後更新：'+now.getHours()+':'+String(now.getMinutes()).padStart(2,'0');
