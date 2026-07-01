@@ -1475,7 +1475,7 @@ function initApp() {
   const labels={BOSS:'老闆',MGR:'店長',EMP:'員工'};
   roleTag.textContent=labels[CU.role]||CU.role;
   roleTag.className='role-tag role-'+CU.role;
-  seedGame();wireTaskInput();wirePartInput();recordName(CU.username,CU.name);updateGameChip();
+  seedGame();ensureSalesTask();wireTaskInput();wirePartInput();recordName(CU.username,CU.name);updateGameChip();
 
   // build nav
   const tabs=ALL_TABS.filter(t=>t.roles.includes(CU.role));
@@ -1989,10 +1989,29 @@ function renderAnalysis(revRows,purRows,totalRev,cc){
   }
   h+=`</div>`;
   h+=`<div class="c-card"><div class="c-card-title">💡 營運建議</div>`+(tips.length?tips.map(t=>`<div style="border-left:4px solid ${t.c};background:#fff7ef;border-radius:10px;padding:10px 12px;margin-bottom:8px"><div style="font-weight:700;font-size:13px;color:${t.c}">${t.tag} ${esc(t.title)}</div><div style="font-size:12px;color:var(--text-2);margin-top:3px">${t.body}</div></div>`).join(''):'<div class="game-empty">資料不足，無法產生建議</div>')+`</div>`;
+  // 熱銷/滯銷統計（來自「當日銷售回報」）
+  const _sb=getDateBounds();
+  const _subs=(LS.get('rm_submissions',[])||[]).filter(s=>s.type==='sales'&&s.sales);
+  const _bc={},_wc={};
+  _subs.forEach(s=>{const d=normDate(new Date(s.ts));if(d<_sb.from||d>_sb.to)return;String(s.sales.best||'').split('\n').map(x=>x.trim()).filter(Boolean).slice(0,5).forEach(it=>_bc[it]=(_bc[it]||0)+1);String(s.sales.worst||'').split('\n').map(x=>x.trim()).filter(Boolean).slice(0,5).forEach(it=>_wc[it]=(_wc[it]||0)+1);});
+  const bestTop=Object.keys(_bc).map(k=>({name:k,n:_bc[k]})).sort((a,b)=>b.n-a.n).slice(0,8);
+  const worstTop=Object.keys(_wc).map(k=>({name:k,n:_wc[k]})).sort((a,b)=>b.n-a.n).slice(0,8);
+  h+=`<div class="c-card"><div class="c-card-title">🍜 賣最好 / 賣最差統計</div>`;
+  if(!bestTop.length&&!worstTop.length){h+='<div class="game-empty">此區間尚無銷售回報（員工完成「當日銷售回報」任務後會統計）</div>';}
+  else{h+=`<div style="font-size:12px;color:var(--text-3);margin-bottom:6px">🔝 賣最好（被列入前5的次數）</div>${bestTop.length?'<div class="chart-wrap"><canvas id="best-chart"></canvas></div>':'<div class="muted-note">尚無資料</div>'}<div style="font-size:12px;color:var(--text-3);margin:14px 0 6px">🔻 賣最差（被列入前5的次數）</div>${worstTop.length?'<div class="chart-wrap"><canvas id="worst-chart"></canvas></div>':'<div class="muted-note">尚無資料</div>'}`;}
+  h+=`</div>`;
   host.innerHTML=h;
   drawCostPie(foodCost,laborCost,fixedCost,miscCost);
   if(top5.length)drawTop5(top5);
   if(byAmt.length)drawPriceHistory(byAmt);
+  if(bestTop.length)drawSalesBar('best-chart',bestTop,'#16a34a');
+  if(worstTop.length)drawSalesBar('worst-chart',worstTop,'#dc2626');
+}
+function drawSalesBar(cvId,arr,color){
+  const cv=$(cvId);if(!cv)return;
+  window._salesCharts=window._salesCharts||{};
+  if(window._salesCharts[cvId]){window._salesCharts[cvId].destroy();}
+  window._salesCharts[cvId]=new Chart(cv.getContext('2d'),{type:'bar',data:{labels:arr.map(x=>x.name),datasets:[{data:arr.map(x=>x.n),backgroundColor:color}]},options:{indexAxis:'y',plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>c.raw+' 次'}}},scales:{x:{ticks:{precision:0,font:{size:10}}},y:{ticks:{font:{size:11}}}},responsive:true}});
 }
 
 async function loadReports() {
@@ -2993,7 +3012,13 @@ function submitSubform(){
   if(t.type==='text'){const tx=($('sf-text')&&$('sf-text').value.trim())||'';if(!tx){toast('請先輸入內容','red');return;}base.text=tx;}
   else if(t.type==='sales'){const b=($('sf-best')&&$('sf-best').value.trim())||'';const w=($('sf-worst')&&$('sf-worst').value.trim())||'';if(!b&&!w){toast('請至少填一邊','red');return;}base.sales={best:b,worst:w};}
   const subs=LS.get('rm_submissions',[]);subs.push(base);
-  if(LS.set('rm_submissions',subs)){toast('📤 已送出，等待主管審核','gold');closeSubform();renderTasks();}
+  if(LS.set('rm_submissions',subs)){toast('📤 已送出，等待主管審核','gold');closeSubform();renderTasks();if(t.type==='sales')salesWriteSheet(base);}
+}
+function salesWriteSheet(sub){
+  if(!syncOn()||!sub.sales)return;
+  const bestA=String(sub.sales.best||'').split('\n').map(s=>s.trim()).filter(Boolean).slice(0,5);
+  const worstA=String(sub.sales.worst||'').split('\n').map(s=>s.trim()).filter(Boolean).slice(0,5);
+  authApi({type:'sales_write',date:bizDay(),user:sub.userName||'',best:bestA,worst:worstA}).catch(function(){});
 }
 
 function renderTaskAdmin(){
@@ -3016,7 +3041,7 @@ function renderTaskAdmin(){
     <button class="btn-action" onclick="addTask()">➕ 新增任務</button>
     <div style="margin-top:14px">${TASK_CATS.map(c=>{
       const ts=tasks.filter(t=>t.cat===c.id);if(!ts.length)return '';
-      return `<div class="dress-label" style="margin-top:10px">${c.label}</div>`+ts.map(t=>`<div class="sub-row"><span class="tc-emoji">${t.icon}</span><div style="flex:1;min-width:0"><div class="tc-title" style="font-size:14px">${t.title}</div><div class="xp-text">${({photo:'拍照',sales:'輸入',text:'文字'})[t.type]||'拍照'} ・ ${t.xp>0?('+'+t.xp+' XP'):'分數待定'}</div></div>${isBoss?`<input class="form-input" style="width:62px;padding:6px;text-align:center" type="number" min="0" value="${t.xp||0}" title="分數" onchange="setTaskXp('${t.id}',this.value)">`:''}<button class="btn-sm btn-warn" onclick="delTask('${t.id}')">刪</button></div>`).join('');
+      return `<div class="dress-label" style="margin-top:10px">${c.label}</div>`+ts.map(t=>`<div class="sub-row"><span class="tc-emoji">${cicon(t.icon)}</span><div style="flex:1;min-width:0"><div class="tc-title" style="font-size:14px">${esc(t.title)}${t.locked?' <span style="color:#800020;font-size:11px;font-weight:700">🔒必填</span>':''}</div><div class="xp-text">${({photo:'拍照',sales:'輸入',text:'文字'})[t.type]||'拍照'} ・ ${t.xp>0?('+'+t.xp+' XP'):'分數待定'}</div></div>${(isBoss&&!t.locked)?`<input class="form-input" style="width:62px;padding:6px;text-align:center" type="number" min="0" value="${t.xp||0}" title="分數" onchange="setTaskXp('${t.id}',this.value)">`:''}${t.locked?'':`<button class="btn-sm btn-warn" onclick="delTask('${t.id}')">刪</button>`}</div>`).join('');
     }).join('')}</div>
   </div>`;
   ntTypeSync();
@@ -3034,7 +3059,8 @@ function addTask(){
   toast(isBoss?'✓ 已新增任務':'✓ 已新增（分數待老闆設定）','gold');renderTasks();
 }
 function setTaskXp(id,val){const tasks=LS.get('rm_tasks',[]);const t=tasks.find(x=>x.id===id);if(!t)return;t.xp=Math.max(0,parseInt(val)||0);LS.set('rm_tasks',tasks);renderTaskAdmin();}
-function delTask(id){const tasks=LS.get('rm_tasks',[]).filter(t=>t.id!==id);LS.set('rm_tasks',tasks);toast('已刪除任務','red');renderTasks();}
+function delTask(id){const all=LS.get('rm_tasks',[]);const tk=all.find(t=>t.id===id);if(tk&&tk.locked){toast('此為系統必填任務，不可刪除','red');return;}const tasks=all.filter(t=>t.id!==id);LS.set('rm_tasks',tasks);toast('已刪除任務','red');renderTasks();}
+function ensureSalesTask(){var tk=LS.get('rm_tasks',[])||[];var ch=false;if(!tk.some(function(t){return t.type==='sales';})){tk.unshift({id:'tsales',icon:'star',title:'當日銷售回報（賣最好/最差各5項）',xp:20,cat:'daily',type:'sales',locked:true});ch=true;}else{tk.forEach(function(t){if(t.type==='sales'&&!t.locked){t.locked=true;ch=true;}});}if(ch)LS.set('rm_tasks',tk);}
 
 // ── 每日問答 ──
 // 營業日：每天 17:00-02:00 跨午夜，以凌晨 5 點為換日界線（5 點前算前一個營業日）
