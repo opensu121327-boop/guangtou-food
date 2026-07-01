@@ -2155,10 +2155,11 @@ function kv(type,extra){return fetch(SYNC_URL,{method:'POST',body:JSON.stringify
 let _pushTimers={};
 function cloudPush(key){if(!syncOn())return;clearTimeout(_pushTimers[key]);_pushTimers[key]=setTimeout(function(){const val=localStorage.getItem(key);if(val!=null)kv('kv_set',{key:key,value:val}).catch(function(){});},600);}
 function cloudPull(){if(!syncOn())return Promise.resolve();return kv('kv_all',{}).then(function(res){if(res&&res.status==='ok'&&res.data){for(var k in res.data){if(k.indexOf('rm_')===0&&res.data[k]!=null)localStorage.setItem(k,res.data[k]);}}}).catch(function(){});}
+function isTyping(){var a=document.activeElement;if(!a)return false;var t=(a.tagName||'').toUpperCase();return t==='INPUT'||t==='TEXTAREA'||t==='SELECT'||a.isContentEditable===true;}
 function reRenderTab(id){const map={home:renderHome,reports:loadReports,handover:renderHandover,handbook:renderHandbook,tasks:renderTasks,rewards:renderRewards,challenge:renderChallenge,leaderboard:renderLeaderboard,character:renderCharacter};if(map[id]){try{map[id]();}catch(e){}}if(id==='accounts'){try{loadPending();loadAccounts();}catch(e){}}}
-function startSyncPoll(){if(!syncOn()||window._syncPoll)return;window._syncPoll=setInterval(function(){cloudPull().then(function(){if(!CU)return;updateGameChip();const act=document.querySelector('.tab-panel.active');if(act)reRenderTab(act.id.replace('tab-',''));});},20000);}
+function startSyncPoll(){if(!syncOn()||window._syncPoll)return;window._syncPoll=setInterval(function(){cloudPull().then(function(){if(!CU)return;updateGameChip();if(isTyping())return;const act=document.querySelector('.tab-panel.active');if(act)reRenderTab(act.id.replace('tab-',''));});},20000);}
 // 立即同步一次（拉雲端＋重繪目前分頁）
-function syncNow(){if(!syncOn())return;cloudPull().then(function(){if(!CU)return;updateGameChip();const act=document.querySelector('.tab-panel.active');if(act)reRenderTab(act.id.replace('tab-',''));});}
+function syncNow(){if(!syncOn())return;cloudPull().then(function(){if(!CU)return;updateGameChip();if(isTyping())return;const act=document.querySelector('.tab-panel.active');if(act)reRenderTab(act.id.replace('tab-',''));});}
 // 手機背景會凍結 setInterval：一回到 App（畫面可見/切回分頁）就馬上同步
 document.addEventListener('visibilitychange',function(){if(document.visibilityState==='visible')syncNow();});
 window.addEventListener('focus',syncNow);
