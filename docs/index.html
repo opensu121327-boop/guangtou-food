@@ -1362,8 +1362,11 @@ body,html,button,input,select,textarea,.brand-name,.topbar-title,.sec-title,.c-c
 
 <script>
 // ── 自動更新：開啟時比對版本，有新版就自動重載（免無痕）──
-const APP_VER='20260702001514';
-(function(){try{fetch('ver.txt?_='+Date.now(),{cache:'no-store'}).then(function(r){return r.ok?r.text():null;}).then(function(v){if(!v)return;v=v.trim();if(v&&v!==APP_VER&&location.search.indexOf('v='+v)<0){location.replace(location.pathname+'?v='+encodeURIComponent(v));}}).catch(function(){});}catch(e){}})();
+const APP_VER='20260702003433';
+function checkVersion(){try{fetch('ver.txt?_='+Date.now(),{cache:'no-store'}).then(function(r){return r.ok?r.text():null;}).then(function(v){if(!v)return;v=v.trim();if(v&&v!==APP_VER&&location.search.indexOf('v='+v)<0){location.replace(location.pathname+'?v='+encodeURIComponent(v));}}).catch(function(){});}catch(e){}}
+checkVersion();
+document.addEventListener('visibilitychange',function(){if(document.visibilityState==='visible')checkVersion();});
+window.addEventListener('pageshow',function(e){if(e.persisted)checkVersion();});
 const GAS = 'https://script.google.com/macros/s/AKfycbwo6t4jqCx9apfSdO86iKuF42wU3GBFTM-gQosKbVJUlOpxLzdwGKoFwKujaht1RXMBBQ/exec';
 let CU = null; // current user
 let trendChart = null, pieChart = null;
@@ -1659,18 +1662,20 @@ function bestMaterial(q){
 }
 function matSuggest(){
   const el=$('pu-name'),box=$('pu-suggest');if(!el||!box)return;
+  const q=(el.value||'').trim();
+  if(q){const ex=_materials.find(m=>_matNorm(m.name)===_matNorm(q));if(ex){fillFromMaterial(ex);box.style.color='#15803d';box.style.display='';box.innerHTML='✓ 已帶入現有物料「<b>'+esc(ex.name)+'</b>」'+(ex.code?('（編號 '+esc(ex.code)+'）'):'');return;}}
   const b=bestMaterial(el.value);
   if(b){box.style.color='#9a3412';box.style.display='';box.innerHTML='🔍 是不是「<b>'+esc(b.m.name)+'</b>」'+(b.m.code?'（'+esc(b.m.code)+'）':'')+'？<button class="btn-sm" style="background:#f97316;color:#fff;padding:4px 12px;margin-left:8px;border:none;border-radius:8px;cursor:pointer" onclick="applyMaterial('+b.i+')">套用</button>';}
   else{box.style.display='none';box.innerHTML='';}
 }
-function matAutoMatch(){const el=$('pu-name');if(!el)return;const b=bestMaterial(el.value);if(b&&b.score>=0.95)applyMaterial(b.i,true);}
+function matAutoMatch(){const el=$('pu-name');if(!el)return;const q=(el.value||'').trim();if(q){const ex=_materials.find(m=>_matNorm(m.name)===_matNorm(q));if(ex){fillFromMaterial(ex);return;}}const b=bestMaterial(el.value);if(b&&b.score>=0.95)applyMaterial(b.i,true);}
 function applyMaterial(i,auto){
   const m=_materials[i];if(!m)return;fillFromMaterial(m);
   const box=$('pu-suggest');if(box){box.style.color='#15803d';box.style.display='';box.innerHTML='✓ 已自動辨識為「<b>'+esc(m.name)+'</b>」並帶入編號/分類/供應商';setTimeout(function(){if(box){box.style.display='none';box.style.color='';box.innerHTML='';}},4500);}
   toast('✓ 已辨識為 '+m.name,'gold');
 }
 function codePrefix(cat){cat=cat||'';if(cat.indexOf('水產')===0)return'SE';if(cat.indexOf('肉類')===0)return'ME';if(cat.indexOf('蔬菜')===0)return'VE';if(cat.indexOf('酒水')===0)return'DR';if(cat.indexOf('調味')===0)return'DRY';if(cat.indexOf('冷盤')===0)return'ICE';if(cat.indexOf('半成品')===0)return'HALF';if(cat.indexOf('金額異動')===0)return'M-';if(cat.indexOf('調製')===0)return'PRE';return'SUP';}
-function genCode(){let cat=($('pu-cat')&&$('pu-cat').value.trim())||'';if(!cat){const mc=$('pu-mat-cat')?$('pu-mat-cat').value:'';if(mc&&mc!=='__all'&&mc!=='__none'){cat=mc;if($('pu-cat'))$('pu-cat').value=mc;}}if(!cat){toast('請先選分類（上方下拉或分類欄）','red');return;}const p=codePrefix(cat);if(p==='M-'){if($('pu-code'))$('pu-code').value='M-';toast('折讓/異動 編號：M-','gold');return;}let max=0;_materials.forEach(m=>{const c=String(m.code||'');if(c.indexOf(p)===0){const n=parseInt(c.slice(p.length).replace(/[^0-9]/g,''));if(!isNaN(n)&&n>max)max=n;}});const code=p+String(max+1).padStart(3,'0');if($('pu-code'))$('pu-code').value=code;toast('已產生新物料編號 '+code,'gold');}
+function genCode(){const nm=($('pu-name')&&$('pu-name').value.trim())||'';if(nm){const ex=_materials.find(m=>_matNorm(m.name)===_matNorm(nm)&&m.code);if(ex){if($('pu-code'))$('pu-code').value=ex.code;if($('pu-cat')&&!$('pu-cat').value.trim())$('pu-cat').value=ex.cat||'';toast('此物料已存在，沿用既有編號 '+ex.code,'gold');return;}}let cat=($('pu-cat')&&$('pu-cat').value.trim())||'';if(!cat){const mc=$('pu-mat-cat')?$('pu-mat-cat').value:'';if(mc&&mc!=='__all'&&mc!=='__none'){cat=mc;if($('pu-cat'))$('pu-cat').value=mc;}}if(!cat){toast('請先選分類（上方下拉或分類欄）','red');return;}const p=codePrefix(cat);if(p==='M-'){if($('pu-code'))$('pu-code').value='M-';toast('折讓/異動 編號：M-','gold');return;}let max=0;_materials.forEach(m=>{const c=String(m.code||'');if(c.indexOf(p)===0){const n=parseInt(c.slice(p.length).replace(/[^0-9]/g,''));if(!isNaN(n)&&n>max)max=n;}});const code=p+String(max+1).padStart(3,'0');if($('pu-code'))$('pu-code').value=code;toast('已產生新物料編號 '+code,'gold');}
 
 async function submitPu() {
   const date=$('pu-date').value,name=$('pu-name').value.trim();
