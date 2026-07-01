@@ -3079,7 +3079,10 @@ function renderQuiz(){
   if(done){
     body=`<div class="quiz-q">${q.q}</div><div class="quiz-result ${st.correct?'ok':'no'}">${st.correct?('✅ 答對了！已獲得 +'+q.xp+' XP'):('❌ 答錯了，正確答案：'+q.opts[q.ans])}</div><div class="muted-note" style="margin-top:8px">明天再來挑戰新題目！</div>`;
   }else{
-    body=`<div class="quiz-q">${q.q}</div><div class="quiz-opts">`+q.opts.map((o,i)=>`<button class="quiz-opt" onclick="answerQuiz('${q.id}',${i})">${String.fromCharCode(65+i)}. ${o}</button>`).join('')+`</div>`;
+    window._quizOrder=window._quizOrder||{};
+    if(!window._quizOrder[q.id]){const arr=q.opts.map((_,i)=>i);for(let i=arr.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));const tmp=arr[i];arr[i]=arr[j];arr[j]=tmp;}window._quizOrder[q.id]=arr;}
+    const order=window._quizOrder[q.id];
+    body=`<div class="quiz-q">${q.q}</div><div class="quiz-opts">`+order.map((oi,pos)=>`<button class="quiz-opt" onclick="answerQuiz('${q.id}',${oi})">${String.fromCharCode(65+pos)}. ${q.opts[oi]}</button>`).join('')+`</div>`;
   }
   wrap.innerHTML=`<div class="c-card"><div class="c-card-title">📅 每日問答（答對 +XP）</div>${body}</div>`;
 }
@@ -3099,7 +3102,7 @@ function renderQuizAdmin(){
   if(!isMgr()){wrap.innerHTML='';return;}
   const qs=LS.get('rm_quiz',[]);
   wrap.innerHTML=`<div class="c-card"><div class="c-card-title">🛠️ 每日問答管理（老闆／店長）</div>
-    <div class="muted-note">系統每天自動輪播一題給員工作答。</div>
+    <div class="muted-note">系統每天自動輪播一題。把正確答案填在「選項 A」即可，員工作答時會<b>隨機打亂選項順序</b>，不會永遠選 A。</div>
     <div class="form-group"><label class="form-label">題目</label><input class="form-input" id="qz-q" placeholder="例：看到地板濕滑該怎麼做？"></div>
     <div class="form-row">
       <div class="form-group"><label class="form-label">選項 A（正確答案）</label><input class="form-input" id="qz-a" placeholder="正確答案"></div>
@@ -3110,7 +3113,7 @@ function renderQuizAdmin(){
       <div class="form-group"><label class="form-label">選項 D</label><input class="form-input" id="qz-d"></div>
     </div>
     <div class="form-group"><label class="form-label">答對經驗值</label><input class="form-input" id="qz-xp" type="number" min="1" value="15"></div>
-    <button class="btn-action" onclick="addQuiz()">➕ 新增題目（A 為正解）</button>
+    <button class="btn-action" onclick="addQuiz()">➕ 新增題目（選項 A ＝ 正解）</button>
     <div style="margin-top:14px">${qs.map(x=>`<div class="sub-row"><div style="flex:1;min-width:0"><div class="tc-title" style="font-size:14px">${x.q}</div><div class="xp-text">正解：${x.opts[x.ans]} ・ +${x.xp} XP</div></div><button class="btn-sm btn-warn" onclick="delQuiz('${x.id}')">刪除</button></div>`).join('')||'<div class="muted-note">目前沒有題目</div>'}</div>
   </div>`;
 }
