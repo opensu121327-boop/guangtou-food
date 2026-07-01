@@ -2249,6 +2249,7 @@ function getParts(){
 function autoEquip(level){const eqs=(getParts().equipment||[]).filter(e=>(e.lv||1)<=level).sort((a,b)=>(b.lv||1)-(a.lv||1));return eqs[0]||null;}
 function getBgs(){const u=LS.get('rm_parts',{})||{};return (FILE_PARTS.background||[]).concat(u.background||[]);}
 function findBg(id){return getBgs().find(b=>b.id===id);}
+function bgOK(b,lv){return !!b&&((CU&&CU.role==='BOSS')||(lv||1)>=(b.lv||1));}
 function renderAvatar(av,level,opts){
   opts=opts||{};
   av=av||defAvatar();const P=getParts();
@@ -2256,7 +2257,7 @@ function renderAvatar(av,level,opts){
   const imgLayer=cat=>{const p=pick(cat);if(!p||!p.img)return '';return `<img class="av-layer" src="${p.img}" alt="">`;};
   const eq=autoEquip(level||1);const eqL=eq&&eq.img?`<img class="av-layer" src="${eq.img}" alt="">`:'';
   let bgStyle='background:'+(av.bgColor||'#ffd9a8');
-  if(av.bgImg){const b=findBg(av.bgImg);if(b&&(level||1)>=(b.lv||1))bgStyle="background:url('"+b.img+"') center/cover no-repeat";}
+  if(av.bgImg){const b=findBg(av.bgImg);if(bgOK(b,level||1))bgStyle="background:url('"+b.img+"') center/cover no-repeat";}
   const bg=opts.noBg?'':`<div class="av-bg" style="${bgStyle}"></div>`;
   return `<div class="avatar-stage">${bg}${imgLayer('outfit')}${imgLayer('face')}${imgLayer('eyes')}${imgLayer('hair')}${eqL}</div>`;
 }
@@ -2283,7 +2284,7 @@ function dressOptions(cat){
     if(bgs.length){
       html+='<div class="dress-label" style="margin:2px">場景背景（依等級解鎖）</div><div class="opt-grid">';
       html+=`<div class="opt ${!c.avatar.bgImg?'sel':''}" style="display:flex;align-items:center;justify-content:center;font-size:12px;color:#9a7d63" onclick="pickBg('')">純色</div>`;
-      html+=bgs.map(b=>{const locked=lv<(b.lv||1);const sel=c.avatar.bgImg===b.id?'sel':'';return `<div class="opt ${sel}" style="position:relative;${locked?'opacity:.6':''}" title="${esc(b.name)}" onclick="pickBg('${b.id}')"><img src="${b.img}" alt="" onerror="this.style.visibility='hidden'">${locked?`<span style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,.42);color:#fff;font-size:11px;font-weight:800;border-radius:8px">🔒Lv.${b.lv}</span>`:''}</div>`;}).join('');
+      html+=bgs.map(b=>{const locked=!bgOK(b,lv);const sel=c.avatar.bgImg===b.id?'sel':'';return `<div class="opt ${sel}" style="position:relative;${locked?'opacity:.6':''}" title="${esc(b.name)}" onclick="pickBg('${b.id}')"><img src="${b.img}" alt="" onerror="this.style.visibility='hidden'">${locked?`<span style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,.42);color:#fff;font-size:11px;font-weight:800;border-radius:8px">🔒Lv.${b.lv}</span>`:''}</div>`;}).join('');
       html+='</div>';
     }
     return html;
@@ -2296,7 +2297,7 @@ function dressOptions(cat){
 }
 function setDressCat(cat){_dressCat=cat;if($('dcat-row'))$('dcat-row').innerHTML=dressTabs(cat);if($('cc-cats'))$('cc-cats').innerHTML=dressTabs(cat);refreshDressOptions();}
 function refreshDressOptions(){if($('dress-options'))$('dress-options').innerHTML=dressOptions(_dressCat);if($('cc-options'))$('cc-options').innerHTML=dressOptions(_dressCat);}
-function paintScene(idn){const el=$(idn);if(!el)return;const c=getChar();const lv=levelOf(c.xp);const b=c.avatar.bgImg?findBg(c.avatar.bgImg):null;if(b&&lv>=(b.lv||1)){el.style.background="url('"+b.img+"') center/cover no-repeat";}else{el.style.background=c.avatar.bgColor||'#ffe3c4';}el.innerHTML=sceneHTML(c,lv);}
+function paintScene(idn){const el=$(idn);if(!el)return;const c=getChar();const lv=levelOf(c.xp);const b=c.avatar.bgImg?findBg(c.avatar.bgImg):null;if(bgOK(b,lv)){el.style.background="url('"+b.img+"') center/cover no-repeat";}else{el.style.background=c.avatar.bgColor||'#ffe3c4';}el.innerHTML=sceneHTML(c,lv);}
 function updateScenes(){paintScene('dress-scene');paintScene('cc-scene');}
 // ── 排行榜 ──
 function recordName(u,name){if(!u||!name)return;const m=LS.get('rm_names',{})||{};if(m[u]!==name){m[u]=name;LS.set('rm_names',m);}}
@@ -2327,7 +2328,7 @@ function charExtraHTML(c,lv){
 }
 function setAvatarColor(key,val){const c=getChar();c.avatar[key]=val;saveChar(c);updateScenes();updateGameChip();if(_dressCat==='bg')refreshDressOptions();const hm=$('tab-home');if(hm&&hm.classList.contains('active'))renderHome();}
 function pickPart(cat,id){const c=getChar();c.avatar.parts[cat]=id;saveChar(c);updateScenes();updateGameChip();document.querySelectorAll('.opt[data-cat="'+cat+'"]').forEach(el=>el.classList.toggle('sel',el.dataset.id===id));const hm=$('tab-home');if(hm&&hm.classList.contains('active'))renderHome();}
-function pickBg(id){const c=getChar();const lv=levelOf(c.xp);if(id){const b=findBg(id);if(!b)return;if(lv<(b.lv||1)){toast('Lv.'+(b.lv||1)+' 才能解鎖此背景','red');return;}}c.avatar.bgImg=id||'';saveChar(c);updateScenes();updateGameChip();refreshDressOptions();const hm=$('tab-home');if(hm&&hm.classList.contains('active'))renderHome();}
+function pickBg(id){const c=getChar();const lv=levelOf(c.xp);if(id){const b=findBg(id);if(!b)return;if(!bgOK(b,lv)){toast('Lv.'+(b.lv||1)+' 才能解鎖此背景','red');return;}}c.avatar.bgImg=id||'';saveChar(c);updateScenes();updateGameChip();refreshDressOptions();const hm=$('tab-home');if(hm&&hm.classList.contains('active'))renderHome();}
 function refreshAvatars(){
   updateGameChip();
   const ch=$('tab-character');if(ch&&ch.classList.contains('active'))renderCharacter();
@@ -3070,11 +3071,13 @@ function reviewSub(id,ok){
 }
 
 // ── 獎勵商店 ──
+function rewardCfg(){return Object.assign({deadline:10,payout:15},LS.get('rm_reward_cfg',{})||{});}
+function saveRewardCfg(){const d=Math.min(31,Math.max(1,parseInt($('rw-deadline')&&$('rw-deadline').value)||10));const p=Math.min(31,Math.max(1,parseInt($('rw-payout')&&$('rw-payout').value)||15));LS.set('rm_reward_cfg',{deadline:d,payout:p});toast('✓ 已儲存兌換時間','gold');renderRewards();}
 function renderRewards(){
   const c=getChar();
   $('rw-balance').textContent=c.points+' EXP';
-  const rewards=LS.get('rm_rewards',[]);
-  $('reward-list').innerHTML=rewards.map(r=>{
+  const rewards=LS.get('rm_rewards',[]);const rcfg=rewardCfg();
+  $('reward-list').innerHTML=`<div style="background:#f5efe6;border:1px solid rgba(128,0,32,.16);border-radius:12px;padding:10px 12px;margin-bottom:12px;color:#800020;font-weight:600;font-size:13px">🕐 每月 ${rcfg.deadline} 號兌換截止 ・ ${rcfg.payout} 號統一發放</div>`+rewards.map(r=>{
     const afford=c.points>=r.cost;
     return `<div class="reward-card">
       <span class="tc-emoji">${cicon(r.icon)}</span>
@@ -3108,8 +3111,11 @@ function renderRewards(){
 function renderRewardAdmin(){
   const wrap=$('reward-admin-wrap');if(!wrap)return;
   if(CU.role!=='BOSS'){wrap.innerHTML='';return;}
-  const rewards=LS.get('rm_rewards',[]);
+  const rewards=LS.get('rm_rewards',[]);const rcfg=rewardCfg();
   wrap.innerHTML=`<div class="c-card"><div class="c-card-title">🛠️ 獎勵管理（老闆）</div>
+    <div class="form-row" style="margin-bottom:8px"><div class="form-group"><label class="form-label">每月兌換截止日</label><input class="form-input" id="rw-deadline" type="number" min="1" max="31" value="${rcfg.deadline}"></div><div class="form-group"><label class="form-label">每月發放日</label><input class="form-input" id="rw-payout" type="number" min="1" max="31" value="${rcfg.payout}"></div></div>
+    <button class="btn-sm btn-neutral" style="padding:8px 14px;margin-bottom:14px" onclick="saveRewardCfg()">儲存兌換時間</button>
+    <div class="divider" style="margin:6px 0 12px"></div>
     <div class="form-row">
       <div class="form-group"><label class="form-label">圖示</label><select class="form-input" id="nr-icon">${CICON_OPTS}</select></div>
       <div class="form-group"><label class="form-label">所需點數</label><input class="form-input" id="nr-cost" type="number" min="1" value="200"></div>
@@ -3137,7 +3143,7 @@ function redeem(id){
   reds.push({id:'rd'+Date.now(),rewardId:r.id,title:r.title,icon:r.icon,cost:r.cost,
     user:CU.username,userName:CU.name,status:'pending',ts:Date.now()});
   LS.set('rm_redemptions',reds);
-  toast('🎁 兌換成功，等待主管發放','gold');
+  toast('🎁 兌換成功，將於每月 '+rewardCfg().payout+' 號發放','gold');
   renderRewards();updateGameChip();
 }
 function markRedeemDone(id){
