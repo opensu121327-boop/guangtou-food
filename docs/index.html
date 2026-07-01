@@ -1101,12 +1101,17 @@ body,html,button,input,select,textarea,.brand-name,.topbar-title,.sec-title,.c-c
           <div class="kpi-note" id="kn-month">—</div>
         </div>
         <div class="kpi-card">
+          <div class="kpi-label" id="kl-netrev">預估實收</div>
+          <div class="kpi-val"><small>$</small><span id="kv-netrev">—</span></div>
+          <div class="kpi-note" id="kn-netrev">—</div>
+        </div>
+        <div class="kpi-card">
           <div class="kpi-label" id="kl-cost">本月進貨成本</div>
           <div class="kpi-val"><small>$</small><span id="kv-cost">—</span></div>
           <div class="kpi-note" id="kn-cost">—</div>
         </div>
         <div class="kpi-card">
-          <div class="kpi-label" id="kl-profit">本月毛利</div>
+          <div class="kpi-label" id="kl-profit">本月淨利</div>
           <div class="kpi-val"><small>$</small><span id="kv-profit">—</span></div>
           <div class="kpi-note" id="kn-profit">—</div>
         </div>
@@ -1362,7 +1367,7 @@ body,html,button,input,select,textarea,.brand-name,.topbar-title,.sec-title,.c-c
 
 <script>
 // ── 自動更新：開啟時比對版本，有新版就自動重載（免無痕）──
-const APP_VER='20260702012805';
+const APP_VER='20260702020538';
 function checkVersion(){try{fetch('ver.txt?_='+Date.now(),{cache:'no-store'}).then(function(r){return r.ok?r.text():null;}).then(function(v){if(!v)return;v=v.trim();if(v&&v!==APP_VER&&location.search.indexOf('v='+v)<0){location.replace(location.pathname+'?v='+encodeURIComponent(v));}}).catch(function(){});}catch(e){}}
 checkVersion();
 document.addEventListener('visibilitychange',function(){if(document.visibilityState==='visible')checkVersion();});
@@ -1821,7 +1826,9 @@ function renderReports() {
   const _cc={'食材':0,'人事':0,'固定':0,'耗材':0};
   purRows.forEach(r=>{const k=costClass(r.category);if(k)_cc[k]+=(r.cost||0);});
   const totalCost = _cc['食材']+_cc['人事']+_cc['固定']+_cc['耗材'];
-  const gross = totalRev - totalCost;
+  const totalFee = revRows.reduce((a,r) => a + (r.cardFee||0) + (r.twqrFee||0) + (r.deliveryFee||0), 0);
+  const netRevenue = totalRev - totalFee;   // 預估實收＝營收 − 手續費
+  const netProfit = netRevenue - totalCost; // 淨利＝預估實收 − 成本
   const ch = { cash:0, card:0, twqr:0, foodpanda:0, ubereats:0 };
   revRows.forEach(r => { ch.cash+=r.cash||0; ch.card+=r.card||0; ch.twqr+=r.twqr||0; ch.foodpanda+=r.foodpanda||0; ch.ubereats+=r.ubereats||0; });
 
@@ -1844,11 +1851,15 @@ function renderReports() {
   $('kv-cost').textContent = totalCost.toLocaleString();
   const ratio = totalRev > 0 ? Math.round(totalCost/totalRev*100) : 0;
   $('kn-cost').textContent = '成本率 ' + ratio + '%';
-  // Card 4 = 區段淨利
+  // Card 4 = 預估實收（營收扣手續費）
+  if ($('kl-netrev')) $('kl-netrev').textContent = rangeLabel + '預估實收';
+  if ($('kv-netrev')) $('kv-netrev').textContent = netRevenue.toLocaleString();
+  if ($('kn-netrev')) $('kn-netrev').textContent = '扣手續費 $' + Math.round(totalFee).toLocaleString();
+  // Card 5 = 區段淨利（以預估實收計算）
   if ($('kl-profit')) $('kl-profit').textContent = rangeLabel + '淨利';
-  $('kv-profit').textContent = gross.toLocaleString();
-  const margin = totalRev > 0 ? Math.round(gross/totalRev*100) : 0;
-  $('kn-profit').textContent = '淨利率 ' + margin + '%';
+  $('kv-profit').textContent = netProfit.toLocaleString();
+  const margin = totalRev > 0 ? Math.round(netProfit/totalRev*100) : 0;
+  $('kn-profit').textContent = '淨利率 ' + margin + '%（已扣手續費）';
   // 上期比較（同長度區段）
   const _prevRev = prevPeriodRev(from,to);
   if(_prevRev!=null && _prevRev>0){const _d=Math.round((totalRev-_prevRev)/_prevRev*100);const _n=$('kn-month');if(_n)_n.innerHTML+=` <span style="color:${_d>=0?'#16a34a':'#dc2626'};font-weight:700">${_d>=0?'▲':'▼'}${Math.abs(_d)}%</span>`;}
@@ -1983,7 +1994,9 @@ function renderAnalysis(revRows,purRows,totalRev,cc){
   const foodCost=cc['食材'],laborCost=cc['人事'],fixedCost=cc['固定'],miscCost=cc['耗材'];
   const opCost=foodCost+laborCost+fixedCost+miscCost;
   const foodRate=totalRev>0?foodCost/totalRev*100:0,laborRate=totalRev>0?laborCost/totalRev*100:0;
-  const net=totalRev-opCost,netRate=totalRev>0?net/totalRev*100:0;
+  const totalFee=revRows.reduce((a,r)=>a+(r.cardFee||0)+(r.twqrFee||0)+(r.deliveryFee||0),0);
+  const netRevenue=totalRev-totalFee;      // 預估實收
+  const net=netRevenue-opCost,netRate=totalRev>0?net/totalRev*100:0; // 淨利以預估實收計算
   const fmap={};
   _allPurData.forEach(r=>{if(costClass(r.category)!=='食材')return;const uc=Number(r.unitCost)||0;if(uc<=0)return;const nm=r.name;if(!nm)return;if(!fmap[nm])fmap[nm]={name:nm,cat:r.category,recs:[],total:0};fmap[nm].recs.push({d:normDate(r.date),uc:uc});fmap[nm].total+=(Number(r.cost)||0);});
   const foods=Object.keys(fmap).map(k=>fmap[k]);
@@ -1998,6 +2011,11 @@ function renderAnalysis(revRows,purRows,totalRev,cc){
     const msgs=[];if(foodRate>32)msgs.push('食材成本率 '+foodRate.toFixed(0)+'%（>32%）');if(laborRate>25)msgs.push('人事費用率 '+laborRate.toFixed(0)+'%（>25%）');if(netRate<10)msgs.push('淨利率僅 '+netRate.toFixed(0)+'%');
     h+=`<div style="background:#fff7ed;border:1px solid #fdba74;border-left:5px solid #f97316;border-radius:12px;padding:12px 14px;margin-bottom:14px;color:#9a3412;font-size:13px;font-weight:600">⚠️ 注意：${msgs.join('；')}</div>`;
   }
+  h+=`<div class="c-card"><div class="c-card-title">📊 收益概況（已扣手續費）</div><div class="kpi-grid">
+    <div class="kpi-card"><div class="kpi-label">營收</div><div class="kpi-val"><small>$</small>${Math.round(totalRev).toLocaleString()}</div><div class="kpi-note">總營業額</div></div>
+    <div class="kpi-card"><div class="kpi-label">預估實收</div><div class="kpi-val"><small>$</small>${Math.round(netRevenue).toLocaleString()}</div><div class="kpi-note">扣手續費 $${Math.round(totalFee).toLocaleString()}</div></div>
+    <div class="kpi-card gold-accent"><div class="kpi-label">淨利</div><div class="kpi-val"><small>$</small>${Math.round(net).toLocaleString()}</div><div class="kpi-note">淨利率 ${netRate.toFixed(0)}%</div></div>
+  </div></div>`;
   h+=`<div class="c-card"><div class="c-card-title">💰 成本結構</div><div class="kpi-grid" style="margin-bottom:12px">${costStat('🥬 食材',foodCost,foodRate,32)}${costStat('👥 人事',laborCost,laborRate,25)}${miniStat('🏠 固定',fixedCost,totalRev)}${miniStat('📦 耗材',miscCost,totalRev)}</div><div class="chart-wrap" style="max-width:240px;margin:0 auto"><canvas id="cost-pie"></canvas></div><div id="cost-legend" style="margin-top:10px;display:flex;flex-direction:column;gap:5px"></div></div>`;
   h+=`<div class="c-card"><div class="c-card-title">📈 食材漲跌分析</div>`;
   if(!changed.length){h+=`<div class="game-empty">尚無足夠的進貨歷史可比較（同一食材需至少 2 次進貨）</div>`;}
@@ -2046,7 +2064,7 @@ async function loadReports() {
     const purOk = purRes.status==='ok' || purRes.status==='success';
     _allRevData = revOk
       ? (revRes.rows
-          ? revRes.rows.slice(1).map((r,i)=>({date:r[0],cash:Number(r[2])||0,card:Number(r[3])||0,twqr:Number(r[4])||0,foodpanda:Number(r[5])||0,ubereats:Number(r[6])||0,total:Number(r[7])||0,filler:String(r[19]||''),_row:i+2}))
+          ? revRes.rows.slice(1).map((r,i)=>({date:r[0],cash:Number(r[2])||0,card:Number(r[3])||0,twqr:Number(r[4])||0,foodpanda:Number(r[5])||0,ubereats:Number(r[6])||0,total:Number(r[7])||0,cardFee:Number(r[8])||0,twqrFee:Number(r[9])||0,deliveryFee:Number(r[10])||0,filler:String(r[19]||''),_row:i+2}))
           : (revRes.data||[]))
       : [];
     _allPurData = purOk
