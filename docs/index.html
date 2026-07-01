@@ -1420,11 +1420,13 @@ async function doLogin() {
 }
 
 // ── REGISTER ──
+async function bossExists(){try{const d=await authApi({type:'auth_list_users'});if(d&&d.users)return d.users.some(u=>u.role==='BOSS');}catch(e){}return false;}
 async function doRegister() {
   const name=$('r-name').value.trim(),user=$('r-user').value.trim();
   const pass=$('r-pass').value.trim(),phone=$('r-phone').value.trim();
   const role=$('r-role').value;
   if(!name||!user||!pass){showMsg('r-msg','請填寫姓名、帳號、密碼','error');return}
+  if(role==='BOSS'&&await bossExists()){showMsg('r-msg','老闆帳號僅限 1 個（已存在），請改選店長或員工','error');return}
   const status=role==='BOSS'?'啟用':'待審核';
   try{
     const d=await authApi({type:'auth_register',data:{name,username:user,password:pass,role,phone,status,createdBy:'self'}});
@@ -2109,6 +2111,7 @@ async function createAcc() {
   const pass=$('new-pass').value.trim(),phone=$('new-phone').value.trim();
   const role=$('new-role').value;
   if(!name||!user||!pass){toast('請填寫姓名、帳號、密碼','red');return}
+  if(role==='BOSS'&&await bossExists()){toast('老闆帳號僅限 1 個（已存在）','red');return}
   try{
     const d=await authApi({type:'auth_register',data:{name,username:user,password:pass,role,phone,status:'啟用',createdBy:CU?.username}});
     if(d.status==='success'||d.status==='ok'){toast('✓ 帳號已建立','gold');['new-name','new-user','new-pass','new-phone'].forEach(id=>{if($(id))$(id).value=''});loadAccounts();}
