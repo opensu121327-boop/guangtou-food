@@ -1062,6 +1062,7 @@ body,html,button,input,select,textarea,.brand-name,.topbar-title,.sec-title,.c-c
         </div>
         <button class="btn-action" onclick="submitPu()">✓ 新增進貨</button>
       </div>
+      <div class="c-card"><div class="c-card-title">🧾 最近進貨記錄</div><div id="recent-pu"><div class="muted-note">切換到此頁時載入…</div></div></div>
     </div>
 
     <!-- REPORTS TAB -->
@@ -1507,7 +1508,7 @@ function switchTab(name,btn) {
   $('tab-'+name).classList.add('active');
   btn.classList.add('active');
   if(name==='reports')loadReports();
-  if(name==='purchase')loadMaterials();
+  if(name==='purchase'){loadMaterials();renderRecentPurchases();}
   if(name==='bom'){renderBom();Promise.all([loadMaterials(),loadRecipeCosts()]).then(renderBom);}
   if(name==='accounts'){loadPending();loadAccounts();}
   if(name==='expense')renderExpenseList();
@@ -1687,8 +1688,34 @@ async function submitPu() {
   };
   try{
     const d=await authApi({type:'purchase',rows:[row]});
-    if(d.status==='success'){toast('✓ 進貨記錄已儲存','gold');['pu-name','pu-code','pu-cat','pu-qty','pu-cost','pu-ucost','pu-supplier','pu-packq'].forEach(id=>{if($(id))$(id).value=''});if($('pu-mat'))$('pu-mat').value='';if($('pu-mat-cat'))$('pu-mat-cat').value='';loadMaterials(true);}
+    if(d.status==='success'){toast('✓ 進貨記錄已儲存','gold');['pu-name','pu-code','pu-cat','pu-qty','pu-cost','pu-ucost','pu-supplier','pu-packq'].forEach(id=>{if($(id))$(id).value=''});if($('pu-mat'))$('pu-mat').value='';if($('pu-mat-cat'))$('pu-mat-cat').value='';loadMaterials(true);renderRecentPurchases();}
     else toast(d.message||'送出失敗','red');
+  }catch(e){toast('連線失敗','red');}
+}
+let _recentPu=[];
+async function renderRecentPurchases(){
+  const box=$('recent-pu');if(!box)return;box.innerHTML='<div class="muted-note">載入中…</div>';
+  try{
+    const d=await apiGet('query_purchase');const ok=d&&(d.status==='ok'||d.status==='success');
+    const rows=(ok&&d.rows)?d.rows:[];_recentPu=rows;
+    if(rows.length<=1){box.innerHTML='<div class="game-empty">尚無進貨記錄</div>';return;}
+    let html='';const start=Math.max(1,rows.length-15);
+    for(let k=rows.length-1;k>=start;k--){const r=rows[k];
+      const date=normDate(r[0]),name=String(r[3]||''),qty=r[4],unit=String(r[5]||''),cost=r[6],supplier=String(r[8]||'');
+      html+=`<div style="background:#f5efe6;border:1px solid rgba(128,0,32,.12);border-radius:12px;padding:10px 12px;margin-bottom:8px;display:flex;align-items:center;gap:10px">
+        <div style="flex:1;min-width:0"><div style="font-weight:700;color:#2b1519">${esc(name)}</div><div style="font-size:12px;color:rgba(43,21,25,.55)">${date} ・ ${qty}${esc(unit)} ・ $${cost}${supplier?(' ・ '+esc(supplier)):''}</div></div>
+        <button class="btn-sm btn-warn" style="flex-shrink:0" onclick="delPurchase(${k})">刪</button>
+      </div>`;}
+    box.innerHTML=html;
+  }catch(e){box.innerHTML='<div class="muted-note">載入失敗</div>';}
+}
+async function delPurchase(k){
+  const r=_recentPu[k];if(!r)return;const name=String(r[3]||'');const sheetRow=k+1;
+  if(!confirm('確定刪除「'+name+'」這筆進貨？（會一併從 Google Sheet 刪除）'))return;
+  try{
+    const d=await authApi({type:'purchase_delete',row:sheetRow,name:name});
+    if(d&&d.status==='success'){toast('✓ 已刪除','gold');renderRecentPurchases();loadMaterials(true);}
+    else toast((d&&d.message)||'刪除失敗，請重新整理再試','red');
   }catch(e){toast('連線失敗','red');}
 }
 
