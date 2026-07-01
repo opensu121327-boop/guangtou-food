@@ -1258,7 +1258,7 @@ body,html,button,input,select,textarea,.brand-name,.topbar-title,.sec-title,.c-c
 
     <!-- REWARDS TAB -->
     <div class="tab-panel" id="tab-rewards">
-      <div class="sec-header"><div class="sec-title">獎勵商店</div><div class="divider"></div><div class="sec-sub">用點數兌換獎勵 ・ 每月 10 號截止、15 號發放（由主管實際執行）</div></div>
+      <div class="sec-header"><div class="sec-title">獎勵商店</div><div class="divider"></div><div class="sec-sub">用點數兌換獎勵（由主管實際發放）</div></div>
       <div class="c-card"><div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px"><div class="c-card-title" style="margin:0">🎁 我的 EXP</div><span class="pts-pill" id="rw-balance">0 EXP</span></div></div>
       <div class="c-card"><div class="c-card-title">🛒 可兌換</div><div id="reward-list"></div></div>
       <div class="c-card"><div class="c-card-title">🧾 我的兌換紀錄</div><div id="my-redeems"></div></div>
@@ -1367,7 +1367,7 @@ body,html,button,input,select,textarea,.brand-name,.topbar-title,.sec-title,.c-c
 
 <script>
 // ── 自動更新：開啟時比對版本，有新版就自動重載（免無痕）──
-const APP_VER='20260702020538';
+const APP_VER='20260702021822';
 function checkVersion(){try{fetch('ver.txt?_='+Date.now(),{cache:'no-store'}).then(function(r){return r.ok?r.text():null;}).then(function(v){if(!v)return;v=v.trim();if(v&&v!==APP_VER&&location.search.indexOf('v='+v)<0){location.replace(location.pathname+'?v='+encodeURIComponent(v));}}).catch(function(){});}catch(e){}}
 checkVersion();
 document.addEventListener('visibilitychange',function(){if(document.visibilityState==='visible')checkVersion();});
@@ -2420,8 +2420,9 @@ function renderLeaderboard(){
 function charExtraHTML(c,lv){
   const today=bizDay();const checked=c.lastCheckin===today;
   return `<div class="c-card-title">🎮 我的狀態</div>
+    <div class="xp-text" style="margin-bottom:8px">⭐ Lv.${lv} ・ 還差 <b>${(cumXp(lv+1)-c.xp).toLocaleString()}</b> XP 升 Lv.${lv+1}</div>
     <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">
-      <span class="pts-pill">${c.points} EXP</span>
+      <span class="pts-pill">🎁 ${c.points} EXP</span>
       <span class="xp-text">✅ 已完成任務 ${c.tasksDone} 件</span>
       <button class="btn-action" style="padding:9px 18px${checked?';opacity:.5':''}" ${checked?'disabled':''} onclick="dailyCheckin()">${checked?'今日已簽到 ✓':'每日簽到 +10 EXP'}</button>
     </div>`;
@@ -2604,7 +2605,8 @@ function renderHome(){
       <div class="home-avatar">${renderAvatar(c.avatar,lv)}</div>
       <div class="home-name">${CU.name} <span class="lv-badge">⭐ Lv.${lv}</span></div>
       <div class="xp-bar" style="max-width:240px;margin:10px auto 4px"><div class="xp-fill" style="width:${pct}%"></div></div>
-      <div class="xp-text">${c.points} EXP</div>
+      <div class="xp-text">還差 <b>${(next-c.xp).toLocaleString()}</b> XP 升 Lv.${lv+1}</div>
+      <div class="xp-text" style="opacity:.85;margin-top:2px">🎁 可兌換 ${c.points} EXP</div>
     </div>`;
   const btns=`<div class="home-btns">`+items.map(b=>
     `<button class="float-btn" onclick="goTab('${b.id}')"><span class="fb-ico">${tabIcon(b.id)}</span><span class="fb-lbl">${b.label}</span></button>`).join('')+`</div>`;
@@ -3202,16 +3204,13 @@ function reviewSub(id,ok){
 }
 
 // ── 獎勵商店 ──
-function rewardCfg(){return Object.assign({deadline:10,payout:15},LS.get('rm_reward_cfg',{})||{});}
-function saveRewardCfg(){const d=Math.min(31,Math.max(1,parseInt($('rw-deadline')&&$('rw-deadline').value)||10));const p=Math.min(31,Math.max(1,parseInt($('rw-payout')&&$('rw-payout').value)||15));LS.set('rm_reward_cfg',{deadline:d,payout:p});toast('✓ 已儲存兌換時間','gold');renderRewards();}
 function renderRewards(){
   const c=getChar();
   $('rw-balance').textContent=c.points+' EXP';
-  const rewards=LS.get('rm_rewards',[]);const rcfg=rewardCfg();
-  $('reward-list').innerHTML=`<div style="background:#f5efe6;border:1px solid rgba(128,0,32,.16);border-radius:12px;padding:10px 12px;margin-bottom:12px;color:#800020;font-weight:600;font-size:13px">🕐 每月 ${rcfg.deadline} 號兌換截止 ・ ${rcfg.payout} 號統一發放</div>`+rewards.map(r=>{
+  const rewards=LS.get('rm_rewards',[]);
+  $('reward-list').innerHTML=rewards.map(r=>{
     const afford=c.points>=r.cost;
     return `<div class="reward-card">
-      <span class="tc-emoji">${cicon(r.icon)}</span>
       <div class="tc-body"><div class="tc-title">${r.title}</div><div class="tc-xp">需要 ${r.cost} EXP</div></div>
       <button class="btn-action" style="padding:10px 16px;${afford?'':'opacity:.45'}" ${afford?'':'disabled'} onclick="redeem('${r.id}')">${r.cost} EXP 兌換</button></div>`;
   }).join('');
@@ -3219,7 +3218,7 @@ function renderRewards(){
   const reds=LS.get('rm_redemptions',[]);
   const mine=reds.filter(x=>x.user===CU.username).sort((a,b)=>b.ts-a.ts);
   $('my-redeems').innerHTML=mine.length?mine.map(x=>`
-    <div class="sub-row"><span class="tc-emoji">${cicon(x.icon)}</span>
+    <div class="sub-row">
       <div style="flex:1;min-width:0"><div class="tc-title" style="font-size:14px">${x.title}</div>
         <div class="xp-text">${fmtTime(x.ts)} ・ -${x.cost} EXP</div></div>
       <span class="pill ${x.status}">${({pending:'待主管處理',done:'已發放 ✓'})[x.status]}</span>
@@ -3230,7 +3229,7 @@ function renderRewards(){
     const pend=reds.filter(x=>x.status==='pending').sort((a,b)=>a.ts-b.ts);
     wrap.innerHTML=`<div class="c-card"><div class="c-card-title">🛡️ 待處理兌換（主管實際執行）</div>${
       pend.length?pend.map(x=>`
-      <div class="sub-row"><span class="tc-emoji">${cicon(x.icon)}</span>
+      <div class="sub-row">
         <div style="flex:1;min-width:0"><div class="tc-title" style="font-size:14px">${x.title}</div>
           <div class="xp-text">${x.userName} ・ ${fmtTime(x.ts)} ・ ${x.cost} EXP</div></div>
         <button class="btn-sm btn-approve" onclick="markRedeemDone('${x.id}')">✓ 已發放</button>
@@ -3242,26 +3241,19 @@ function renderRewards(){
 function renderRewardAdmin(){
   const wrap=$('reward-admin-wrap');if(!wrap)return;
   if(CU.role!=='BOSS'){wrap.innerHTML='';return;}
-  const rewards=LS.get('rm_rewards',[]);const rcfg=rewardCfg();
+  const rewards=LS.get('rm_rewards',[]);
   wrap.innerHTML=`<div class="c-card"><div class="c-card-title">🛠️ 獎勵管理（老闆）</div>
-    <div class="form-row" style="margin-bottom:8px"><div class="form-group"><label class="form-label">每月兌換截止日</label><input class="form-input" id="rw-deadline" type="number" min="1" max="31" value="${rcfg.deadline}"></div><div class="form-group"><label class="form-label">每月發放日</label><input class="form-input" id="rw-payout" type="number" min="1" max="31" value="${rcfg.payout}"></div></div>
-    <button class="btn-sm btn-neutral" style="padding:8px 14px;margin-bottom:14px" onclick="saveRewardCfg()">儲存兌換時間</button>
-    <div class="divider" style="margin:6px 0 12px"></div>
-    <div class="form-row">
-      <div class="form-group"><label class="form-label">圖示</label><select class="form-input" id="nr-icon">${CICON_OPTS}</select></div>
-      <div class="form-group"><label class="form-label">所需點數</label><input class="form-input" id="nr-cost" type="number" min="1" value="200"></div>
-    </div>
     <div class="form-group"><label class="form-label">獎勵名稱</label><input class="form-input" id="nr-title" placeholder="例：電影票一張"></div>
+    <div class="form-group"><label class="form-label">所需點數</label><input class="form-input" id="nr-cost" type="number" min="1" value="200"></div>
     <button class="btn-action" onclick="addReward()">➕ 新增獎勵</button>
-    <div style="margin-top:14px">${rewards.map(r=>`<div class="sub-row"><span class="tc-emoji">${cicon(r.icon)}</span><div style="flex:1;min-width:0"><div class="tc-title" style="font-size:14px">${r.title}</div><div class="xp-text">${r.cost} EXP${r.type==='skin'?' ・ 皮膚':''}</div></div><button class="btn-sm btn-warn" onclick="delReward('${r.id}')">刪除</button></div>`).join('')||'<div class="muted-note">目前沒有獎勵</div>'}</div>
+    <div style="margin-top:14px">${rewards.map(r=>`<div class="sub-row"><div style="flex:1;min-width:0"><div class="tc-title" style="font-size:14px">${r.title}</div><div class="xp-text">${r.cost} EXP${r.type==='skin'?' ・ 皮膚':''}</div></div><button class="btn-sm btn-warn" onclick="delReward('${r.id}')">刪除</button></div>`).join('')||'<div class="muted-note">目前沒有獎勵</div>'}</div>
   </div>`;
 }
 function addReward(){
-  const icon=($('nr-icon')&&$('nr-icon').value.trim())||'gift';
   const title=($('nr-title')&&$('nr-title').value.trim())||'';
   const cost=Math.max(1,parseInt($('nr-cost')&&$('nr-cost').value)||200);
   if(!title){toast('請輸入獎勵名稱','red');return;}
-  const rewards=LS.get('rm_rewards',[]);rewards.push({id:'rw'+Date.now(),icon,title,cost,type:'perk'});LS.set('rm_rewards',rewards);
+  const rewards=LS.get('rm_rewards',[]);rewards.push({id:'rw'+Date.now(),title,cost,type:'perk'});LS.set('rm_rewards',rewards);
   toast('✓ 已新增獎勵','gold');renderRewards();
 }
 function delReward(id){const rewards=LS.get('rm_rewards',[]).filter(r=>r.id!==id);LS.set('rm_rewards',rewards);toast('已刪除獎勵','red');renderRewards();}
@@ -3271,15 +3263,19 @@ function redeem(id){
   if(c.points<r.cost){toast('EXP 不足','red');return;}
   c.points-=r.cost;saveChar(c);
   const reds=LS.get('rm_redemptions',[]);
-  reds.push({id:'rd'+Date.now(),rewardId:r.id,title:r.title,icon:r.icon,cost:r.cost,
-    user:CU.username,userName:CU.name,status:'pending',ts:Date.now()});
+  const entry={id:'rd'+Date.now(),rewardId:r.id,title:r.title,cost:r.cost,
+    user:CU.username,userName:CU.name,status:'pending',ts:Date.now()};
+  reds.push(entry);
   LS.set('rm_redemptions',reds);
-  toast('🎁 兌換成功，將於每月 '+rewardCfg().payout+' 號發放','gold');
+  // 寫入雲端 Sheet（永久紀錄、老闆可查）
+  if(syncOn())authApi({type:'redeem_write',row:entry}).catch(()=>{});
+  toast('🎁 兌換成功，等待主管發放','gold');
   renderRewards();updateGameChip();
 }
 function markRedeemDone(id){
   const reds=LS.get('rm_redemptions',[]);const x=reds.find(r=>r.id===id);if(!x)return;
   x.status='done';x.handledBy=CU.name;LS.set('rm_redemptions',reds);
+  if(syncOn())authApi({type:'redeem_done',id:x.id,handledBy:CU.name}).catch(()=>{});
   toast('✓ 已標記為發放','gold');renderRewards();
 }
 
