@@ -1043,6 +1043,13 @@ body,html,button,input,select,textarea,.brand-name,.topbar-title,.sec-title,.c-c
             </select>
           </div>
         </div>
+        <div class="form-group">
+          <label class="form-label">單位克數/容量（1 個購買單位＝多少，供 BOM 自動換算）</label>
+          <div class="form-row">
+            <input class="form-input" id="pu-packq" type="number" min="0" placeholder="例：1000（可留白）">
+            <select class="form-input" id="pu-packu"><option>克</option><option>毫升</option></select>
+          </div>
+        </div>
         <div class="form-row">
           <div class="form-group">
             <label class="form-label">總成本（元・折讓可負）</label>
@@ -1622,6 +1629,8 @@ function fillFromMaterial(m){
   if($('pu-cat'))$('pu-cat').value=m.cat||'';
   if($('pu-supplier'))$('pu-supplier').value=m.supplier||'';
   if(m.unit&&$('pu-unit')){const u=$('pu-unit');let found=false;for(let k=0;k<u.options.length;k++){if(u.options[k].value===m.unit||u.options[k].text===m.unit){u.selectedIndex=k;found=true;break;}}if(!found){const op=document.createElement('option');op.text=m.unit;op.value=m.unit;u.add(op);u.value=m.unit;}}
+  const pk=(LS.get('rm_material_pack',{})||{})[m.code];
+  if(pk&&$('pu-packq')&&$('pu-packu')){const mo=/([\d.]+)\s*(克|毫升)/.exec(pk);if(mo){$('pu-packq').value=mo[1];$('pu-packu').value=mo[2];}}
 }
 function onPickMaterial(){
   const v=$('pu-mat')&&$('pu-mat').value;if(v==='')return;const m=_materials[parseInt(v)];if(!m)return;
@@ -1667,6 +1676,9 @@ async function submitPu() {
   const qty=parseFloat($('pu-qty').value)||0,cost=parseFloat($('pu-cost').value);
   if(!date||!name||isNaN(cost)){toast('請填寫日期、品名、總成本（折讓可填負數）','red');return}
   const unit=qty>0?Math.round(cost/qty*100)/100:cost;
+  const code=$('pu-code').value.trim();
+  const packq=parseFloat($('pu-packq')&&$('pu-packq').value)||0;const packu=($('pu-packu')&&$('pu-packu').value)||'克';
+  if(code&&packq>0){const mp=LS.get('rm_material_pack',{})||{};mp[code]=packq+packu;LS.set('rm_material_pack',mp);}
   const row={
     '進貨日期':date,'物料編號':$('pu-code').value,
     '分類':($('pu-cat')?$('pu-cat').value:''),'物料名稱':name,'進貨數量':qty>0?qty:'',
@@ -1675,7 +1687,7 @@ async function submitPu() {
   };
   try{
     const d=await authApi({type:'purchase',rows:[row]});
-    if(d.status==='success'){toast('✓ 進貨記錄已儲存','gold');['pu-name','pu-code','pu-cat','pu-qty','pu-cost','pu-ucost','pu-supplier'].forEach(id=>{if($(id))$(id).value=''});if($('pu-mat'))$('pu-mat').value='';if($('pu-mat-cat'))$('pu-mat-cat').value='';loadMaterials(true);}
+    if(d.status==='success'){toast('✓ 進貨記錄已儲存','gold');['pu-name','pu-code','pu-cat','pu-qty','pu-cost','pu-ucost','pu-supplier','pu-packq'].forEach(id=>{if($(id))$(id).value=''});if($('pu-mat'))$('pu-mat').value='';if($('pu-mat-cat'))$('pu-mat-cat').value='';loadMaterials(true);}
     else toast(d.message||'送出失敗','red');
   }catch(e){toast('連線失敗','red');}
 }
@@ -2741,7 +2753,10 @@ function itemCost(it,stack){
   }
   const m=_costMap[it.code];if(!m||isNaN(m.cost))return null;const q=parseFloat(it.qty)||0;
   const f=convFactor(it.unit,m.unit);if(f!=null)return q*f*m.cost;
-  const pk=parsePack(m.name);if(pk&&pk.amount>0){const ib=toBase(q,it.unit,pk.base);if(ib!=null)return (ib/pk.amount)*m.cost;}
+  // 優先用進貨填的「單位克數/容量」，其次解析品名
+  const packStr=(LS.get('rm_material_pack',{})||{})[it.code];
+  let pk=packStr?parsePack(packStr):null; if(!pk)pk=parsePack(m.name);
+  if(pk&&pk.amount>0){const ib=toBase(q,it.unit,pk.base);if(ib!=null)return (ib/pk.amount)*m.cost;}
   return null;
 }
 // 整份配方成本（遞迴展開半成品）
