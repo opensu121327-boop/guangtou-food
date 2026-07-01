@@ -1573,7 +1573,7 @@ async function submitRev() {
     cardFee:Math.round(card*0.015),twqrFee:Math.round(twqr*0.006),
     deliveryFee:Math.round((fp+ue)*0.3),platformRemittance:0,offRecord:off};
   try{
-    const d=await api({type:'revenue',rows:[row]});
+    const d=await authApi({type:'revenue',rows:[row]});
     if(d.status==='success'){toast('✓ 營收已記錄','gold');['rv-cash','rv-card','rv-twqr','rv-fp','rv-ue','rv-off','rv-note'].forEach(id=>{if($(id))$(id).value=''});calcRev();}
     else toast(d.message||'送出失敗','red');
   }catch(e){toast('連線失敗','red');}
@@ -1674,7 +1674,7 @@ async function submitPu() {
     '單位成本':unit,'供應商':$('pu-supplier').value
   };
   try{
-    const d=await api({type:'purchase',rows:[row]});
+    const d=await authApi({type:'purchase',rows:[row]});
     if(d.status==='success'){toast('✓ 進貨記錄已儲存','gold');['pu-name','pu-code','pu-cat','pu-qty','pu-cost','pu-ucost','pu-supplier'].forEach(id=>{if($(id))$(id).value=''});if($('pu-mat'))$('pu-mat').value='';if($('pu-mat-cat'))$('pu-mat-cat').value='';loadMaterials(true);}
     else toast(d.message||'送出失敗','red');
   }catch(e){toast('連線失敗','red');}
