@@ -1367,7 +1367,7 @@ body,html,button,input,select,textarea,.brand-name,.topbar-title,.sec-title,.c-c
 
 <script>
 // ── 自動更新：開啟時比對版本，有新版就自動重載（免無痕）──
-const APP_VER='20260702093250';
+const APP_VER='20260702094424';
 function checkVersion(){try{fetch('ver.txt?_='+Date.now(),{cache:'no-store'}).then(function(r){return r.ok?r.text():null;}).then(function(v){if(!v)return;v=v.trim();if(v&&v!==APP_VER&&location.search.indexOf('v='+v)<0){location.replace(location.pathname+'?v='+encodeURIComponent(v));}}).catch(function(){});}catch(e){}}
 checkVersion();
 document.addEventListener('visibilitychange',function(){if(document.visibilityState==='visible')checkVersion();});
@@ -2424,7 +2424,7 @@ function charExtraHTML(c,lv){
   const today=bizDay();const checked=c.lastCheckin===today;
   const cur=cumXp(lv),next=cumXp(lv+1);const pct=Math.min(100,Math.round((c.xp-cur)/(next-cur)*100));
   return `<div class="c-card-title">⭐ 等級進度</div>
-    <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap"><span class="lv-badge">Lv.${lv}</span><span class="xp-text">還差 <b>${(next-c.xp).toLocaleString()}</b> XP 升 Lv.${lv+1}</span></div>
+    <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap"><span class="lv-badge">Lv.${lv}</span><span class="xp-text" style="color:#2b1519!important;font-weight:600">還差 <b>${(next-c.xp).toLocaleString()}</b> XP 升 Lv.${lv+1}</span></div>
     <div class="xp-bar" style="margin:10px 0 4px"><div class="xp-fill" style="width:${pct}%"></div></div>
     <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-top:10px">
       <span class="pts-pill">🎁 ${c.points} EXP</span>
@@ -2609,8 +2609,7 @@ function renderHome(){
       <div class="home-avatar">${renderAvatar(c.avatar,lv)}</div>
       <div class="home-name">${CU.name} <span class="lv-badge">⭐ Lv.${lv}</span></div>
       <div class="xp-bar" style="max-width:240px;margin:10px auto 4px"><div class="xp-fill" style="width:${pct}%"></div></div>
-      <div class="xp-text">還差 <b>${(next-c.xp).toLocaleString()}</b> XP 升 Lv.${lv+1}</div>
-      <div class="xp-text" style="opacity:.85;margin-top:2px">🎁 可兌換 ${c.points} EXP</div>
+      <div class="xp-text" style="color:#2b1519!important;font-weight:700">還差 <b>${(next-c.xp).toLocaleString()}</b> XP 升 Lv.${lv+1}</div>
     </div>`;
   const btns=`<div class="home-btns">`+items.map(b=>
     `<button class="float-btn" onclick="goTab('${b.id}')"><span class="fb-ico">${tabIcon(b.id)}</span><span class="fb-lbl">${b.label}</span></button>`).join('')+`</div>`;
