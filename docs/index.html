@@ -1367,7 +1367,7 @@ body,html,button,input,select,textarea,.brand-name,.topbar-title,.sec-title,.c-c
 
 <script>
 // ── 自動更新：開啟時比對版本，有新版就自動重載（免無痕）──
-const APP_VER='20260702110544';
+const APP_VER='20260703014833';
 function checkVersion(){try{fetch('ver.txt?_='+Date.now(),{cache:'no-store'}).then(function(r){return r.ok?r.text():null;}).then(function(v){if(!v)return;v=v.trim();if(v&&v!==APP_VER&&location.search.indexOf('v='+v)<0){location.replace(location.pathname+'?v='+encodeURIComponent(v));}}).catch(function(){});}catch(e){}}
 checkVersion();
 document.addEventListener('visibilitychange',function(){if(document.visibilityState==='visible')checkVersion();});
@@ -1940,6 +1940,10 @@ function renderReports() {
 // ════════ report-analysis SKILL 整合 ════════
 const FOOD_KEYS=['肉','水產','蔬菜','半成品','冷盤','調味'];
 function costClass(cat){cat=String(cat||'');if(cat.indexOf('金額異動')===0)return null;for(var i=0;i<FOOD_KEYS.length;i++){if(cat.indexOf(FOOD_KEYS[i])===0)return '食材';}if(cat.indexOf('員工')===0)return '人事';if(cat.indexOf('餐具')===0||cat.indexOf('廚具')===0||cat.indexOf('設備')===0)return '固定';return '耗材';}
+// 主食材＝食材類但排除「調味品」（肉/水產/蔬菜/半成品/冷盤）；用於漲跌分析與營運建議，聚焦主食材
+function isMainFood(cat){cat=String(cat||'');return costClass(cat)==='食材'&&cat.indexOf('調味')!==0;}
+// 走勢圖排除的高單價品項（會壓縮圖表比例、看不清其他食材）
+function trendExclude(nm){nm=String(nm||'');return nm==='黑鮪魚'||nm.indexOf('三角')>=0;}
 function prevPeriodRev(from,to){
   if(!from||!to||from<'2001'||to>'2098')return null;
   const f=new Date(from),t=new Date(to);if(isNaN(f)||isNaN(t))return null;
@@ -2001,13 +2005,14 @@ function renderAnalysis(revRows,purRows,totalRev,cc){
   const netRevenue=totalRev-totalFee;      // 預估實收
   const net=netRevenue-opCost,netRate=totalRev>0?net/totalRev*100:0; // 淨利以預估實收計算
   const fmap={};
-  _allPurData.forEach(r=>{if(costClass(r.category)!=='食材')return;const uc=Number(r.unitCost)||0;if(uc<=0)return;const nm=r.name;if(!nm)return;if(!fmap[nm])fmap[nm]={name:nm,cat:r.category,recs:[],total:0};fmap[nm].recs.push({d:normDate(r.date),uc:uc});fmap[nm].total+=(Number(r.cost)||0);});
+  _allPurData.forEach(r=>{if(!isMainFood(r.category))return;const uc=Number(r.unitCost)||0;if(uc<=0)return;const nm=r.name;if(!nm)return;if(!fmap[nm])fmap[nm]={name:nm,cat:r.category,recs:[],total:0};fmap[nm].recs.push({d:normDate(r.date),uc:uc});fmap[nm].total+=(Number(r.cost)||0);});
   const foods=Object.keys(fmap).map(k=>fmap[k]);
   foods.forEach(f=>{f.recs.sort((a,b)=>a.d<b.d?-1:1);const n=f.recs.length;f.cur=f.recs[n-1].uc;f.prev=n>=2?f.recs[n-2].uc:null;f.date=f.recs[n-1].d;f.chg=(f.prev!=null&&f.prev>0)?((f.cur-f.prev)/f.prev*100):null;});
   const changed=foods.filter(f=>f.chg!=null).sort((a,b)=>b.chg-a.chg);
   const ups=changed.filter(f=>f.chg>0.5),downs=changed.filter(f=>f.chg<-0.5);
-  const top5=changed.slice(0,5);
-  const byAmt=foods.slice().sort((a,b)=>b.total-a.total).slice(0,5);
+  const moved=ups.concat(downs).sort((a,b)=>b.chg-a.chg); // 只留真的有漲跌的
+  const top5=moved.slice(0,5);
+  const byAmt=foods.filter(f=>!trendExclude(f.name)).sort((a,b)=>b.total-a.total).slice(0,5);
   const tips=buildTips({totalRev,foodCost,laborCost,fixedCost,miscCost,net,netRate,foodRate,laborRate,ups,downs,revRows});
   let h='';
   if(totalRev>0&&(foodRate>32||laborRate>25||netRate<10)){
@@ -2021,12 +2026,16 @@ function renderAnalysis(revRows,purRows,totalRev,cc){
   </div></div>`;
   h+=`<div class="c-card"><div class="c-card-title">💰 成本結構</div><div class="kpi-grid" style="margin-bottom:12px">${costStat('🥬 食材',foodCost,foodRate,32)}${costStat('👥 人事',laborCost,laborRate,25)}${miniStat('🏠 固定',fixedCost,totalRev)}${miniStat('📦 耗材',miscCost,totalRev)}</div><div class="chart-wrap" style="max-width:240px;margin:0 auto"><canvas id="cost-pie"></canvas></div><div id="cost-legend" style="margin-top:10px;display:flex;flex-direction:column;gap:5px"></div></div>`;
   h+=`<div class="c-card"><div class="c-card-title">📈 食材漲跌分析</div>`;
-  if(!changed.length){h+=`<div class="game-empty">尚無足夠的進貨歷史可比較（同一食材需至少 2 次進貨）</div>`;}
+  if(!changed.length){h+=`<div class="game-empty">尚無足夠的進貨歷史可比較（同一主食材需至少 2 次進貨）</div>`;}
   else{
-    h+=`<div style="font-size:12px;color:var(--text-3);margin-bottom:8px">漲價 ${ups.length} 項 ・ 跌價 ${downs.length} 項（共 ${foods.length} 樣食材）</div>`;
-    if(top5.length)h+=`<div class="chart-wrap"><canvas id="top5-chart"></canvas></div>`;
-    h+=`<div style="display:flex;flex-direction:column;gap:8px;margin-top:12px">`+changed.slice(0,15).map(f=>{const up=f.chg>0.5,down=f.chg<-0.5;const col=up?'#dc2626':(down?'#16a34a':'#9ca3af');const arr=up?'↑':(down?'↓':'—');return `<div style="border-left:4px solid ${col};background:#fff7ef;border-radius:10px;padding:8px 12px;display:flex;align-items:center;gap:10px"><div style="flex:1;min-width:0"><div style="font-weight:700;font-size:13px">${esc(f.name)}</div><div style="font-size:11px;color:var(--text-3)">最近 ${f.date}</div></div><div style="text-align:right;font-size:12px"><div>$${round2(f.cur)} <span style="color:var(--text-3)">/ 上次 $${round2(f.prev)}</span></div><div style="color:${col};font-weight:800">${arr} ${f.chg>0?'+':''}${f.chg.toFixed(1)}%</div></div></div>`;}).join('')+`</div>`;
-    if(changed.length>15)h+=`<div style="font-size:11px;color:var(--text-3);margin-top:8px">（僅顯示漲跌前 15 項）</div>`;
+    h+=`<div style="font-size:12px;color:var(--text-3);margin-bottom:8px">漲價 ${ups.length} 項 ・ 跌價 ${downs.length} 項（主食材，不含調味品）</div>`;
+    if(moved.length){
+      if(top5.length)h+=`<div class="chart-wrap"><canvas id="top5-chart"></canvas></div>`;
+      h+=`<div style="display:flex;flex-direction:column;gap:8px;margin-top:12px">`+moved.slice(0,15).map(f=>{const up=f.chg>0.5,down=f.chg<-0.5;const col=up?'#dc2626':(down?'#16a34a':'#9ca3af');const arr=up?'↑':(down?'↓':'—');return `<div style="border-left:4px solid ${col};background:#fff7ef;border-radius:10px;padding:8px 12px;display:flex;align-items:center;gap:10px"><div style="flex:1;min-width:0"><div style="font-weight:700;font-size:13px">${esc(f.name)}</div><div style="font-size:11px;color:var(--text-3)">最近 ${f.date}</div></div><div style="text-align:right;font-size:12px"><div>$${round2(f.cur)} <span style="color:var(--text-3)">/ 上次 $${round2(f.prev)}</span></div><div style="color:${col};font-weight:800">${arr} ${f.chg>0?'+':''}${f.chg.toFixed(1)}%</div></div></div>`;}).join('')+`</div>`;
+      if(moved.length>15)h+=`<div style="font-size:11px;color:var(--text-3);margin-top:8px">（僅顯示漲跌前 15 項）</div>`;
+    }else{
+      h+=`<div class="muted-note" style="margin-top:8px">主食材價格穩定，目前無明顯漲跌 👍</div>`;
+    }
     if(byAmt.length)h+=`<div class="c-card-title" style="margin-top:16px">💵 重點食材價格走勢（採購額前5）</div><div class="chart-wrap"><canvas id="price-chart"></canvas></div>`;
   }
   h+=`</div>`;
