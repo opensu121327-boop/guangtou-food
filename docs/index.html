@@ -1367,7 +1367,7 @@ body,html,button,input,select,textarea,.brand-name,.topbar-title,.sec-title,.c-c
 
 <script>
 // ── 自動更新：開啟時比對版本，有新版就自動重載（免無痕）──
-const APP_VER='20260702090904';
+const APP_VER='20260702093250';
 function checkVersion(){try{fetch('ver.txt?_='+Date.now(),{cache:'no-store'}).then(function(r){return r.ok?r.text():null;}).then(function(v){if(!v)return;v=v.trim();if(v&&v!==APP_VER&&location.search.indexOf('v='+v)<0){location.replace(location.pathname+'?v='+encodeURIComponent(v));}}).catch(function(){});}catch(e){}}
 checkVersion();
 document.addEventListener('visibilitychange',function(){if(document.visibilityState==='visible')checkVersion();});
@@ -1628,7 +1628,7 @@ async function loadMaterials(force){
       rows.forEach(r=>{const code=r[1]?String(r[1]).trim():'';const name=r[3]?String(r[3]).trim():'';if(!code&&!name)return;map[code||name]={code:code,name:name,cat:r[2]?String(r[2]).trim():'',unit:r[5]?String(r[5]).trim():'',supplier:r[8]?String(r[8]).trim():''};});
       arr=Object.keys(map).map(k=>map[k]);
     }
-    _materials=arr.map(m=>({code:String(m.code||'').trim(),name:String(m.name||'').trim(),cat:String(m.cat||'').trim(),unit:String(m.unit||'').trim(),supplier:String(m.supplier||'').trim()})).filter(m=>m.code||m.name).sort((a,b)=>(a.code||'').localeCompare(b.code||''));
+    _materials=arr.map(m=>({code:String(m.code||'').trim(),name:String(m.name||'').trim(),cat:String(m.cat||'').trim(),unit:String(m.unit||'').trim(),supplier:String(m.supplier||'').trim(),note:String(m.note||'').trim()})).filter(m=>m.code||m.name).sort((a,b)=>(a.code||'').localeCompare(b.code||''));
     _matLoaded=true;_matPyDone=false;fillMatCatSelect();fillMatSelect();
   }catch(e){}
 }
@@ -2851,7 +2851,12 @@ function itemCost(it,stack){
   // 優先用進貨填的「單位克數/容量」，其次解析品名
   const packStr=(LS.get('rm_material_pack',{})||{})[it.code];
   let pk=packStr?parsePack(packStr):null; if(!pk)pk=parsePack(m.name);
-  if(pk&&pk.amount>0){const ib=toBase(q,it.unit,pk.base);if(ib!=null)return (ib/pk.amount)*m.cost;}
+  if(!pk){const mm=_materials.find(x=>x.code&&x.code===it.code);if(mm)pk=parsePack(mm.name)||parsePack(mm.note);}
+  if(pk&&pk.amount>0){
+    let ib=toBase(q,it.unit,pk.base);
+    if(ib==null){const alt=pk.base==='ml'?'g':'ml';ib=toBase(q,it.unit,alt);} // 廚房液體：1克≈1毫升，跨重量/容量估算
+    if(ib!=null)return (ib/pk.amount)*m.cost;
+  }
   return null;
 }
 // 整份配方成本（遞迴展開半成品）
