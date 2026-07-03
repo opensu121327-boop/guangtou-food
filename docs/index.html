@@ -1367,7 +1367,7 @@ body,html,button,input,select,textarea,.brand-name,.topbar-title,.sec-title,.c-c
 
 <script>
 // ── 自動更新：開啟時比對版本，有新版就自動重載（免無痕）──
-const APP_VER='20260703121218';
+const APP_VER='20260703162936';
 function checkVersion(){try{fetch('ver.txt?_='+Date.now(),{cache:'no-store'}).then(function(r){return r.ok?r.text():null;}).then(function(v){if(!v)return;v=v.trim();if(v&&v!==APP_VER&&location.search.indexOf('v='+v)<0){location.replace(location.pathname+'?v='+encodeURIComponent(v));}}).catch(function(){});}catch(e){}}
 checkVersion();
 document.addEventListener('visibilitychange',function(){if(document.visibilityState==='visible')checkVersion();});
@@ -1713,7 +1713,8 @@ async function renderRecentPurchases(){
     let html='';
     const names=LS.get('rm_names',{})||{};const today=bizDay();
     // 依進貨日期新到舊排序（保留原始 Sheet 列索引 k 供刪除；同日期則新輸入者在前）
-    const ordered=[];for(let i=1;i<rows.length;i++)ordered.push(i);
+    // 隱藏「員工」分類（員工薪水／勞健保），避免薪資顯示在進貨紀錄；報表人事成本不受影響
+    const ordered=[];for(let i=1;i<rows.length;i++){if(String(rows[i][2]||'').indexOf('員工')===0)continue;ordered.push(i);}
     ordered.sort((a,b)=>{const da=normDate(rows[a][0]),db=normDate(rows[b][0]);if(da!==db)return da<db?1:-1;return b-a;});
     for(const k of ordered.slice(0,15)){const r=rows[k];
       const date=normDate(r[0]),name=String(r[3]||''),qty=r[4],unit=String(r[5]||''),cost=r[6],supplier=String(r[8]||''),by=String(r[9]||'');
