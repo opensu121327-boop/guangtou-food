@@ -1367,7 +1367,7 @@ body,html,button,input,select,textarea,.brand-name,.topbar-title,.sec-title,.c-c
 
 <script>
 // ── 自動更新：開啟時比對版本，有新版就自動重載（免無痕）──
-const APP_VER='20260703162936';
+const APP_VER='20260703170042';
 function checkVersion(){try{fetch('ver.txt?_='+Date.now(),{cache:'no-store'}).then(function(r){return r.ok?r.text():null;}).then(function(v){if(!v)return;v=v.trim();if(v&&v!==APP_VER&&location.search.indexOf('v='+v)<0){location.replace(location.pathname+'?v='+encodeURIComponent(v));}}).catch(function(){});}catch(e){}}
 checkVersion();
 document.addEventListener('visibilitychange',function(){if(document.visibilityState==='visible')checkVersion();});
@@ -2743,12 +2743,12 @@ function renderChProgress(){
   const db=bar(tRev,dTarget),mb=bar(mRev,cfg.monthlyTarget);
   const dCan=db.done&&!paid.daily[bizDay()],mCan=mb.done&&!paid.monthly[monthKey()];
   d.innerHTML=`<div class="c-card"><div class="c-card-title">🎯 今日業績挑戰（${dayType}）${db.done?'<span class="pill done">已達標 🎉</span>':''}</div>
-    <div class="xp-text">今日營收 ${fmt(tRev)} ／ ${dayType}目標 ${dTarget?('$'+dTarget.toLocaleString()):'未設定'}</div>
+    <div class="xp-text" style="color:#2b1519!important;font-size:14px;font-weight:600">今日營收 <b style="color:#800020">${fmt(tRev)}</b> ／ ${dayType}目標 <b>${dTarget?('$'+dTarget.toLocaleString()):'未設定'}</b></div>
     <div class="xp-bar" style="margin:8px 0"><div class="xp-fill" style="width:${db.pct}%"></div></div>
     ${CU.role==='BOSS'?`<button class="btn-action" style="padding:10px 16px;${dCan?'':'opacity:.5'}" ${dCan?'':'disabled'} onclick="payChallenge('daily')">達標派發 +${cfg.dailyReward} 給今日上班人員（${rosterToday().length}人）</button>${paid.daily[bizDay()]?'<div class="muted-note" style="margin-top:6px">今日已派發 ✓</div>':''}`:''}
   </div>`;
   m.innerHTML=`<div class="c-card"><div class="c-card-title">📅 本月業績挑戰 ${mb.done?'<span class="pill done">已達標 🎉</span>':''}</div>
-    <div class="xp-text">本月營收 ${fmt(mRev)} ／ 目標 ${cfg.monthlyTarget?('$'+cfg.monthlyTarget.toLocaleString()):'未設定'}</div>
+    <div class="xp-text" style="color:#2b1519!important;font-size:14px;font-weight:600">本月營收 <b style="color:#800020">${fmt(mRev)}</b> ／ 目標 <b>${cfg.monthlyTarget?('$'+cfg.monthlyTarget.toLocaleString()):'未設定'}</b></div>
     <div class="xp-bar" style="margin:8px 0"><div class="xp-fill" style="width:${mb.pct}%"></div></div>
     ${CU.role==='BOSS'?`<button class="btn-action" style="padding:10px 16px;${mCan?'':'opacity:.5'}" ${mCan?'':'disabled'} onclick="payChallenge('monthly')">達標派發 +${cfg.monthlyReward} 給全體員工</button>${paid.monthly[monthKey()]?'<div class="muted-note" style="margin-top:6px">本月已派發 ✓</div>':''}`:''}
   </div>`;
