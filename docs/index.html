@@ -1367,7 +1367,7 @@ body,html,button,input,select,textarea,.brand-name,.topbar-title,.sec-title,.c-c
 
 <script>
 // ── 自動更新：開啟時比對版本，有新版就自動重載（免無痕）──
-const APP_VER='20260704173232';
+const APP_VER='20260704174009';
 function checkVersion(){try{fetch('ver.txt?_='+Date.now(),{cache:'no-store'}).then(function(r){return r.ok?r.text():null;}).then(function(v){if(!v)return;v=v.trim();if(v&&v!==APP_VER&&location.search.indexOf('v='+v)<0){location.replace(location.pathname+'?v='+encodeURIComponent(v));}}).catch(function(){});}catch(e){}}
 checkVersion();
 document.addEventListener('visibilitychange',function(){if(document.visibilityState==='visible')checkVersion();});
@@ -2655,7 +2655,7 @@ async function renderBoardInbox(){
   }
   const mine=msgs.filter(m=>m.to===CU.username).sort((a,b)=>b.ts-a.ts);
   box.innerHTML=mine.length?mine.map(m=>`<div class="sub-row" style="flex-direction:column;align-items:stretch;gap:3px">
-    <div style="display:flex;justify-content:space-between;gap:6px;flex-wrap:wrap"><div class="tc-title" style="font-size:14px;color:#2b1519">💬 ${esc(m.fromName||m.from)}</div><div class="xp-text" style="color:rgba(43,21,25,.55)!important">${fmtTime(m.ts)}</div></div>
+    <div style="display:flex;justify-content:space-between;gap:6px;flex-wrap:wrap"><div class="tc-title" style="font-size:14px;color:#2b1519">💬 匿名同事</div><div class="xp-text" style="color:rgba(43,21,25,.55)!important">${fmtTime(m.ts)}</div></div>
     <div style="white-space:pre-wrap;color:#2b1519;font-size:14px">${esc(m.text)}</div>
     <div style="font-size:12px;font-weight:700;margin-top:2px;color:${m.signed?'#15803d':'#b91c8c'}">${m.signed?'✓ 已簽名確認':'⏳ 待簽名'}</div>
   </div>`).join(''):'<div class="game-empty">目前還沒有同事的叮嚀 🙂</div>';
@@ -2671,7 +2671,7 @@ function showSignModal(msg){
   ov.style.cssText='position:fixed;inset:0;z-index:9999;background:rgba(20,0,8,.78);display:flex;align-items:center;justify-content:center;padding:16px';
   ov.innerHTML=`<div style="background:#ece4d8;border-radius:18px;max-width:420px;width:100%;padding:18px;box-shadow:0 20px 60px rgba(0,0,0,.55)">
     <div style="font-weight:800;font-size:17px;color:#800020;margin-bottom:4px">✍️ 請閱讀並簽名確認</div>
-    <div style="font-size:12px;color:rgba(43,21,25,.6);margin-bottom:10px">來自 <b>${esc(msg.fromName||msg.from)}</b> 的叮嚀 ・ ${fmtTime(msg.ts)}</div>
+    <div style="font-size:12px;color:rgba(43,21,25,.6);margin-bottom:10px">匿名同事的叮嚀 ・ ${fmtTime(msg.ts)}</div>
     <div style="background:#f5efe6;border:1px solid rgba(128,0,32,.15);border-radius:12px;padding:12px;color:#2b1519;font-size:15px;white-space:pre-wrap;margin-bottom:14px;max-height:180px;overflow:auto">${esc(msg.text)}</div>
     <div style="font-size:12px;color:rgba(43,21,25,.6);margin-bottom:4px">請在下方簽名（用手指或滑鼠）：</div>
     <canvas id="sign-pad" width="380" height="150" style="width:100%;height:150px;background:#fff;border:2px dashed rgba(128,0,32,.4);border-radius:12px;touch-action:none;display:block"></canvas>
