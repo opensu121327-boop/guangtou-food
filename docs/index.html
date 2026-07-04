@@ -1246,7 +1246,7 @@ body,html,button,input,select,textarea,.brand-name,.topbar-title,.sec-title,.c-c
     <!-- TASKS TAB -->
     <div class="tab-panel" id="tab-tasks">
       <div class="sec-header"><div class="sec-title">任務中心</div><div class="divider"></div><div class="sec-sub">完成任務拍照上傳，主管審核後獲得經驗值</div></div>
-      <input type="file" id="task-file-input" accept="image/*" capture="environment" style="display:none">
+      <input type="file" id="task-file-input" accept="image/*" multiple style="display:none">
       <div id="recommend-wrap"></div>
       <div id="quiz-wrap"></div>
       <div id="mgr-review-wrap"></div>
@@ -1368,7 +1368,7 @@ body,html,button,input,select,textarea,.brand-name,.topbar-title,.sec-title,.c-c
 
 <script>
 // ── 自動更新：開啟時比對版本，有新版就自動重載（免無痕）──
-const APP_VER='20260704183133';
+const APP_VER='20260704184309';
 function checkVersion(){try{fetch('ver.txt?_='+Date.now(),{cache:'no-store'}).then(function(r){return r.ok?r.text():null;}).then(function(v){if(!v)return;v=v.trim();if(v&&v!==APP_VER&&location.search.indexOf('v='+v)<0){location.replace(location.pathname+'?v='+encodeURIComponent(v));}}).catch(function(){});}catch(e){}}
 checkVersion();
 document.addEventListener('visibilitychange',function(){if(document.visibilityState==='visible')checkVersion();});
@@ -2838,16 +2838,20 @@ let _pendingTaskId=null,_taskInputWired=false;
 function wireTaskInput(){
   if(_taskInputWired)return;const inp=$('task-file-input');if(!inp)return;_taskInputWired=true;
   inp.onchange=function(){
-    const file=this.files&&this.files[0];this.value='';
-    if(!file||!_pendingTaskId)return;
+    const files=this.files?Array.prototype.slice.call(this.files):[];this.value='';
+    if(!files.length||!_pendingTaskId)return;
     const tasks=LS.get('rm_tasks',[]);const task=tasks.find(t=>t.id===_pendingTaskId);if(!task)return;
-    fileToThumb(file,dataUrl=>{
+    const subId='s'+Date.now();const urls=[];let done=0;
+    const finish=()=>{
+      if(!urls.length){toast('圖片讀取失敗，請重試','red');return;}
+      const keys=[];urls.forEach((u,i)=>{const k='rm_subphoto_'+subId+'_'+i;LS.set(k,u);keys.push(k);}); // 每張各存一格→張數不限、跨手機都同步
       const subs=LS.get('rm_submissions',[]);
-      subs.push({id:'s'+Date.now(),taskId:task.id,taskTitle:task.title,icon:task.icon,xp:task.xp||0,
+      subs.push({id:subId,taskId:task.id,taskTitle:task.title,icon:task.icon,xp:task.xp||0,
         cat:task.cat||'daily',type:'photo',
-        user:CU.username,userName:CU.name,photo:dataUrl,status:'pending',ts:Date.now()});
-      if(LS.set('rm_submissions',subs)){toast('📤 已上傳，等待主管審核','gold');renderTasks();}
-    },240);
+        user:CU.username,userName:CU.name,photoKeys:keys,status:'pending',ts:Date.now()});
+      if(LS.set('rm_submissions',subs)){toast('📤 已上傳 '+keys.length+' 張，等待主管審核','gold');renderTasks();}
+    };
+    files.forEach(f=>{fileToThumb(f,url=>{if(url)urls.push(url);if(++done===files.length)finish();},240,0.6);});
   };
 }
 function fileToThumb(file,cb,max,q){
@@ -2859,7 +2863,8 @@ function fileToThumb(file,cb,max,q){
     const cv=document.createElement('canvas');cv.width=w;cv.height=h;
     cv.getContext('2d').drawImage(img,0,0,w,h);
     cb(cv.toDataURL('image/jpeg',q||0.6));
-  };img.onerror=()=>toast('圖片讀取失敗','red');img.src=e.target.result;};
+  };img.onerror=()=>{toast('圖片讀取失敗','red');cb(null);};img.src=e.target.result;};
+  r.onerror=()=>cb(null);
   r.readAsDataURL(file);
 }
 function dailyBlocked(id){const t=findTask(id);if(t&&t.cat==='daily'&&dailyClaim(id)){toast('今日已有人完成這個每日任務 🙌','red');renderTasks();return true;}return false;}
@@ -3331,7 +3336,13 @@ function renderTasks(){
   $('task-list').innerHTML=catRow+cards;
 
   const subs=LS.get('rm_submissions',[]);
-  const subMedia=s=>(s.type==='photo'&&s.photo)?`<img class="photo-thumb" src="${s.photo}" alt="">`:`<span class="tc-emoji">${s.type==='sales'?'📊':'✍️'}</span>`;
+  const subMedia=s=>{
+    let ph=[];
+    if(s.photoKeys&&s.photoKeys.length)ph=s.photoKeys.map(k=>LS.get(k,'')).filter(Boolean);
+    else if(s.photo)ph=[s.photo];
+    if(s.type==='photo'&&ph.length)return `<div style="display:flex;gap:6px;flex-wrap:wrap">`+ph.map(p=>`<img class="photo-thumb" src="${p}" alt="">`).join('')+`</div>`;
+    return `<span class="tc-emoji">${s.type==='sales'?'📊':'✍️'}</span>`;
+  };
   const subExtra=s=>s.type==='text'?`<div class="muted-note" style="margin-top:6px">${esc(s.text)}</div>`
     :s.type==='sales'?`<div class="muted-note" style="margin-top:6px">🔝 ${esc((s.sales&&s.sales.best||'').split('\n').join('、'))}<br>🔻 ${esc((s.sales&&s.sales.worst||'').split('\n').join('、'))}</div>`:'';
   const mine=subs.filter(s=>s.user===CU.username).sort((a,b)=>b.ts-a.ts);
@@ -3497,7 +3508,7 @@ function addQuiz(){
 function delQuiz(id){const list=LS.get('rm_quiz',[]).filter(x=>x.id!==id);LS.set('rm_quiz',list);toast('已刪除題目','red');renderTasks();}
 function reviewSub(id,ok){
   const subs=LS.get('rm_submissions',[]);const s=subs.find(x=>x.id===id);if(!s||s.status!=='pending')return;
-  s.status=ok?'approved':'rejected';s.reviewer=CU.name;s.photo='';
+  s.status=ok?'approved':'rejected';s.reviewer=CU.name;if(s.photoKeys){s.photoKeys.forEach(k=>LS.set(k,''));s.photoKeys=[];}s.photo='';
   LS.set('rm_submissions',subs);
   if(ok){
     const r=awardXp(s.user,s.xp);
