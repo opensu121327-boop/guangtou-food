@@ -1309,6 +1309,7 @@ body,html,button,input,select,textarea,.brand-name,.topbar-title,.sec-title,.c-c
     <!-- LEADERBOARD TAB -->
     <div class="tab-panel" id="tab-leaderboard">
       <div class="sec-header"><div class="sec-title">排行榜</div><div class="divider"></div><div class="sec-sub">依累積經驗值排名</div></div>
+      <div id="lb-champion"></div>
       <div class="c-card"><div class="muted-note">☁️ 已雲端同步，顯示全店員工（每位員工登入過即會出現）。</div><div id="lb-list"></div></div>
     </div>
 
@@ -1368,7 +1369,7 @@ body,html,button,input,select,textarea,.brand-name,.topbar-title,.sec-title,.c-c
 
 <script>
 // ── 自動更新：開啟時比對版本，有新版就自動重載（免無痕）──
-const APP_VER='20260704180830';
+const APP_VER='20260704182529';
 function checkVersion(){try{fetch('ver.txt?_='+Date.now(),{cache:'no-store'}).then(function(r){return r.ok?r.text():null;}).then(function(v){if(!v)return;v=v.trim();if(v&&v!==APP_VER&&location.search.indexOf('v='+v)<0){location.replace(location.pathname+'?v='+encodeURIComponent(v));}}).catch(function(){});}catch(e){}}
 checkVersion();
 document.addEventListener('visibilitychange',function(){if(document.visibilityState==='visible')checkVersion();});
@@ -2417,6 +2418,7 @@ function updateScenes(){paintScene('dress-scene');paintScene('cc-scene');}
 function recordName(u,name){if(!u||!name)return;const m=LS.get('rm_names',{})||{};if(m[u]!==name){m[u]=name;LS.set('rm_names',m);}}
 function leaderboard(){const out=[];const names=LS.get('rm_names',{})||{};for(let i=0;i<localStorage.length;i++){const k=localStorage.key(i);if(k&&k.indexOf('rm_char_')===0){const u=k.slice(8);if(u.indexOf('demo_')===0)continue;const c=normChar(LS.get(k,null));out.push({u,name:names[u]||u,xp:c.xp,points:c.points,lv:levelOf(c.xp),tasksDone:c.tasksDone,avatar:c.avatar});}}out.sort((a,b)=>b.xp-a.xp||b.points-a.points);return out;}
 function renderLeaderboard(){
+  renderPraiseChampion();
   const wrap=$('lb-list');if(!wrap)return;
   const list=leaderboard();
   if(!list.length){wrap.innerHTML='<div class="game-empty">目前還沒有資料</div>';return;}
@@ -2430,6 +2432,55 @@ function renderLeaderboard(){
       <div class="lb-xp">${r.xp}<span> XP</span></div>
     </div>`;
   }).join('');
+}
+// 排行榜頂部：人氣王（被表揚最多）＋本月表揚冠軍（頒 1000 點）
+async function renderPraiseChampion(){
+  const box=$('lb-champion');if(!box)return;
+  let list=[];
+  if(syncOn()){
+    try{const d=await authApi({type:'query_praise'});
+      if(d&&(d.status==='ok'||d.status==='success')&&d.rows&&d.rows.length>1){
+        list=d.rows.slice(1).map(r=>({ts:Number(r[6])||0,to:String(r[3]||''),toName:String(r[4]||'')}));
+      }
+    }catch(e){}
+  }
+  list=list.filter(p=>p.to);
+  if(!list.length){box.innerHTML='';return;}
+  const mk=monthKey();const names=LS.get('rm_names',{})||{};
+  const allCnt={},monCnt={},nameOf={};
+  list.forEach(p=>{allCnt[p.to]=(allCnt[p.to]||0)+1;if((bizDay(p.ts)||'').slice(0,7)===mk)monCnt[p.to]=(monCnt[p.to]||0)+1;nameOf[p.to]=p.toName||names[p.to]||p.to;});
+  const top=cnt=>{let u='',n=0;for(const k in cnt){if(cnt[k]>n){n=cnt[k];u=k;}}return {u,n};};
+  const popular=top(allCnt),champ=top(monCnt);
+  const ava=u=>{try{const c=normChar(LS.get('rm_char_'+u,null));return renderAvatar(c.avatar,levelOf(c.xp));}catch(e){return '';}};
+  const paid=LS.get('rm_praise_paid',{})||{};
+  let html='';
+  if(popular.u){
+    html+=`<div class="c-card" style="display:flex;align-items:center;gap:12px">
+      <div class="lb-ava" style="width:56px;height:56px;flex-shrink:0">${ava(popular.u)}</div>
+      <div style="flex:1;min-width:0"><div style="font-size:12px;color:#800020;font-weight:800">🏅 目前人氣王（被表揚最多）</div><div style="font-weight:800;color:#2b1519;font-size:17px">${esc(nameOf[popular.u]||popular.u)}</div><div class="xp-text" style="color:rgba(43,21,25,.6)!important">累計被表揚 ${popular.n} 次</div></div>
+    </div>`;
+  }
+  if(champ.u){
+    const isPaid=paid[mk]===champ.u;
+    html+=`<div class="c-card" style="border:1.5px solid rgba(201,169,110,.55)">
+      <div style="display:flex;align-items:center;gap:12px">
+        <div class="lb-ava" style="width:56px;height:56px;flex-shrink:0">${ava(champ.u)}</div>
+        <div style="flex:1;min-width:0"><div style="font-size:12px;color:#b8860b;font-weight:800">👑 本月表揚冠軍（${mk}）</div><div style="font-weight:800;color:#2b1519;font-size:17px">${esc(nameOf[champ.u]||champ.u)}</div><div class="xp-text" style="color:rgba(43,21,25,.6)!important">本月被表揚 ${champ.n} 次 ・ 當月最佳表現獎 1000 點</div></div>
+      </div>
+      ${isPaid?`<div class="muted-note" style="margin-top:8px;color:#15803d;font-weight:600">✓ 已頒發 1000 點給 ${esc(nameOf[champ.u]||champ.u)}</div>`:(CU.role==='BOSS'?`<button class="btn-action" style="margin-top:10px;width:100%" onclick="payPraiseChamp('${champ.u}')">👑 頒發當月最佳表現獎 +1000 點</button>`:`<div class="muted-note" style="margin-top:8px">當月最佳表現獎由老闆頒發</div>`)}
+    </div>`;
+  }
+  box.innerHTML=html;
+}
+function payPraiseChamp(u){
+  const mk=monthKey();const paid=LS.get('rm_praise_paid',{})||{};
+  if(paid[mk]){toast('本月已頒發過','red');return;}
+  const names=LS.get('rm_names',{})||{};
+  if(!confirm('確定頒發「當月最佳表現獎 +1000 點」給 '+(names[u]||u)+'？（每月僅一次）'))return;
+  awardXp(u,1000);
+  paid[mk]=u;LS.set('rm_praise_paid',paid);
+  toast('👑 已頒發 1000 點給 '+(names[u]||u),'gold');
+  updateGameChip();renderLeaderboard();
 }
 function charExtraHTML(c,lv){
   const today=bizDay();const checked=c.lastCheckin===today;
@@ -2464,6 +2515,7 @@ function normChar(c){c=c||{};const d=defAvatar();const a=c.avatar||{};
   return {
     xp:c.xp||0, points:c.points||0,
     lastCheckin:c.lastCheckin||'', tasksDone:c.tasksDone||0, chosen:!!c.chosen, lastHandover:c.lastHandover||'',
+    lastSuggestAward:c.lastSuggestAward||'', lastPraiseAward:c.lastPraiseAward||'',
     avatar:{bgColor:a.bgColor||d.bgColor,bgImg:a.bgImg||'',skinColor:a.skinColor||d.skinColor,hairColor:a.hairColor||d.hairColor,parts}
   };
 }
@@ -2658,8 +2710,17 @@ async function submitPraise(){
     if(d&&(d.status==='success'||d.status==='ok')){
       if($('praise-text'))$('praise-text').value='';
       toast('🏅 已送出表揚給 '+(names[to]||to),'gold');
+      awardBoardParticipation('praise');
     }else toast((d&&d.message)||'送出失敗','red');
   }catch(e){toast('連線失敗','red');}
+}
+// 填寫建議/表揚回饋 +5 點（每類每天上限一次，避免刷分）
+function awardBoardParticipation(kind){
+  const c=getChar();const key=kind==='praise'?'lastPraiseAward':'lastSuggestAward';const today=bizDay();
+  if(c[key]===today)return;
+  c[key]=today;saveChar(c);
+  const r=awardXp(CU.username,5);updateGameChip();
+  setTimeout(function(){toast('✍️ 填寫回饋 +5 點'+(r.leveledUp?('（升級 Lv.'+r.after+'！）'):''),'gold');},700);
 }
 async function renderBoardInbox(){
   const box=$('board-inbox');if(!box)return;
@@ -2748,6 +2809,7 @@ async function submitBoardMsg(){
     if(d&&(d.status==='success'||d.status==='ok')){
       if($('board-text'))$('board-text').value='';
       toast('✓ 已送出給 '+(names[to]||to),'gold');
+      awardBoardParticipation('suggest');
       renderBoardInbox();
     }else toast((d&&d.message)||'送出失敗','red');
   }catch(e){toast('連線失敗','red');}
@@ -2848,7 +2910,7 @@ function renderChallenge(){renderPraiseMarquee();renderChRoster();renderChAdmin(
 async function renderPraiseMarquee(){
   const box=$('ch-praise');if(!box)return;
   if(!window._praiseCssDone){window._praiseCssDone=true;const st=document.createElement('style');
-    st.textContent='.praise-marquee{overflow:hidden;width:100%}.praise-track{display:flex;gap:12px;width:max-content;animation:pmarq 34s linear infinite;padding-left:14px}.praise-marquee:active .praise-track{animation-play-state:paused}.praise-item{display:flex;align-items:center;gap:9px;background:rgba(255,255,255,.1);border:1px solid rgba(220,210,198,.28);border-radius:14px;padding:7px 14px 7px 7px;white-space:nowrap;flex-shrink:0}.praise-av{width:42px;height:42px;flex-shrink:0;border-radius:50%;overflow:hidden;background:rgba(255,255,255,.16);display:flex;align-items:center;justify-content:center;font-size:20px}.praise-av .avatar-stage{width:100%;height:100%;position:relative}.praise-txt{color:#f3e9dc;font-size:14px;overflow:hidden;text-overflow:ellipsis;max-width:260px}@keyframes pmarq{from{transform:translateX(0)}to{transform:translateX(-50%)}}';
+    st.textContent='.praise-marquee{overflow:hidden;width:100%}.praise-track{display:flex;gap:12px;width:max-content;animation:pmarq 34s linear infinite;padding-left:14px}.praise-marquee:active .praise-track{animation-play-state:paused}.praise-item{display:flex;align-items:center;gap:9px;background:#fff7ef;border:1px solid rgba(128,0,32,.22);border-radius:14px;padding:7px 14px 7px 7px;white-space:nowrap;flex-shrink:0}.praise-av{width:42px;height:42px;flex-shrink:0;border-radius:50%;overflow:hidden;background:#ece4d8;display:flex;align-items:center;justify-content:center;font-size:20px}.praise-av .avatar-stage{width:100%;height:100%;position:relative}.praise-txt{color:#2b1519!important;font-size:14px;font-weight:600;overflow:hidden;text-overflow:ellipsis;max-width:260px}.praise-txt b{color:#800020!important}@keyframes pmarq{from{transform:translateX(0)}to{transform:translateX(-50%)}}';
     document.head.appendChild(st);}
   let list=[];
   if(syncOn()){
@@ -2871,8 +2933,8 @@ async function renderPraiseMarquee(){
     return `<div class="praise-item"><div class="praise-av">${av||'🙂'}</div><div class="praise-txt"><b>${esc(nm)}</b>　${esc(p.text)}</div></div>`;
   };
   const strip=list.map(item).join('');
-  box.innerHTML=`<div class="c-card" style="padding:10px 0;overflow:hidden;background:linear-gradient(135deg,#3a0012,#5c0018)">
-    <div style="color:#f3e9dc;font-weight:800;font-size:13px;padding:0 14px 8px;display:flex;align-items:center;gap:6px">🏅 本店表揚榜</div>
+  box.innerHTML=`<div class="c-card" style="padding:10px 0;overflow:hidden">
+    <div style="color:#800020!important;font-weight:800;font-size:14px;padding:0 14px 8px;display:flex;align-items:center;gap:6px">🏅 本店表揚榜</div>
     <div class="praise-marquee"><div class="praise-track">${strip}${strip}</div></div>
   </div>`;
 }
