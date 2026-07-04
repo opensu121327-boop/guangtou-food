@@ -1046,10 +1046,10 @@ body,html,button,input,select,textarea,.brand-name,.topbar-title,.sec-title,.c-c
           </div>
         </div>
         <div class="form-group">
-          <label class="form-label">單位克數/容量（1 個購買單位＝多少，供 BOM 自動換算）</label>
+          <label class="form-label">單位（1 個購買單位＝多少，供 BOM 自動換算）</label>
           <div class="form-row">
             <input class="form-input" id="pu-packq" type="number" min="0" placeholder="例：1000（可留白）">
-            <select class="form-input" id="pu-packu"><option>克</option><option>毫升</option></select>
+            <select class="form-input" id="pu-packu"><option>克</option><option>毫升</option><option>隻</option></select>
           </div>
         </div>
         <div class="form-group">
@@ -1370,7 +1370,7 @@ body,html,button,input,select,textarea,.brand-name,.topbar-title,.sec-title,.c-c
 
 <script>
 // ── 自動更新：開啟時比對版本，有新版就自動重載（免無痕）──
-const APP_VER='20260704203657';
+const APP_VER='20260704211115';
 function checkVersion(){try{fetch('ver.txt?_='+Date.now(),{cache:'no-store'}).then(function(r){return r.ok?r.text():null;}).then(function(v){if(!v)return;v=v.trim();if(v&&v!==APP_VER&&location.search.indexOf('v='+v)<0){location.replace(location.pathname+'?v='+encodeURIComponent(v));}}).catch(function(){});}catch(e){}}
 checkVersion();
 document.addEventListener('visibilitychange',function(){if(document.visibilityState==='visible')checkVersion();});
@@ -1519,8 +1519,8 @@ function switchTab(name,btn) {
   $('tab-'+name).classList.add('active');
   btn.classList.add('active');
   if(name==='reports')loadReports();
-  if(name==='purchase'){loadMaterials(true).then(fillMatCatSelect);renderRecentPurchases();}
-  if(name==='bom'){renderBom();Promise.all([loadMaterials(true),loadRecipeCosts()]).then(renderBom);}
+  if(name==='purchase'){loadMaterials().then(fillMatCatSelect);renderRecentPurchases();}
+  if(name==='bom'){renderBom();Promise.all([loadMaterials(),loadRecipeCosts()]).then(renderBom);}
   if(name==='accounts'){loadPending();loadAccounts();}
   if(name==='expense')renderExpenseList();
   if(name==='tasks')renderTasks();
@@ -1601,7 +1601,7 @@ async function submitRev() {
 
 // ── PURCHASE ──
 // 物料清單：優先讀「物料總表」(物料數據)，讀不到則用進貨歷史建立（purchase-order-tracker SKILL）
-let _materials=[],_matLoaded=false;
+let _materials=[],_matLoaded=false,_matLoadedAt=0;
 function fillMatCatSelect(){
   const sel=$('pu-mat-cat');if(!sel)return;
   const cats=Array.from(new Set(_materials.map(m=>m.cat).filter(c=>c))).sort((a,b)=>a.localeCompare(b));
@@ -1621,7 +1621,7 @@ function fillMatSelect(){
 }
 function onPickMatCat(){const v=$('pu-mat-cat')?$('pu-mat-cat').value:'';if($('pu-mat'))$('pu-mat').value='';if(v&&v!=='__all'&&v!=='__none'&&$('pu-cat'))$('pu-cat').value=v;fillMatSelect();}
 async function loadMaterials(force){
-  if(_matLoaded&&!force)return;
+  if(_matLoaded&&!force&&(Date.now()-_matLoadedAt<60000))return; // 60秒內不重抓，減少延遲
   try{
     let arr=[];
     if(syncOn()){try{const d=await kv('materials',{});if(d&&d.status==='ok'&&d.data&&d.data.length)arr=d.data;}catch(e){}}
@@ -1632,7 +1632,7 @@ async function loadMaterials(force){
       arr=Object.keys(map).map(k=>map[k]);
     }
     _materials=arr.map(m=>({code:String(m.code||'').trim(),name:String(m.name||'').trim(),cat:String(m.cat||'').trim(),unit:String(m.unit||'').trim(),supplier:String(m.supplier||'').trim(),note:String(m.note||'').trim()})).filter(m=>m.code||m.name).sort((a,b)=>(a.code||'').localeCompare(b.code||''));
-    _matLoaded=true;_matPyDone=false;fillMatCatSelect();fillMatSelect();
+    _matLoaded=true;_matLoadedAt=Date.now();_matPyDone=false;fillMatCatSelect();fillMatSelect();
   }catch(e){}
 }
 function fillFromMaterial(m){
@@ -1643,7 +1643,7 @@ function fillFromMaterial(m){
   if($('pu-supplier'))$('pu-supplier').value=m.supplier||'';
   if(m.unit&&$('pu-unit')){const u=$('pu-unit');let found=false;for(let k=0;k<u.options.length;k++){if(u.options[k].value===m.unit||u.options[k].text===m.unit){u.selectedIndex=k;found=true;break;}}if(!found){const op=document.createElement('option');op.text=m.unit;op.value=m.unit;u.add(op);u.value=m.unit;}}
   const pk=(LS.get('rm_material_pack',{})||{})[m.code];
-  if(pk&&$('pu-packq')&&$('pu-packu')){const mo=/([\d.]+)\s*(克|毫升)/.exec(pk);if(mo){$('pu-packq').value=mo[1];$('pu-packu').value=mo[2];}}
+  if(pk&&$('pu-packq')&&$('pu-packu')){const mo=/([\d.]+)\s*(克|毫升|隻)/.exec(pk);if(mo){$('pu-packq').value=mo[1];$('pu-packu').value=mo[2];}}
 }
 function onPickMaterial(){
   const v=$('pu-mat')&&$('pu-mat').value;if(v==='')return;const m=_materials[parseInt(v)];if(!m)return;
@@ -2208,12 +2208,23 @@ function syncOn(){return !!SYNC_URL;}
 function kv(type,extra){return fetch(SYNC_URL,{method:'POST',body:JSON.stringify(Object.assign({type:type},extra||{})),headers:{'Content-Type':'text/plain'}}).then(r=>r.json());}
 let _pushTimers={};
 function cloudPush(key){if(!syncOn())return;clearTimeout(_pushTimers[key]);_pushTimers[key]=setTimeout(function(){const val=localStorage.getItem(key);if(val!=null)kv('kv_set',{key:key,value:val}).catch(function(){});},600);}
-function cloudPull(){if(!syncOn())return Promise.resolve();return kv('kv_all',{}).then(function(res){if(res&&res.status==='ok'&&res.data){for(var k in res.data){if(k.indexOf('rm_')===0&&res.data[k]!=null)localStorage.setItem(k,res.data[k]);}}}).catch(function(){});}
+// light=true 時，向後台要求略過大型照片(rm_bomimg_/rm_subphoto_)，避免每次輪詢都重抓照片造成延遲
+function cloudPull(light){if(!syncOn())return Promise.resolve();return kv('kv_all',light?{light:1}:{}).then(function(res){if(res&&res.status==='ok'&&res.data){for(var k in res.data){if(k.indexOf('rm_')===0&&res.data[k]!=null)localStorage.setItem(k,res.data[k]);}}}).catch(function(){});}
 function isTyping(){var a=document.activeElement;if(!a)return false;var t=(a.tagName||'').toUpperCase();return t==='INPUT'||t==='TEXTAREA'||t==='SELECT'||a.isContentEditable===true;}
 function reRenderTab(id){const map={home:renderHome,reports:loadReports,handover:renderHandover,handbook:renderHandbook,tasks:renderTasks,rewards:renderRewards,challenge:renderChallenge,leaderboard:renderLeaderboard,character:renderCharacter};if(map[id]){try{map[id]();}catch(e){}}if(id==='accounts'){try{loadPending();loadAccounts();}catch(e){}}}
-function startSyncPoll(){if(!syncOn()||window._syncPoll)return;window._syncPoll=setInterval(function(){cloudPull().then(function(){if(!CU)return;updateGameChip();if(isTyping())return;const act=document.querySelector('.tab-panel.active');if(act)reRenderTab(act.id.replace('tab-',''));});},20000);}
-// 立即同步一次（拉雲端＋重繪目前分頁）
-function syncNow(){if(!syncOn())return;cloudPull().then(function(){if(!CU)return;updateGameChip();if(isTyping())return;const act=document.querySelector('.tab-panel.active');if(act)reRenderTab(act.id.replace('tab-',''));});}
+// 輪詢：平時走輕量(不抓照片)，每 5 次(約100秒)才連照片一起抓一次
+function startSyncPoll(){if(!syncOn()||window._syncPoll)return;window._syncPoll=setInterval(function(){window._syncCnt=(window._syncCnt||0)+1;var full=(window._syncCnt%5===0);cloudPull(!full).then(function(){if(!CU)return;updateGameChip();if(isTyping())return;const act=document.querySelector('.tab-panel.active');if(act)reRenderTab(act.id.replace('tab-',''));});},20000);}
+// 立即同步一次（輕量拉雲端＋重繪目前分頁）
+function syncNow(){if(!syncOn())return;cloudPull(true).then(function(){if(!CU)return;updateGameChip();if(isTyping())return;const act=document.querySelector('.tab-panel.active');if(act)reRenderTab(act.id.replace('tab-',''));});}
+// 全域防連點：3 秒內重複點同一個送出鈕，只算一次（避免重複輸入）
+if(!window._clickGuardWired){window._clickGuardWired=true;var _lastAct={};
+  document.addEventListener('click',function(e){
+    var btn=e.target.closest&&e.target.closest('.btn-action');if(!btn)return;
+    var act=btn.getAttribute('onclick')||btn.id||btn.textContent||'';if(!act)return;
+    var now=Date.now();if(now-(_lastAct[act]||0)<3000){e.stopPropagation();e.preventDefault();return;}
+    _lastAct[act]=now;
+  },true);
+}
 // 手機背景會凍結 setInterval：一回到 App（畫面可見/切回分頁）就馬上同步
 document.addEventListener('visibilitychange',function(){if(document.visibilityState==='visible')syncNow();});
 window.addEventListener('focus',syncNow);
@@ -3046,21 +3057,24 @@ function convFactor(fromU,toU){fromU=fromU||'';toU=toU||'';if(fromU===toU)return
 // 從品名解析包裝規格（如「(1KG)」「(500克)」「(1.6L)」「250G*2/盒」），回傳換算成 克 或 毫升 的總量
 function parsePack(name){
   if(!name)return null;
-  var re=/(\d+(?:\.\d+)?)\s*(公斤|kg|公克|台斤|斤|兩|克|g|公升|l|毫升|ml|cc)\s*(?:[\*xX]\s*(\d+(?:\.\d+)?))?/i;
+  var re=/(\d+(?:\.\d+)?)\s*(公斤|kg|公克|台斤|斤|兩|克|g|公升|l|毫升|ml|cc|隻|尾|個|顆|支|片|張|粒|條)\s*(?:[\*xX]\s*(\d+(?:\.\d+)?))?/i;
   var m=re.exec(String(name));
   if(!m)return null;
   var qty=parseFloat(m[1])*(m[3]?parseFloat(m[3]):1);
   var u=m[2].toLowerCase();
   var G={'公斤':1000,'kg':1000,'公克':1,'克':1,'g':1,'台斤':600,'斤':600,'兩':37.5};
   var ML={'公升':1000,'l':1000,'毫升':1,'ml':1,'cc':1};
+  var CNT={'隻':1,'尾':1,'個':1,'顆':1,'支':1,'片':1,'張':1,'粒':1,'條':1};
   if(G[u]!=null)return {base:'g', amount:qty*G[u]};
   if(ML[u]!=null)return {base:'ml', amount:qty*ML[u]};
+  if(CNT[u]!=null)return {base:'count', amount:qty*CNT[u]};
   return null;
 }
-// 把某用量換算成 克(g) 或 毫升(ml)
+// 把某用量換算成 克(g)／毫升(ml)／計數(count)
 function toBase(qty,unit,base){
   if(base==='g'){var g={'公斤':1000,'kg':1000,'公克':1,'克':1,'g':1,'台斤':600,'斤':600,'兩':37.5};return g[unit]!=null?qty*g[unit]:null;}
   if(base==='ml'){var v={'公升':1000,'l':1000,'毫升':1,'ml':1,'cc':1};return v[unit]!=null?qty*v[unit]:null;}
+  if(base==='count'){var c={'隻':1,'尾':1,'個':1,'顆':1,'支':1,'片':1,'張':1,'粒':1,'條':1};return c[unit]!=null?qty*c[unit]:null;}
   return null;
 }
 function findRecipe(id){return (LS.get('rm_recipes',[])||[]).find(r=>r.id===id);}
