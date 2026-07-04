@@ -1299,7 +1299,6 @@ body,html,button,input,select,textarea,.brand-name,.topbar-title,.sec-title,.c-c
     <div class="tab-panel" id="tab-challenge">
       <div class="sec-header"><div class="sec-title">共同挑戰</div><div class="divider"></div><div class="sec-sub">全店業績目標達標，當日上班人員一起加分</div></div>
       <div id="ch-praise"></div>
-      <div class="c-card"><div class="muted-note">業績取自 Google Sheet 營收；上班名單／點數派發已雲端同步，全店一致。</div></div>
       <div id="ch-daily"></div>
       <div id="ch-monthly"></div>
       <div id="ch-roster"></div>
@@ -1369,7 +1368,7 @@ body,html,button,input,select,textarea,.brand-name,.topbar-title,.sec-title,.c-c
 
 <script>
 // ── 自動更新：開啟時比對版本，有新版就自動重載（免無痕）──
-const APP_VER='20260704182529';
+const APP_VER='20260704183133';
 function checkVersion(){try{fetch('ver.txt?_='+Date.now(),{cache:'no-store'}).then(function(r){return r.ok?r.text():null;}).then(function(v){if(!v)return;v=v.trim();if(v&&v!==APP_VER&&location.search.indexOf('v='+v)<0){location.replace(location.pathname+'?v='+encodeURIComponent(v));}}).catch(function(){});}catch(e){}}
 checkVersion();
 document.addEventListener('visibilitychange',function(){if(document.visibilityState==='visible')checkVersion();});
@@ -2679,12 +2678,13 @@ function renderHome(){
       <div class="form-group"><label class="form-label">選擇同事</label><select class="form-input" id="board-to"><option value="">— 選擇同事 —</option></select></div>
       <div class="form-group"><label class="form-label">建議內容</label><textarea class="form-input" id="board-text" rows="3" placeholder="寫下你想提醒或建議這位同事的話…"></textarea></div>
       <button class="btn-action" onclick="submitBoardMsg()">送出給同事</button>
+      <div class="muted-note" style="margin-top:8px">📌 寫給一位同事並送出，可 +5 點（每天一次）。</div>
     </div>
     <div class="c-card"><div class="c-card-title">🏅 我要表揚同事</div>
       <div class="form-group"><label class="form-label">選擇同事</label><select class="form-input" id="praise-to"><option value="">— 選擇同事 —</option></select></div>
       <div class="form-group"><label class="form-label">表揚內容</label><textarea class="form-input" id="praise-text" rows="3" placeholder="寫下這位同事值得被表揚的地方…"></textarea></div>
       <button class="btn-action" onclick="submitPraise()">送出表揚</button>
-      <div class="muted-note" style="margin-top:8px">表揚會以匿名跑馬燈顯示在「共同挑戰」頂部。切換頁面請用左上角 ☰ 選單。</div>
+      <div class="muted-note" style="margin-top:8px">表揚會以匿名跑馬燈顯示在「共同挑戰」頂部。📌 寫給一位同事並送出，可 +5 點（每天一次）。</div>
     </div>
   </div>`;
   stage.className='home-stage stack';
