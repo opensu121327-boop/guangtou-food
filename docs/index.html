@@ -1370,7 +1370,7 @@ body,html,button,input,select,textarea,.brand-name,.topbar-title,.sec-title,.c-c
 
 <script>
 // ── 自動更新：開啟時比對版本，有新版就自動重載（免無痕）──
-const APP_VER='20260704211823';
+const APP_VER='20260707160752';
 function checkVersion(){try{fetch('ver.txt?_='+Date.now(),{cache:'no-store'}).then(function(r){return r.ok?r.text():null;}).then(function(v){if(!v)return;v=v.trim();if(v&&v!==APP_VER&&location.search.indexOf('v='+v)<0){location.replace(location.pathname+'?v='+encodeURIComponent(v));}}).catch(function(){});}catch(e){}}
 checkVersion();
 document.addEventListener('visibilitychange',function(){if(document.visibilityState==='visible')checkVersion();});
@@ -2893,17 +2893,24 @@ function fileToThumb(file,cb,max,q){
   r.onerror=()=>cb(null);
   r.readAsDataURL(file);
 }
-function dailyBlocked(id){const t=findTask(id);if(t&&t.cat==='daily'&&dailyClaim(id)){toast('今日已有人完成這個每日任務 🙌','red');renderTasks();return true;}return false;}
+function dailyBlocked(id){const t=findTask(id);if(!t)return false;
+  if(t.cat==='daily'&&dailyClaim(id)){toast('今日已有人完成這個每日任務 🙌','red');renderTasks();return true;}
+  if(t.cat==='weekly'&&weeklyClaim(id)){toast('本週已有人完成這個每週任務 🙌','red');renderTasks();return true;}
+  return false;}
 function startTask(taskId){if(dailyBlocked(taskId))return;_pendingTaskId=taskId;$('task-file-input').click();}
 function fmtTime(ts){const d=new Date(ts);const p=n=>String(n).padStart(2,'0');return `${p(d.getMonth()+1)}/${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}`;}
 
-const TASK_CATS=[{id:'daily',label:'🗓️ 每日任務'},{id:'score',label:'🔥 搶分任務'},{id:'rnd',label:'💡 研發挑戰'}];
-function catShort(id){return ({daily:'每日',score:'搶分',rnd:'研發'})[id]||'每日';}
+const TASK_CATS=[{id:'daily',label:'🗓️ 每日任務'},{id:'weekly',label:'📅 每週任務'},{id:'score',label:'🔥 搶分任務'},{id:'rnd',label:'💡 研發挑戰'}];
+function catShort(id){return ({daily:'每日',weekly:'每週',score:'搶分',rnd:'研發'})[id]||'每日';}
 function normTask(t){return Object.assign({cat:'daily',type:'photo'},t);}
 function findTask(id){return LS.get('rm_tasks',[]).map(normTask).find(t=>t.id===id);}
 function esc(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
 function sameDayTs(ts){return bizDay(ts)===bizDay();}
+function weekMonday(ts){const d=new Date(bizDay(ts)+'T12:00:00');const diff=(d.getDay()+6)%7;d.setDate(d.getDate()-diff);const p=n=>String(n).padStart(2,'0');return d.getFullYear()+'-'+p(d.getMonth()+1)+'-'+p(d.getDate());}
+function sameWeekTs(ts){return weekMonday(ts)===weekMonday();}
 function dailyClaim(taskId){return LS.get('rm_submissions',[]).filter(s=>s.taskId===taskId&&s.status!=='rejected'&&sameDayTs(s.ts)).sort((a,b)=>a.ts-b.ts)[0]||null;}
+function weeklyClaim(taskId){return LS.get('rm_submissions',[]).filter(s=>s.taskId===taskId&&s.status!=='rejected'&&sameWeekTs(s.ts)).sort((a,b)=>a.ts-b.ts)[0]||null;}
+function taskClaim(t){return t.cat==='daily'?dailyClaim(t.id):t.cat==='weekly'?weeklyClaim(t.id):null;}
 let _taskCat='all';
 function setTaskCat(c){_taskCat=c;renderTasks();}
 
@@ -3361,13 +3368,14 @@ function renderTasks(){
     [['all','全部']].concat(TASK_CATS.map(c=>[c.id,c.label])).map(a=>`<button class="dcat ${_taskCat===a[0]?'active':''}" onclick="setTaskCat('${a[0]}')">${a[1]}</button>`).join('')+`</div>`;
   const cards=filt.map(t=>{
     const xpTxt=t.xp>0?('完成可得 +'+t.xp+' XP'):'分數待老闆設定';
-    const claim=t.cat==='daily'?dailyClaim(t.id):null;
+    const claim=taskClaim(t);
     let btn;
-    if(claim){btn=`<span class="pill done">✅ 今日已完成（${esc(claim.userName)}）</span>`;}
+    if(claim){btn=`<span class="pill done">✅ ${t.cat==='weekly'?'本週':'今日'}已完成（${esc(claim.userName)}）</span>`;}
     else btn=t.type==='text'?`<button class="btn-action" style="padding:10px 16px" onclick="startTextTask('${t.id}')">提交</button>`
             :t.type==='sales'?`<button class="btn-action" style="padding:10px 16px" onclick="startSalesTask('${t.id}')">提交</button>`
             :`<button class="btn-action" style="padding:10px 16px" onclick="startTask('${t.id}')">上傳圖片</button>`;
-    return `<div class="task-card${claim?' locked':''}"><div class="tc-body"><div class="tc-title">${esc(t.title)} <span class="badge badge-pending">${catShort(t.cat)}</span></div><div class="tc-xp">${claim?'每日任務・每天限一人完成':xpTxt}</div></div>${btn}</div>`;
+    const limitTxt=t.cat==='weekly'?'每週任務・每週限一人完成':'每日任務・每天限一人完成';
+    return `<div class="task-card${claim?' locked':''}"><div class="tc-body"><div class="tc-title">${esc(t.title)} <span class="badge badge-pending">${catShort(t.cat)}</span></div><div class="tc-xp">${claim?limitTxt:xpTxt}</div></div>${btn}</div>`;
   }).join('')||'<div class="game-empty">此分類目前沒有任務</div>';
   $('task-list').innerHTML=catRow+cards;
 
@@ -3443,7 +3451,7 @@ function renderTaskAdmin(){
   const tasks=LS.get('rm_tasks',[]).map(normTask);
   const cats=isBoss?TASK_CATS:TASK_CATS.filter(c=>c.id!=='rnd');
   wrap.innerHTML=`<div class="c-card"><div class="c-card-title">🛠️ 任務管理（${isBoss?'老闆':'店長'}）</div>
-    <div class="muted-note">${isBoss?'可新增各分類任務並設定分數。':'可新增「每日／搶分」任務內容；分數一律由老闆設定。'}</div>
+    <div class="muted-note">${isBoss?'可新增各分類任務並設定分數。':'可新增「每日／每週／搶分」任務內容；分數一律由老闆設定。'}</div>
     <div class="form-row">
       <div class="form-group"><label class="form-label">分類</label><select class="form-input" id="nt-cat" onchange="ntTypeSync()">${cats.map(c=>`<option value="${c.id}">${c.label}</option>`).join('')}</select></div>
     </div>
