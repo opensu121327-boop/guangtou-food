@@ -1274,6 +1274,12 @@ body,html,button,input,select,textarea,.brand-name,.topbar-title,.sec-title,.c-c
       <div id="bom-wrap"></div>
     </div>
 
+    <!-- INVENTORY TAB -->
+    <div class="tab-panel" id="tab-inventory">
+      <div class="sec-header"><div class="sec-title">每日食材盤點</div><div class="divider"></div><div class="sec-sub">輸入數量按確認 → 完成該項 +5 點 ・ 只顯示今天與昨天</div></div>
+      <div id="inv-wrap"></div>
+    </div>
+
     <!-- HANDOVER TAB -->
     <div class="tab-panel" id="tab-handover">
       <div class="sec-header"><div class="sec-title">交接表</div><div class="divider"></div><div class="sec-sub">交班填寫、接班查看（完成 +25 XP／每日一次）</div></div>
@@ -1370,7 +1376,7 @@ body,html,button,input,select,textarea,.brand-name,.topbar-title,.sec-title,.c-c
 
 <script>
 // ── 自動更新：開啟時比對版本，有新版就自動重載（免無痕）──
-const APP_VER='20260707160752';
+const APP_VER='20260707162343';
 function checkVersion(){try{fetch('ver.txt?_='+Date.now(),{cache:'no-store'}).then(function(r){return r.ok?r.text():null;}).then(function(v){if(!v)return;v=v.trim();if(v&&v!==APP_VER&&location.search.indexOf('v='+v)<0){location.replace(location.pathname+'?v='+encodeURIComponent(v));}}).catch(function(){});}catch(e){}}
 checkVersion();
 document.addEventListener('visibilitychange',function(){if(document.visibilityState==='visible')checkVersion();});
@@ -1520,6 +1526,7 @@ function switchTab(name,btn) {
   btn.classList.add('active');
   if(name==='reports')loadReports();
   if(name==='purchase'){loadMaterials().then(fillMatCatSelect);renderRecentPurchases();}
+  if(name==='inventory')renderInventory();
   if(name==='bom'){renderBom();Promise.all([loadMaterials(),loadRecipeCosts()]).then(renderBom);}
   if(name==='accounts'){loadPending();loadAccounts();}
   if(name==='expense')renderExpenseList();
@@ -1555,6 +1562,7 @@ const ICONS={
   home:_svg('<path d="M3 11l9-7 9 7"/><path d="M5 10v10h14V10"/>'),
   revenue:_svg('<rect x="3" y="6" width="18" height="12" rx="2"/><circle cx="12" cy="12" r="2.2"/>'),
   purchase:_svg('<path d="M3 7l9-4 9 4-9 4-9-4z"/><path d="M3 7v10l9 4 9-4V7"/><path d="M12 11v10"/>'),
+  inventory:_svg('<rect x="4" y="3" width="16" height="18" rx="2"/><path d="M8 8h5M8 12h5M8 16h5"/><path d="M16 8l1 1 1.5-1.5M16 12l1 1 1.5-1.5M16 16l1 1 1.5-1.5"/>'),
   reports:_svg('<path d="M4 4v16h16"/><path d="M8 15l3-4 3 2 4-6"/>'),
   bom:_svg('<rect x="5" y="3" width="14" height="18" rx="2"/><path d="M8 7h8M8 11h2M12 11h4M8 15h4M15 15h1"/>'),
   handover:_svg('<rect x="6" y="4" width="12" height="17" rx="2"/><path d="M9 4h6v3H9z"/><path d="M9 12h6M9 16h4"/>'),
@@ -2224,7 +2232,7 @@ function cloudPush(key){if(!syncOn())return;clearTimeout(_pushTimers[key]);_push
 // light=true 時，向後台要求略過大型照片(rm_bomimg_/rm_subphoto_)，避免每次輪詢都重抓照片造成延遲
 function cloudPull(light){if(!syncOn())return Promise.resolve();return kv('kv_all',light?{light:1}:{}).then(function(res){if(res&&res.status==='ok'&&res.data){for(var k in res.data){if(k.indexOf('rm_')===0&&res.data[k]!=null)localStorage.setItem(k,res.data[k]);}}}).catch(function(){});}
 function isTyping(){var a=document.activeElement;if(!a)return false;var t=(a.tagName||'').toUpperCase();return t==='INPUT'||t==='TEXTAREA'||t==='SELECT'||a.isContentEditable===true;}
-function reRenderTab(id){const map={home:renderHome,reports:loadReports,handover:renderHandover,handbook:renderHandbook,tasks:renderTasks,rewards:renderRewards,challenge:renderChallenge,leaderboard:renderLeaderboard,character:renderCharacter};if(map[id]){try{map[id]();}catch(e){}}if(id==='accounts'){try{loadPending();loadAccounts();}catch(e){}}}
+function reRenderTab(id){const map={home:renderHome,reports:loadReports,handover:renderHandover,handbook:renderHandbook,tasks:renderTasks,rewards:renderRewards,challenge:renderChallenge,leaderboard:renderLeaderboard,character:renderCharacter,inventory:renderInventory};if(map[id]){try{map[id]();}catch(e){}}if(id==='accounts'){try{loadPending();loadAccounts();}catch(e){}}}
 // 輪詢：平時走輕量(不抓照片)，每 5 次(約100秒)才連照片一起抓一次
 function startSyncPoll(){if(!syncOn()||window._syncPoll)return;window._syncPoll=setInterval(function(){window._syncCnt=(window._syncCnt||0)+1;var full=(window._syncCnt%5===0);cloudPull(!full).then(function(){if(!CU)return;updateGameChip();if(isTyping())return;const act=document.querySelector('.tab-panel.active');if(act)reRenderTab(act.id.replace('tab-',''));});},20000);}
 // 立即同步一次（輕量拉雲端＋重繪目前分頁）
@@ -2365,6 +2373,7 @@ const ALL_TABS=[
   {id:'home',icon:'🏠',label:'首頁',roles:['BOSS','MGR','EMP']},
   {id:'revenue',icon:'💳',label:'每日結帳',roles:['BOSS','MGR','EMP']},
   {id:'purchase',icon:'📦',label:'進貨記錄',roles:['BOSS','MGR','EMP']},
+  {id:'inventory',icon:'🧾',label:'每日食材盤點',roles:['BOSS','MGR','EMP']},
   {id:'reports',icon:'📊',label:'數據報表',roles:['BOSS','MGR']},
   {id:'bom',icon:'🧮',label:'BOM成本',roles:['BOSS','MGR']},
   {id:'handover',icon:'📋',label:'交接表',roles:['BOSS','MGR','EMP']},
@@ -3308,6 +3317,70 @@ function addHbSection(){
   toast('✓ 已發布','gold');if($('hb-title'))$('hb-title').value='';if($('hb-body'))$('hb-body').value='';renderHandbook();
 }
 function delHbSection(id){const list=(LS.get('rm_handbook',[])||[]).filter(s=>s.id!==id);LS.set('rm_handbook',list);toast('已刪除','red');renderHandbook();}
+
+// ── 每日食材盤點 ──
+function prevBizDay(){const d=new Date(bizDay()+'T12:00:00');d.setDate(d.getDate()-1);const p=n=>String(n).padStart(2,'0');return d.getFullYear()+'-'+p(d.getMonth()+1)+'-'+p(d.getDate());}
+let _invLoaded=false;
+async function renderInventory(){
+  const wrap=$('inv-wrap');if(!wrap)return;
+  if(!_invLoaded)wrap.innerHTML='<div class="muted-note">載入中…</div>';
+  const items=LS.get('rm_inv_items',[])||[];
+  let rows=[];
+  if(syncOn()){try{const d=await authApi({type:'query_inv'});if(d&&(d.status==='ok'||d.status==='success')&&d.rows)rows=d.rows.slice(1);}catch(e){}}
+  _invLoaded=true;
+  const today=bizDay(),yday=prevBizDay();
+  const map={};rows.forEach(r=>{const dy=normDate(r[0]);const iid=String(r[1]||'');if(!map[dy])map[dy]={};map[dy][iid]={qty:r[3],name:String(r[2]||''),userName:String(r[5]||'')};});
+  const tMap=map[today]||{},yMap=map[yday]||{};
+  let html='';
+  // 今日盤點
+  html+=`<div class="c-card"><div class="c-card-title">📋 今日盤點（${today}）</div>`;
+  if(!items.length){html+='<div class="game-empty">尚無盤點食材，請老闆/店長在下方新增</div>';}
+  else{
+    html+=items.map(it=>{
+      const done=tMap[it.id];
+      if(done)return `<div class="sub-row"><div style="flex:1;min-width:0"><div class="tc-title" style="font-size:14px">${esc(it.name)}</div><div class="xp-text" style="color:#15803d!important">✅ 數量 ${esc(String(done.qty))} ・ ${esc(done.userName)}</div></div></div>`;
+      return `<div class="sub-row" style="gap:8px"><div style="flex:1;min-width:0"><div class="tc-title" style="font-size:14px">${esc(it.name)}</div></div><input class="form-input" id="inv-q-${it.id}" type="number" min="0" placeholder="數量" style="width:88px;padding:8px;text-align:center"><button class="btn-action" style="padding:8px 14px;flex-shrink:0" onclick="confirmInv('${it.id}')">確認</button></div>`;
+    }).join('');
+    const doneN=items.filter(it=>tMap[it.id]).length;
+    html+=`<div class="muted-note" style="margin-top:8px">已完成 ${doneN}/${items.length} 項 ・ 每完成一項 +5 點（不同人可分工盤點）</div>`;
+  }
+  html+=`</div>`;
+  // 昨日盤點（唯讀）
+  html+=`<div class="c-card"><div class="c-card-title">🕐 昨日盤點（${yday}）</div>`;
+  const yKeys=Object.keys(yMap);
+  if(!yKeys.length){html+='<div class="game-empty">昨天沒有盤點紀錄</div>';}
+  else{html+=yKeys.map(iid=>{const dd=yMap[iid];return `<div class="sub-row"><div style="flex:1;min-width:0"><div class="tc-title" style="font-size:14px">${esc(dd.name)}</div><div class="xp-text">${esc(dd.userName)}</div></div><div style="font-weight:800;color:#800020">${esc(String(dd.qty))}</div></div>`;}).join('');}
+  html+=`</div>`;
+  // 食材管理（老闆/店長）
+  if(isMgr()){
+    html+=`<div class="c-card"><div class="c-card-title">🛠️ 盤點食材管理（老闆/店長）</div>
+      <div class="form-row"><div class="form-group"><input class="form-input" id="inv-new" placeholder="新增盤點食材名稱，例：牛五花"></div><div class="form-group" style="display:flex;align-items:flex-end"><button class="btn-action" style="padding:10px 14px" onclick="addInvItem()">➕ 新增</button></div></div>
+      <div style="margin-top:10px">${items.length?items.map(it=>`<div class="sub-row"><div style="flex:1">${esc(it.name)}</div><button class="btn-sm btn-warn" onclick="delInvItem('${it.id}')">刪除</button></div>`).join(''):'<div class="muted-note">尚無食材</div>'}</div>
+    </div>`;
+  }
+  wrap.innerHTML=html;
+}
+function addInvItem(){
+  const v=($('inv-new')&&$('inv-new').value.trim())||'';if(!v){toast('請輸入食材名稱','red');return;}
+  const items=LS.get('rm_inv_items',[])||[];items.push({id:'iv'+Date.now(),name:v});LS.set('rm_inv_items',items);
+  toast('✓ 已新增盤點食材','gold');renderInventory();
+}
+function delInvItem(id){const items=(LS.get('rm_inv_items',[])||[]).filter(x=>x.id!==id);LS.set('rm_inv_items',items);toast('已刪除','red');renderInventory();}
+async function confirmInv(itemId){
+  const items=LS.get('rm_inv_items',[])||[];const it=items.find(x=>x.id===itemId);if(!it)return;
+  const el=$('inv-q-'+itemId);const qty=(el&&el.value.trim())||'';
+  if(qty===''){toast('請先輸入數量','red');return;}
+  const entry={date:bizDay(),itemId:itemId,itemName:it.name,qty:qty,user:CU.username,userName:CU.name,ts:Date.now()};
+  try{
+    const d=await authApi({type:'inv_write',row:entry});
+    if(d&&(d.status==='success'||d.status==='ok')){
+      const r=awardXp(CU.username,5);updateGameChip();
+      toast('✓ 已盤點「'+it.name+'」+5 點'+(r.leveledUp?'（升級 Lv.'+r.after+'！）':''),'gold');
+      renderInventory();
+    }else if(d&&d.status==='exists'){toast('這項已被 '+(d.by||'他人')+' 盤點了','red');renderInventory();}
+    else toast((d&&d.message)||'送出失敗','red');
+  }catch(e){toast('連線失敗','red');}
+}
 
 // ── 交接表 ──
 const HANDOVER_XP=25;
