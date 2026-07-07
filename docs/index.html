@@ -1419,7 +1419,7 @@ body,html,button,input,select,textarea,.brand-name,.topbar-title,.sec-title,.c-c
 
 <script>
 // ── 自動更新：開啟時比對版本，有新版就自動重載（免無痕）──
-const APP_VER='20260707215804';
+const APP_VER='20260707220327';
 function checkVersion(){try{fetch('ver.txt?_='+Date.now(),{cache:'no-store'}).then(function(r){return r.ok?r.text():null;}).then(function(v){if(!v)return;v=v.trim();if(v&&v!==APP_VER&&location.search.indexOf('v='+v)<0){location.replace(location.pathname+'?v='+encodeURIComponent(v));}}).catch(function(){});}catch(e){}}
 checkVersion();
 document.addEventListener('visibilitychange',function(){if(document.visibilityState==='visible')checkVersion();});
@@ -1507,7 +1507,8 @@ function updateRegNote(role) {
 // ── ENTER APP ──
 async function enterApp() {
   $('auth-screen').classList.add('hidden');
-  if(syncOn()){try{await cloudPull();}catch(e){}}
+  if(syncOn()){try{await cloudPull(true);}catch(e){}}          // 輕量：快速登入（不抓照片）
+  if(syncOn())setTimeout(function(){cloudPull(false).catch(function(){});},2000); // 背景補抓照片
   initApp();
   $('app').classList.add('visible');
   startSyncPoll();
@@ -3363,14 +3364,15 @@ function delHbSection(id){const list=(LS.get('rm_handbook',[])||[]).filter(s=>s.
 
 // ── 每日食材盤點 ──
 function prevBizDay(){const d=new Date(bizDay()+'T12:00:00');d.setDate(d.getDate()-1);const p=n=>String(n).padStart(2,'0');return d.getFullYear()+'-'+p(d.getMonth()+1)+'-'+p(d.getDate());}
-let _invLoaded=false;
+let _invRows=[];
 async function renderInventory(){
   const wrap=$('inv-wrap');if(!wrap)return;
-  if(!_invLoaded)wrap.innerHTML='<div class="muted-note">載入中…</div>';
   const items=LS.get('rm_inv_items',[])||[];
-  let rows=[];
-  if(syncOn()){try{const d=await authApi({type:'query_inv'});if(d&&(d.status==='ok'||d.status==='success')&&d.rows)rows=d.rows.slice(1);}catch(e){}}
-  _invLoaded=true;
+  renderInvUI(items,_invRows); // 先用本機/快取立即畫出，免等網路
+  if(syncOn()){try{const d=await authApi({type:'query_inv'});if(d&&(d.status==='ok'||d.status==='success')&&d.rows){_invRows=d.rows.slice(1);renderInvUI(items,_invRows);}}catch(e){}}
+}
+function renderInvUI(items,rows){
+  const wrap=$('inv-wrap');if(!wrap)return;
   const today=bizDay(),yday=prevBizDay();
   const map={};rows.forEach(r=>{const dy=normDate(r[0]);const iid=String(r[1]||'');if(!map[dy])map[dy]={};map[dy][iid]={qty:r[3],name:String(r[2]||''),userName:String(r[5]||'')};});
   const tMap=map[today]||{},yMap=map[yday]||{};
