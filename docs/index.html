@@ -1452,7 +1452,7 @@ body,html,button,input,select,textarea,.brand-name,.topbar-title,.sec-title,.c-c
 
 <script>
 // ── 自動更新：開啟時比對版本，有新版就自動重載（免無痕）──
-const APP_VER='20260707233614';
+const APP_VER='20260707234507';
 function checkVersion(){try{fetch('ver.txt?_='+Date.now(),{cache:'no-store'}).then(function(r){return r.ok?r.text():null;}).then(function(v){if(!v)return;v=v.trim();if(v&&v!==APP_VER&&location.search.indexOf('v='+v)<0){location.replace(location.pathname+'?v='+encodeURIComponent(v));}}).catch(function(){});}catch(e){}}
 checkVersion();
 document.addEventListener('visibilitychange',function(){if(document.visibilityState==='visible')checkVersion();});
@@ -1652,6 +1652,47 @@ const ICONS={
   accounts:_svg('<circle cx="9" cy="9" r="3.2"/><path d="M3.5 19a5.5 5.5 0 0111 0"/><path d="M16 6.2a3.2 3.2 0 010 5.6M15.5 19a5.5 5.5 0 015.5-5.5"/>')
 };
 function tabIcon(id){return ICONS[id]||'';}
+// 🎨 卡片標題 emoji → 線條圖示 自動替換（全 App 分頁內小圖統一風格）
+const _EMOJI_ICONS={
+  '📅':'<rect x="4" y="5" width="16" height="15" rx="2"/><path d="M4 9.5h16M8 3v4M16 3v4"/>',
+  '💰':'<circle cx="12" cy="12" r="8"/><path d="M12 7.5v9M9.8 14.2c0 1.1 1 1.7 2.2 1.7s2.2-.6 2.2-1.6-.9-1.4-2.2-1.6-2.2-.6-2.2-1.7 1-1.6 2.2-1.6 2.2.6 2.2 1.6"/>',
+  '💳':'<rect x="3" y="6" width="18" height="12" rx="2"/><path d="M3 10h18M7 15h4"/>',
+  '📦':'<path d="M3 7l9-4 9 4-9 4-9-4z"/><path d="M3 7v10l9 4 9-4V7"/><path d="M12 11v10"/>',
+  '🧾':'<path d="M6 3h12v18l-1.9-1.2-1.9 1.2-1.9-1.2-1.9 1.2L7.4 19.8 6 21z"/><path d="M9 8h6M9 12h6"/>',
+  '📋':'<rect x="6" y="4" width="12" height="17" rx="2"/><path d="M9 3.4h6v2.4H9z"/><path d="M9 11h6M9 15h4"/>',
+  '📊':'<path d="M4 20h16"/><rect x="6" y="12" width="2.6" height="6" rx=".6"/><rect x="10.7" y="8" width="2.6" height="10" rx=".6"/><rect x="15.4" y="14" width="2.6" height="4" rx=".6"/>',
+  '📈':'<path d="M4 4v16h16"/><path d="M7 15l3-4 3 2 4-6"/>',
+  '🥧':'<circle cx="12" cy="12" r="8.5"/><path d="M12 3.5V12l7.5 4"/>',
+  '👥':'<circle cx="9" cy="9" r="3.2"/><path d="M3.5 19a5.5 5.5 0 0111 0"/><path d="M16 6.2a3.2 3.2 0 010 5.6M15.5 19a5.5 5.5 0 015.5-5.5"/>',
+  '🎯':'<circle cx="12" cy="12" r="8.5"/><circle cx="12" cy="12" r="4.6"/><circle cx="12" cy="12" r="1.1" fill="currentColor"/>',
+  '🏅':'<circle cx="12" cy="14.5" r="5.5"/><path d="M8.5 9.5L6.5 3h4L12 6M15.5 9.5L17.5 3h-4L12 6"/>',
+  '🏆':'<path d="M8 4h8v3a4 4 0 01-8 0z"/><path d="M8 5H5.5v1.5A2.5 2.5 0 008 9M16 5h2.5v1.5A2.5 2.5 0 0116 9"/><path d="M10 15h4l1 4H9z"/>',
+  '✍':'<path d="M4 20h4L18.5 9.5l-4-4L4 16z"/><path d="M13.5 6.5l4 4"/>',
+  '📝':'<rect x="5" y="4" width="14" height="16" rx="2"/><path d="M8 9h8M8 13h6"/>',
+  '🛠':'<circle cx="12" cy="12" r="3.2"/><path d="M12 3.6v2.2M12 18.2v2.2M20.4 12h-2.2M5.8 12H3.6M17.9 6.1l-1.6 1.6M7.7 16.3L6.1 17.9M17.9 17.9l-1.6-1.6M7.7 7.7L6.1 6.1"/>',
+  '🛡':'<path d="M12 3l7 3v5c0 4.5-3 7.5-7 9-4-1.5-7-4.5-7-9V6z"/><path d="M9 12l2 2 4-4"/>',
+  '🔍':'<circle cx="10.5" cy="10.5" r="6"/><path d="M15 15l5 5"/>',
+  '🥬':'<path d="M20 4C10 4 4 10 4 20c10 0 16-6 16-16z"/><path d="M5 19L13 11"/>',
+  '🎁':'<rect x="4" y="9" width="16" height="11" rx="1.5"/><path d="M4 13h16M12 9v11"/><path d="M12 9C10.5 5.5 6.5 6.5 8.5 9M12 9c1.5-3.5 5.5-2.5 3.5 0"/>',
+  '📖':'<path d="M12 6C10 4.3 6.5 4.3 4.5 5.3V19c2-1 5.5-1 7.5.7 2-1.7 5.5-1.7 7.5-.7V5.3C17.5 4.3 14 4.3 12 6z"/><path d="M12 6v13.7"/>',
+  '🎮':'<rect x="3" y="8.5" width="18" height="8" rx="4"/><path d="M7 12.5H5.5M6.25 11.75v1.5M15.6 12h.01M18 13h.01"/>',
+  '🧪':'<path d="M9 3h6M10 3v6l-4.5 8a2 2 0 001.8 3h9.4a2 2 0 001.8-3L14 9V3"/><path d="M8 15h8"/>',
+  '🕐':'<circle cx="12" cy="12" r="8.5"/><path d="M12 7v5l3 2"/>',
+  '📜':'<path d="M6 4h11a2 2 0 012 2v11a2 2 0 002 2H8a2 2 0 01-2-2z"/><path d="M9 8h6M9 12h6"/>',
+  '🎓':'<path d="M12 4L2 9l10 5 10-5z"/><path d="M6 11v5c0 1.2 3 2.2 6 2.2s6-1 6-2.2v-5"/>',
+  '💡':'<path d="M9.5 18h5M10.5 21h3"/><path d="M12 3a6 6 0 013 11c-.5.4-1 1-1 2h-4c0-1-.5-1.6-1-2a6 6 0 013-11z"/>',
+  '🔔':'<path d="M6 9a6 6 0 1112 0c0 5 2 6 2 6H4s2-1 2-6z"/><path d="M10 20a2 2 0 004 0"/>',
+  '📣':'<path d="M4 10v4l4 .6 3 4h2V5.4l-3 4L4 10z"/><path d="M16 9a4 4 0 010 6"/>',
+  '🍽':'<path d="M5 3v7a2 2 0 002 2v9M7 3v7M17.5 3c-1.3 0-2 3-2 6s.5 3 2 3v8"/>'
+};
+function _iconizeTitle(el){
+  el.setAttribute('data-icd','1');
+  var html=el.innerHTML;var m;try{m=html.match(/^\s*(\p{Extended_Pictographic})️?\s*/u);}catch(e){m=null;}
+  if(!m||!_EMOJI_ICONS[m[1]])return;
+  el.innerHTML='<span class="cico" style="margin-right:6px">'+_svg(_EMOJI_ICONS[m[1]])+'</span>'+html.slice(m[0].length);
+}
+function iconizeTitles(){var ls=document.querySelectorAll('.c-card-title:not([data-icd])');for(var i=0;i<ls.length;i++)_iconizeTitle(ls[i]);}
+(function(){var start=function(){iconizeTitles();var pend=false;var obs=new MutationObserver(function(){if(pend)return;pend=true;requestAnimationFrame(function(){pend=false;iconizeTitles();});});obs.observe(document.body,{childList:true,subtree:true});};if(document.body)start();else document.addEventListener('DOMContentLoaded',start);})();
 // 任務/獎勵「內容 ICON」（下拉選單用）
 const CICONS={
   check:_svg('<circle cx="12" cy="12" r="9"/><path d="M8 12.5l2.5 2.5L16 9"/>'),
