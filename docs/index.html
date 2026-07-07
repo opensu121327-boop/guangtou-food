@@ -839,6 +839,49 @@ img,canvas,table,video{max-width:100%;}
 /* ═══ 指定字體 ChillDINGothic ═══ */
 @font-face{font-family:'ChillDINGothic';src:url('https://cdn.jsdelivr.net/gh/Warren2060/ChillDIN-ChillDINGothic@main/ChillDINGothic%20v1.300_Std/ChillDINGothic_Std.woff2') format('woff2');font-display:swap;}
 body,html,button,input,select,textarea,.brand-name,.topbar-title,.sec-title,.c-card-title,.cc-title,.hero-name,.drawer-sys,.kpi-val,.home-name,.drawer-item,.nav-btn,.field-input,.form-input,.subform-title,.lb-name,.tc-title{font-family:'ChillDINGothic','Noto Sans TC','Inter',sans-serif!important;}
+
+/* ═══════════════ ✨ 整體精緻化設計層（酒紅 × 金 × 米白・高級感）═══════════════ */
+:root{--acc:#c9a96e;--acc-2:#e6c877;}
+/* 背景：更深邃＋一抹金色微光＋暈影 */
+#app{background:
+  radial-gradient(1200px 780px at 88% -12%,rgba(201,169,110,.12),transparent 46%),
+  radial-gradient(1000px 700px at 6% 112%,rgba(154,23,48,.42),transparent 52%),
+  linear-gradient(165deg,#4a0014,#2a000a)!important;}
+/* 卡片：柔和陰影＋頂端高光＋更圓潤 */
+.glass-card,.c-card,.stat-card,.kpi-card,.reward-card,.sub-row,.skin{
+  background:linear-gradient(180deg,#f3ece1,#e9e0d2)!important;
+  border:1px solid rgba(128,0,32,.10)!important;border-radius:18px!important;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.55),0 10px 26px rgba(28,0,10,.30)!important;}
+.sub-row,.skin{border-radius:14px!important;}
+.kpi-card.gold-accent{background:linear-gradient(180deg,#f7efdb,#efe3c9)!important;border-color:rgba(201,169,110,.5)!important;}
+/* 標題／數值 */
+.c-card-title{color:#7a1220!important;font-weight:800!important;font-size:15.5px!important;letter-spacing:.01em;}
+.kpi-val,.stat-value,.lb-rank,.lb-xp{color:#7a1220!important;}
+.kpi-label{letter-spacing:.04em;}
+/* 金色分隔線 accent */
+.divider{height:2px!important;background:linear-gradient(90deg,rgba(201,169,110,.7),rgba(201,169,110,.04))!important;border-radius:2px;}
+/* 按鈕：精緻酒紅＋內光＋按壓回饋 */
+.btn-primary,.btn-action{
+  background:linear-gradient(145deg,#a51832,#7a0018)!important;color:#f6ecd9!important;border:none!important;border-radius:14px!important;
+  box-shadow:0 6px 18px rgba(128,0,32,.34),inset 0 1px 0 rgba(255,255,255,.16)!important;
+  letter-spacing:.03em;font-weight:700!important;transition:transform .12s ease,box-shadow .12s ease;}
+.btn-primary:active,.btn-action:active{transform:translateY(1px) scale(.992);box-shadow:0 3px 10px rgba(128,0,32,.32)!important;}
+/* 輸入框：柔和＋金色 focus 光環 */
+.form-input,.field-input{border-radius:12px!important;background:#faf6ef!important;border:1px solid rgba(128,0,32,.16)!important;transition:border-color .15s,box-shadow .15s,background .15s;}
+.form-input:focus,.field-input:focus{border-color:var(--acc)!important;background:#fff!important;box-shadow:0 0 0 3px rgba(201,169,110,.22)!important;}
+/* 進度條：金→酒紅漸層＋微光 */
+.xp-fill,.mini-xp-fill{background:linear-gradient(90deg,#e6c877,#c9a96e 38%,#a51832)!important;box-shadow:0 0 10px rgba(201,169,110,.35);}
+/* pill／badge／lv-badge／chip */
+.pill,.badge,.badge-pending,.badge-active,.pts-pill{border-radius:99px!important;}
+.lv-badge,.dcat.active{background:linear-gradient(145deg,#a51832,#7a0018)!important;box-shadow:0 5px 14px rgba(128,0,32,.32)!important;}
+.badge-pending{background:rgba(201,169,110,.18)!important;color:#8a6a1c!important;}
+.chip{border-radius:99px!important;border:1.5px solid rgba(128,0,32,.18)!important;transition:.15s;}
+.chip.active{background:linear-gradient(145deg,#a51832,#7a0018)!important;color:#f6ecd9!important;border-color:transparent!important;box-shadow:0 4px 12px rgba(128,0,32,.30)!important;}
+/* 頂欄金色細線 */
+.topbar{border-bottom:1px solid rgba(201,169,110,.28)!important;}
+/* 資料表更精緻 */
+.data-table th{background:rgba(128,0,32,.06)!important;color:#7a1220!important;letter-spacing:.02em;}
+.data-table tr:hover td{background:rgba(201,169,110,.10)!important;}
 </style>
 </head>
 <body>
@@ -1376,7 +1419,7 @@ body,html,button,input,select,textarea,.brand-name,.topbar-title,.sec-title,.c-c
 
 <script>
 // ── 自動更新：開啟時比對版本，有新版就自動重載（免無痕）──
-const APP_VER='20260707164235';
+const APP_VER='20260707215804';
 function checkVersion(){try{fetch('ver.txt?_='+Date.now(),{cache:'no-store'}).then(function(r){return r.ok?r.text():null;}).then(function(v){if(!v)return;v=v.trim();if(v&&v!==APP_VER&&location.search.indexOf('v='+v)<0){location.replace(location.pathname+'?v='+encodeURIComponent(v));}}).catch(function(){});}catch(e){}}
 checkVersion();
 document.addEventListener('visibilitychange',function(){if(document.visibilityState==='visible')checkVersion();});
