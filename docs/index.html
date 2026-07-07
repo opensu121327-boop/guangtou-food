@@ -1452,7 +1452,7 @@ body,html,button,input,select,textarea,.brand-name,.topbar-title,.sec-title,.c-c
 
 <script>
 // ── 自動更新：開啟時比對版本，有新版就自動重載（免無痕）──
-const APP_VER='20260707234507';
+const APP_VER='20260708023154';
 function checkVersion(){try{fetch('ver.txt?_='+Date.now(),{cache:'no-store'}).then(function(r){return r.ok?r.text():null;}).then(function(v){if(!v)return;v=v.trim();if(v&&v!==APP_VER&&location.search.indexOf('v='+v)<0){location.replace(location.pathname+'?v='+encodeURIComponent(v));}}).catch(function(){});}catch(e){}}
 checkVersion();
 document.addEventListener('visibilitychange',function(){if(document.visibilityState==='visible')checkVersion();});
@@ -3148,6 +3148,7 @@ async function renderPraiseMarquee(){
 }
 function renderChProgress(){
   const cfg=chCfg();const d=$('ch-daily'),m=$('ch-monthly');if(!d||!m)return;
+  if(_chRev)autoPayChallenge(); // 達標自動配發
   const paid=chPaid();
   const fmt=v=>v==null?'讀取中…':('$'+Number(v).toLocaleString());
   const bar=(cur,target)=>{const pct=(target>0&&cur!=null)?Math.min(100,Math.round(cur/target*100)):0;return {pct,done:(target>0&&cur!=null&&cur>=target)};};
@@ -3158,12 +3159,12 @@ function renderChProgress(){
   d.innerHTML=`<div class="c-card"><div class="c-card-title">🎯 今日業績挑戰（${dayType}）${db.done?'<span class="pill done">已達標 🎉</span>':''}</div>
     <div class="xp-text" style="color:#2b1519!important;font-size:14px;font-weight:600">今日營收 <b style="color:#800020">${fmt(tRev)}</b> ／ ${dayType}目標 <b>${dTarget?('$'+dTarget.toLocaleString()):'未設定'}</b></div>
     <div class="xp-bar" style="margin:8px 0"><div class="xp-fill" style="width:${db.pct}%"></div></div>
-    ${CU.role==='BOSS'?`<button class="btn-action" style="padding:10px 16px;${dCan?'':'opacity:.5'}" ${dCan?'':'disabled'} onclick="payChallenge('daily')">達標派發 +${cfg.dailyReward} 給今日上班人員（${rosterToday().length}人）</button>${paid.daily[bizDay()]?'<div class="muted-note" style="margin-top:6px">今日已派發 ✓</div>':''}`:''}
+    ${db.done?(paid.daily[bizDay()]?`<div class="muted-note" style="margin-top:8px;color:#15803d;font-weight:600">✅ 已自動派發 +${cfg.dailyReward} 給今日上班人員（${rosterToday().length}人）</div>`:(rosterToday().length?`<div class="muted-note" style="margin-top:8px;color:#800020;font-weight:600">🎯 達標！點數自動配發中…</div>`:`<div class="muted-note" style="margin-top:8px;color:#b45309;font-weight:600">🎯 已達標！請先設定「今日上班人員」即自動派發 +${cfg.dailyReward}</div>`)):''}
   </div>`;
   m.innerHTML=`<div class="c-card"><div class="c-card-title">📅 本月業績挑戰 ${mb.done?'<span class="pill done">已達標 🎉</span>':''}</div>
     <div class="xp-text" style="color:#2b1519!important;font-size:14px;font-weight:600">本月營收 <b style="color:#800020">${fmt(mRev)}</b> ／ 目標 <b>${cfg.monthlyTarget?('$'+cfg.monthlyTarget.toLocaleString()):'未設定'}</b></div>
     <div class="xp-bar" style="margin:8px 0"><div class="xp-fill" style="width:${mb.pct}%"></div></div>
-    ${CU.role==='BOSS'?`<button class="btn-action" style="padding:10px 16px;${mCan?'':'opacity:.5'}" ${mCan?'':'disabled'} onclick="payChallenge('monthly')">達標派發 +${cfg.monthlyReward} 給全體員工</button>${paid.monthly[monthKey()]?'<div class="muted-note" style="margin-top:6px">本月已派發 ✓</div>':''}`:''}
+    ${mb.done?(paid.monthly[monthKey()]?`<div class="muted-note" style="margin-top:8px;color:#15803d;font-weight:600">✅ 已自動派發 +${cfg.monthlyReward} 給全體員工</div>`:`<div class="muted-note" style="margin-top:8px;color:#800020;font-weight:600">🎯 達標！點數自動配發中…</div>`):''}
   </div>`;
 }
 function fetchChRevenue(){
@@ -3174,6 +3175,22 @@ function fetchChRevenue(){
     rows.forEach(r=>{if(r.date===td)today+=r.total;if(r.date&&r.date.slice(0,7)===mk)month+=r.total;});
     _chRev={today,month};renderChProgress();
   }).catch(()=>{_chRev={today:null,month:null};renderChProgress();});
+}
+// 達標自動配發（僅老闆裝置觸發，避免多台重複；已派發旗標防重複加分）
+function autoPayChallenge(){
+  if(!CU||CU.role!=='BOSS')return;
+  const cfg=chCfg();const paid=chPaid();let changed=false;
+  const dT=dailyTargetNow();const roster=rosterToday();
+  if(dT>0&&_chRev&&_chRev.today!=null&&_chRev.today>=dT&&!paid.daily[bizDay()]&&roster.length){
+    roster.forEach(u=>awardXp(u,cfg.dailyReward));paid.daily[bizDay()]=true;changed=true;
+    toast('🎉 今日達標！自動派發 +'+cfg.dailyReward+' 給 '+roster.length+' 人','gold');
+  }
+  if(cfg.monthlyTarget>0&&_chRev&&_chRev.month!=null&&_chRev.month>=cfg.monthlyTarget&&!paid.monthly[monthKey()]){
+    const everyone=Object.keys(LS.get('rm_names',{})||{});
+    if(everyone.length){everyone.forEach(u=>awardXp(u,cfg.monthlyReward));paid.monthly[monthKey()]=true;changed=true;
+      toast('🎉 本月達標！自動派發 +'+cfg.monthlyReward+' 給全體 '+everyone.length+' 人','gold');}
+  }
+  if(changed){LS.set('rm_challenge_paid',paid);updateGameChip();}
 }
 function payChallenge(kind){
   const cfg=chCfg();const paid=chPaid();
