@@ -1476,7 +1476,7 @@ body,html,button,input,select,textarea,.brand-name,.topbar-title,.sec-title,.c-c
 
 <script>
 // ── 自動更新：開啟時比對版本，有新版就自動重載（免無痕）──
-const APP_VER='20260708081926';
+const APP_VER='20260708090456';
 function checkVersion(){try{fetch('ver.txt?_='+Date.now(),{cache:'no-store'}).then(function(r){return r.ok?r.text():null;}).then(function(v){if(!v)return;v=v.trim();if(v&&v!==APP_VER&&location.search.indexOf('v='+v)<0){location.replace(location.pathname+'?v='+encodeURIComponent(v));}}).catch(function(){});}catch(e){}}
 checkVersion();
 document.addEventListener('visibilitychange',function(){if(document.visibilityState==='visible')checkVersion();});
@@ -3605,12 +3605,14 @@ async function renderHandover(){
   // App 只顯示最近 3 天（完整永久保存在 Google Sheet）
   const _hc=new Date(bizDay()+'T12:00:00');_hc.setDate(_hc.getDate()-2);const _hp=n=>String(n).padStart(2,'0');const _hcut=_hc.getFullYear()+'-'+_hp(_hc.getMonth()+1)+'-'+_hp(_hc.getDate());
   list=list.filter(h=>String(h.date||'')>=_hcut);
-  const sec=(emoji,lab,val)=>val?`<div style="margin-top:4px"><b>${emoji} ${lab}</b><div class="muted-note" style="margin:2px 0 0;white-space:pre-wrap">${esc(val)}</div></div>`:'';
+  const ico=p=>`<svg viewBox="0 0 24 24" fill="none" stroke="#800020" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" style="width:16px;height:16px;vertical-align:-3px;margin-right:4px;flex-shrink:0">${p}</svg>`;
+  const HI={date:'<rect x="4" y="5" width="16" height="15" rx="2"/><path d="M4 9.5h16M8 3v4M16 3v4"/>',pen:'<path d="M4 20h4L18.5 9.5l-4-4L4 16z"/><path d="M13.5 6.5l4 4"/>',stock:'<path d="M3 7l9-4 9 4-9 4-9-4z"/><path d="M3 7v10l9 4 9-4V7"/><path d="M12 11v10"/>',complaint:'<path d="M20 12a7 6 0 01-7 6 8 8 0 01-2.6-.4L5 19l1.2-3.4A6 6 0 016 12a7 6 0 0114 0z"/>',equip:'<circle cx="12" cy="12" r="3.2"/><path d="M12 3.6v2.2M12 18.2v2.2M20.4 12h-2.2M5.8 12H3.6M17.9 6.1l-1.6 1.6M7.7 16.3L6.1 17.9M17.9 17.9l-1.6-1.6M7.7 7.7L6.1 6.1"/>',waste:'<path d="M5 7h14M9.5 4h5M6 7l1 13h10l1-13"/><path d="M10 11v6M14 11v6"/>'};
+  const sec=(ik,lab,val)=>val?`<div style="margin-top:6px"><b style="color:#2b1519">${ico(HI[ik])}${lab}</b><div class="muted-note" style="margin:2px 0 0;white-space:pre-wrap">${esc(val)}</div></div>`:'';
   wrap.innerHTML=list.length?list.map(h=>`<div class="sub-row" style="flex-direction:column;align-items:stretch;gap:2px">
-    <div style="display:flex;justify-content:space-between;flex-wrap:wrap;gap:6px"><div class="tc-title" style="font-size:14px">📅 ${esc(h.date)}</div><div class="xp-text">✍️ 填表：${esc(h.by)} ・ ${fmtTime(h.ts)}</div></div>
+    <div style="display:flex;justify-content:space-between;flex-wrap:wrap;gap:6px"><div class="tc-title" style="font-size:14px;color:#2b1519">${ico(HI.date)}${esc(h.date)}</div><div style="font-size:12.5px;color:#7a1220;font-weight:600">${ico(HI.pen)}填表：${esc(h.by)} ・ ${fmtTime(h.ts)}</div></div>
     ${h.content?`<div class="muted-note" style="white-space:pre-wrap">${esc(h.content)}</div>`:''}
-    ${sec('📦','缺貨',h.stock)}${sec('🗣️','客訴與處理',h.complaint)}${sec('🔧','設備狀況與問題',h.equip)}${sec('🗑️','今日耗棄食材',h.waste)}
-    ${h.note?`<div class="xp-text" style="margin-top:4px">備註：${esc(h.note)}</div>`:''}
+    ${sec('stock','缺貨',h.stock)}${sec('complaint','客訴與處理',h.complaint)}${sec('equip','設備狀況與問題',h.equip)}${sec('waste','今日耗棄食材',h.waste)}
+    ${h.note?`<div style="margin-top:6px;font-size:13px;color:#2b1519">備註：${esc(h.note)}</div>`:''}
   </div>`).join(''):'<div class="game-empty">尚無交接紀錄</div>';
 }
 function submitHandover(){
