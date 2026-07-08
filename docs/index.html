@@ -936,6 +936,8 @@ body,html,button,input,select,textarea,.brand-name,.topbar-title,.sec-title,.c-c
 .xp-fill::after,.mini-xp-fill::after{content:"";position:absolute;inset:0;background:linear-gradient(90deg,transparent,rgba(255,255,255,.42),transparent);transform:translateX(-100%);animation:xpShine 2.6s ease-in-out infinite;}
 @keyframes xpShine{0%{transform:translateX(-100%)}60%,100%{transform:translateX(220%)}}
 .btn-action:active,.btn-primary:active{box-shadow:0 0 0 3px rgba(201,169,110,.35),0 3px 10px rgba(128,0,32,.3)!important;}
+/* 全站統一優雅明體 */
+*{font-family:'Noto Serif TC','Songti TC','Noto Sans TC','Noto Sans TC',serif!important;}
 </style>
 </head>
 <body>
@@ -1474,7 +1476,7 @@ body,html,button,input,select,textarea,.brand-name,.topbar-title,.sec-title,.c-c
 
 <script>
 // ── 自動更新：開啟時比對版本，有新版就自動重載（免無痕）──
-const APP_VER='20260708024706';
+const APP_VER='20260708081926';
 function checkVersion(){try{fetch('ver.txt?_='+Date.now(),{cache:'no-store'}).then(function(r){return r.ok?r.text():null;}).then(function(v){if(!v)return;v=v.trim();if(v&&v!==APP_VER&&location.search.indexOf('v='+v)<0){location.replace(location.pathname+'?v='+encodeURIComponent(v));}}).catch(function(){});}catch(e){}}
 checkVersion();
 document.addEventListener('visibilitychange',function(){if(document.visibilityState==='visible')checkVersion();});
@@ -3337,9 +3339,11 @@ function renderBom(){
     html+=`<div class="c-card"><div class="c-card-title">➕ 新增菜品 / 半成品</div>
       <div class="form-group"><label class="form-label">名稱</label><input class="form-input" id="bom-dish" placeholder="例：鮭魚丼 ／ 生魚片醬油"></div>
       <label style="display:flex;align-items:center;gap:8px;font-size:14px;margin-bottom:12px;cursor:pointer"><input type="checkbox" id="bom-issemi" style="width:18px;height:18px"> 這是半成品（醬汁/醃料…可被菜品引用）</label>
-      <button class="btn-action" onclick="addRecipe()">建立</button>
-      <button class="btn-sm btn-neutral" style="margin-left:8px;padding:8px 12px" onclick="loadRecipeCosts().then(renderBom)">🔄 同步進貨成本</button>
-      <button class="btn-sm" style="margin-left:8px;padding:8px 12px;background:#16a34a;color:#fff;border:none;border-radius:8px" onclick="bomWriteSheet()">📤 寫入 Google Sheet</button></div>`;
+      <div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-top:2px">
+        <button class="btn-action" onclick="addRecipe()">建立</button>
+        <button class="btn-sm btn-neutral" style="padding:9px 13px" onclick="loadRecipeCosts().then(renderBom)">🔄 同步進貨成本</button>
+        <button class="btn-sm" style="padding:9px 13px;background:#16a34a;color:#fff;border:none;border-radius:11px" onclick="bomWriteSheet()">📤 寫入 Google Sheet</button>
+      </div></div>`;
   }
   if(semis.length){html+='<div class="sec-sub" style="margin:6px 2px 4px">🧪 半成品</div>';semis.forEach(rc=>html+=recipeCard(rc,true));}
   html+='<div class="sec-sub" style="margin:12px 2px 4px">🍱 菜品</div>';
@@ -3598,9 +3602,12 @@ async function renderHandover(){
     }catch(e){/* 離線 → 只顯示本機 */}
   }
   list=list.sort((a,b)=>b.ts-a.ts);
+  // App 只顯示最近 3 天（完整永久保存在 Google Sheet）
+  const _hc=new Date(bizDay()+'T12:00:00');_hc.setDate(_hc.getDate()-2);const _hp=n=>String(n).padStart(2,'0');const _hcut=_hc.getFullYear()+'-'+_hp(_hc.getMonth()+1)+'-'+_hp(_hc.getDate());
+  list=list.filter(h=>String(h.date||'')>=_hcut);
   const sec=(emoji,lab,val)=>val?`<div style="margin-top:4px"><b>${emoji} ${lab}</b><div class="muted-note" style="margin:2px 0 0;white-space:pre-wrap">${esc(val)}</div></div>`:'';
   wrap.innerHTML=list.length?list.map(h=>`<div class="sub-row" style="flex-direction:column;align-items:stretch;gap:2px">
-    <div style="display:flex;justify-content:space-between;flex-wrap:wrap;gap:6px"><div class="tc-title" style="font-size:14px">📅 ${esc(h.date)}</div><div class="xp-text">${esc(h.by)} ・ ${fmtTime(h.ts)}</div></div>
+    <div style="display:flex;justify-content:space-between;flex-wrap:wrap;gap:6px"><div class="tc-title" style="font-size:14px">📅 ${esc(h.date)}</div><div class="xp-text">✍️ 填表：${esc(h.by)} ・ ${fmtTime(h.ts)}</div></div>
     ${h.content?`<div class="muted-note" style="white-space:pre-wrap">${esc(h.content)}</div>`:''}
     ${sec('📦','缺貨',h.stock)}${sec('🗣️','客訴與處理',h.complaint)}${sec('🔧','設備狀況與問題',h.equip)}${sec('🗑️','今日耗棄食材',h.waste)}
     ${h.note?`<div class="xp-text" style="margin-top:4px">備註：${esc(h.note)}</div>`:''}
