@@ -1487,7 +1487,7 @@ body,html,button,input,select,textarea,.brand-name,.topbar-title,.sec-title,.c-c
 
 <script>
 // ── 自動更新：開啟時比對版本，有新版就自動重載（免無痕）──
-const APP_VER='20260709004933';
+const APP_VER='20260709010834';
 function checkVersion(){try{fetch('ver.txt?_='+Date.now(),{cache:'no-store'}).then(function(r){return r.ok?r.text():null;}).then(function(v){if(!v)return;v=v.trim();if(v&&v!==APP_VER&&location.search.indexOf('v='+v)<0){location.replace(location.pathname+'?v='+encodeURIComponent(v));}}).catch(function(){});}catch(e){}}
 checkVersion();
 document.addEventListener('visibilitychange',function(){if(document.visibilityState==='visible')checkVersion();});
@@ -3771,10 +3771,13 @@ function salesWriteSheet(sub){
 let _psaleTaskId='tpsale', _psaleToday={};
 async function startPsale(id){
   _psaleTaskId=id||'tpsale';_psaleToday={};
-  $('psale-body').innerHTML='<div class="loading-state"><div class="spin"></div>載入今日數量…</div>';
   $('psale-modal').classList.add('show');
-  if(syncOn()){try{const d=await authApi({type:'query_focus'});if(d&&d.rows){const bd=bizDay();d.rows.slice(1).forEach(r=>{if(normDate(r[0])===bd)_psaleToday[String(r[1]||'').trim()]=r[2];});}}catch(e){}}
-  renderPsaleBody();
+  renderPsaleBody();            // 立即畫出商品清單（用本機設定），不等雲端
+  if(syncOn()){try{
+    const d=await authApi({type:'query_focus'});
+    if(d&&d.rows){const bd=bizDay();d.rows.slice(1).forEach(r=>{if(normDate(r[0])===bd)_psaleToday[String(r[1]||'').trim()]=r[2];});
+      if(Object.keys(_psaleToday).length&&$('psale-modal').classList.contains('show'))renderPsaleBody();}  // 有今日數量才回填，避免蓋掉正在輸入的內容
+  }catch(e){}}
 }
 function renderPsaleBody(){
   const items=LS.get('rm_focus_products',[])||[];
