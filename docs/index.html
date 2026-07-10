@@ -1036,6 +1036,24 @@ body,html{background:#FFF4E6!important;}
 #auth-screen .msg{color:#F3E9D6!important;}
 /* 底部服務精神標語 */
 .login-bg-caption{color:rgba(201,169,110,.6)!important;letter-spacing:.16em!important;font-size:11px!important;}
+
+/* ============================================================
+   ★ 首頁改版（英雄狀態區 app-luxe 化＋修正白字看不到）
+   ============================================================ */
+/* 英雄狀態卡：暖米白漸層＋古典金邊 */
+.home-center{background:linear-gradient(160deg,#FFF3E4,#FFE6CC)!important;border:1px solid var(--line-gold)!important;
+  border-radius:20px!important;padding:22px 16px 18px!important;box-shadow:var(--shadow-warm-sm)!important;}
+/* 角色頭像框：白底金邊暖陰影 */
+.home-avatar{border-radius:28px!important;border:1px solid var(--line-gold)!important;
+  box-shadow:0 12px 28px -12px rgba(180,90,20,.32)!important;}
+/* 姓名：明體、深咖可讀（修正原本白字在米白底看不到） */
+.home-name{font-family:'Noto Serif TC','Songti TC',serif!important;color:#3A2417!important;
+  text-shadow:none!important;font-weight:800!important;font-size:21px!important;}
+/* 等級徽章：古典金漸層 */
+.home-name .lv-badge{background:linear-gradient(135deg,#C9A96E,#9A7A4A)!important;color:#fff!important;letter-spacing:.03em;}
+/* 還差 XP 文字：勃根地重點 */
+.home-center .xp-text{color:#5a3720!important;}
+.home-center .xp-text b{color:#800020!important;font-weight:800!important;}
 </style>
 </head>
 <body>
@@ -1588,7 +1606,7 @@ body,html{background:#FFF4E6!important;}
 
 <script>
 // ── 自動更新：開啟時比對版本，有新版就自動重載（免無痕）──
-const APP_VER='20260710163000';
+const APP_VER='20260710171500';
 function checkVersion(){try{fetch('ver.txt?_='+Date.now(),{cache:'no-store'}).then(function(r){return r.ok?r.text():null;}).then(function(v){if(!v)return;v=v.trim();if(v&&v!==APP_VER&&location.search.indexOf('v='+v)<0){location.replace(location.pathname+'?v='+encodeURIComponent(v));}}).catch(function(){});}catch(e){}}
 checkVersion();
 document.addEventListener('visibilitychange',function(){if(document.visibilityState==='visible')checkVersion();});
