@@ -1090,6 +1090,33 @@ body,html{background:#FFF4E6!important;}
 .sec-sub{color:#FBF2E0!important;text-shadow:0 1px 2px rgba(90,40,10,.5)!important;font-weight:600!important;}
 
 /* ============================================================
+   ★ 登入→進入系統 開場載入動畫（僅此期間顯示）
+   ============================================================ */
+#app-loading{position:fixed;inset:0;z-index:300;background:#050403;display:none;
+  flex-direction:column;align-items:center;justify-content:center;padding:24px 0;}
+#app-loading.show{display:flex;}
+#app-loading .alx-word{font-family:'Noto Serif TC','Songti TC',serif!important;font-weight:900!important;
+  font-size:30px;letter-spacing:4px;background:linear-gradient(135deg,#FFB259,#FF7A1A 40%,#C9A96E);
+  -webkit-background-clip:text;background-clip:text;color:transparent!important;-webkit-text-fill-color:transparent!important;
+  text-align:center;margin-bottom:8px;animation:alxDown .8s ease both .3s;}
+#app-loading .alx-tvwrap{position:relative;width:86%;max-width:360px;aspect-ratio:1128/856;
+  animation:alxIn 1s ease both .35s;filter:drop-shadow(0 22px 30px rgba(0,0,0,.55));}
+#app-loading .alx-bk{position:absolute;left:5.5%;top:8%;width:70%;height:74%;background:#000;z-index:0;}
+#app-loading #alx-video{position:absolute;left:5.5%;top:8%;width:70%;height:74%;object-fit:cover;z-index:1;}
+#app-loading .alx-star{position:absolute;left:60%;top:62%;width:14%;height:18%;
+  background:radial-gradient(120% 120% at 100% 100%,#000 55%,rgba(0,0,0,0) 100%);z-index:2;pointer-events:none;}
+#app-loading .alx-tv{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;z-index:3;pointer-events:none;}
+#app-loading .alx-copy{margin-top:22px;text-align:center;}
+#app-loading .alx-div{width:34px;height:2px;margin:0 auto 16px;border-radius:2px;
+  background:linear-gradient(90deg,#FF7A1A,#C9A96E);animation:alxIn .8s ease both 1.4s;}
+#app-loading .alx-txt{font-family:'Noto Serif TC','Songti TC',serif!important;font-size:16px;line-height:1.8;
+  letter-spacing:1px;color:rgba(255,246,233,.9)!important;animation:alxUp .8s ease both 1.55s;}
+@keyframes alxDown{0%{opacity:0;transform:translateY(-10px)}100%{opacity:1;transform:none}}
+@keyframes alxUp{0%{opacity:0;transform:translateY(12px)}100%{opacity:1;transform:none}}
+@keyframes alxIn{0%{opacity:0}100%{opacity:1}}
+@media(prefers-reduced-motion:reduce){#app-loading .alx-word,#app-loading .alx-tvwrap,#app-loading .alx-div,#app-loading .alx-txt{animation-duration:.001ms!important;animation-delay:0ms!important;}}
+
+/* ============================================================
    ★ 全站字體改用粉圓體 jf-openhuninn（自帶字檔，swap 不卡載入）
    ============================================================ */
 @font-face{
@@ -1650,11 +1677,26 @@ html,body,button,input,select,textarea,
   </div>
 </div>
 
+<!-- 登入→進入系統：開場載入動畫（生魚片盤・復古電視） -->
+<div id="app-loading">
+  <div class="alx-word">員工管理系統</div>
+  <div class="alx-tvwrap">
+    <div class="alx-bk"></div>
+    <video id="alx-video" src="loading.mp4" autoplay muted loop playsinline preload="auto"></video>
+    <div class="alx-star"></div>
+    <img class="alx-tv" src="loading-tv.png" alt="">
+  </div>
+  <div class="alx-copy">
+    <div class="alx-div"></div>
+    <div class="alx-txt">您用心款待客人<br>我用心照顧你們</div>
+  </div>
+</div>
+
 <div id="toast"></div>
 
 <script>
 // ── 自動更新：開啟時比對版本，有新版就自動重載（免無痕）──
-const APP_VER='20260711013000';
+const APP_VER='20260711030000';
 function checkVersion(){try{fetch('ver.txt?_='+Date.now(),{cache:'no-store'}).then(function(r){return r.ok?r.text():null;}).then(function(v){if(!v)return;v=v.trim();if(v&&v!==APP_VER&&location.search.indexOf('v='+v)<0){location.replace(location.pathname+'?v='+encodeURIComponent(v));}}).catch(function(){});}catch(e){}}
 checkVersion();
 document.addEventListener('visibilitychange',function(){if(document.visibilityState==='visible')checkVersion();});
@@ -1740,8 +1782,37 @@ function updateRegNote(role) {
 }
 
 // ── ENTER APP ──
+// ── 開場載入動畫（登入→進入系統期間）──
+function showAppLoading(){
+  var el=$('app-loading');if(!el)return;
+  el.style.opacity='';el.classList.add('show');window._alxShownAt=Date.now();
+  var v=$('alx-video');
+  if(v){v.muted=true;v.volume=0;v.loop=true;try{var p=v.play();if(p&&p.catch)p.catch(function(){});}catch(e){}
+    if(!window._alxRaf)window._alxRaf=requestAnimationFrame(alxFade);}
+}
+function alxFade(){
+  var v=$('alx-video');
+  if(v&&v.duration){var A=4.10,B=9.85,f=0.5,t=v.currentTime;
+    if(t<A-0.05||t>=B){try{v.currentTime=A;}catch(e){}t=A;}
+    var op=1;if(t<A+f)op=(t-A)/f;else if(t>B-f)op=(B-t)/f;
+    v.style.opacity=Math.max(0,Math.min(1,op)).toFixed(3);}
+  window._alxRaf=requestAnimationFrame(alxFade);
+}
+function hideAppLoading(){
+  var el=$('app-loading');if(!el)return;
+  var waited=Date.now()-(window._alxShownAt||0),delay=Math.max(0,2000-waited);   // 至少顯示 2 秒避免閃一下
+  setTimeout(function(){
+    el.style.transition='opacity .5s ease';el.style.opacity='0';
+    setTimeout(function(){el.classList.remove('show');el.style.transition='';el.style.opacity='';
+      if(window._alxRaf){cancelAnimationFrame(window._alxRaf);window._alxRaf=null;}
+      var v=$('alx-video');if(v){try{v.pause();}catch(e){}}
+    },520);
+  },delay);
+}
+
 async function enterApp() {
   $('auth-screen').classList.add('hidden');
+  showAppLoading();   // 顯示開場載入動畫
   // 最多等 1.5 秒抓雲端資料，超時就先進 App（其餘背景補），避免登入卡 7~8 秒
   if(syncOn()){try{await Promise.race([cloudPull(true),new Promise(function(r){setTimeout(r,1500);})]);}catch(e){}}
   initApp();
@@ -1749,6 +1820,7 @@ async function enterApp() {
   startSyncPoll();
   if(!getChar().chosen) showCharCreate();
   else maybeForceRec();
+  hideAppLoading();   // 準備好後淡出（至少顯示 2 秒）
   // 背景把資料抓齊並刷新目前畫面（含照片），慢的雲端不再擋住登入
   if(syncOn())setTimeout(function(){
     cloudPull(true).then(function(){if(!CU)return;updateGameChip();if(isTyping())return;var act=document.querySelector('.tab-panel.active');if(act)reRenderTab(act.id.replace('tab-',''));}).catch(function(){});
