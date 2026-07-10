@@ -992,6 +992,50 @@ body,html{background:#FFF4E6!important;}
 /* 分頁鈕 active：燙金底線 */
 .nav-btn.active{color:#7A1220!important;}
 .nav-btn.active::after{background:var(--gold-orange)!important;}
+
+/* ============================================================
+   ★ 登入頁改版（對齊 ui_kits/staff-app 原型）— 全部 scoped 在 #auth-screen，不動功能
+   ============================================================ */
+/* 品牌印章：米白圓角方章＋古典金邊＋暖光暈 */
+#auth-screen .brand-icon{width:96px!important;height:96px!important;border-radius:24px!important;
+  background:#FBF2E0!important;border:1.5px solid rgba(201,169,110,.55)!important;
+  box-shadow:0 0 34px rgba(201,169,110,.28)!important;overflow:hidden;padding:0!important;
+  display:flex;align-items:center;justify-content:center;margin:0 auto 16px!important;}
+#auth-screen .brand-icon img{width:100%!important;height:100%!important;object-fit:contain!important;}
+/* 品牌名：明體＋燙金漸層字 */
+#auth-screen .brand-name{font-family:'Noto Serif TC','Songti TC',serif!important;font-weight:700!important;
+  font-size:25px!important;letter-spacing:.1em!important;
+  background:linear-gradient(135deg,#E8D5A8,#FF9D3D 55%,#FF7A1A)!important;
+  -webkit-background-clip:text!important;background-clip:text!important;-webkit-text-fill-color:transparent!important;color:transparent!important;}
+#auth-screen .brand-sub{font-family:'Inter','Noto Sans TC',sans-serif!important;text-transform:uppercase!important;
+  letter-spacing:.28em!important;font-size:10px!important;color:rgba(201,169,110,.6)!important;margin-top:8px!important;}
+/* 玻璃卡：深色半透＋毛玻璃＋古典金髮絲線 */
+#auth-screen .glass-card{background:rgba(14,10,18,.66)!important;border:1px solid rgba(201,169,110,.24)!important;
+  border-radius:22px!important;padding:24px 22px!important;position:relative;overflow:hidden;
+  backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);box-shadow:0 26px 60px -22px rgba(0,0,0,.6)!important;}
+#auth-screen .glass-card::before{content:'';position:absolute;top:0;left:24px;right:24px;height:1px;
+  background:linear-gradient(90deg,transparent,rgba(201,169,110,.5),transparent);}
+/* 分頁：深底膠囊，active 古典金 */
+#auth-screen .auth-tabs-row{background:rgba(0,0,0,.3)!important;border-radius:12px!important;padding:4px!important;gap:4px!important;margin-bottom:18px!important;}
+#auth-screen .auth-tab-btn{background:transparent!important;border:none!important;color:rgba(232,213,168,.6)!important;
+  border-radius:9px!important;padding:9px!important;font-weight:600!important;}
+#auth-screen .auth-tab-btn.active{background:linear-gradient(135deg,rgba(201,169,110,.28),rgba(201,169,110,.1))!important;
+  color:#F1DEB2!important;border:1px solid rgba(201,169,110,.3)!important;}
+/* 欄位標籤：大寫金色細字 */
+#auth-screen .field-label{font-family:'Inter','Noto Sans TC',sans-serif!important;text-transform:uppercase!important;
+  letter-spacing:.12em!important;font-size:10px!important;font-weight:600!important;color:rgba(232,213,168,.5)!important;}
+/* 輸入框：深色半透＋金邊＋淺字 */
+#auth-screen .field-input{background:rgba(0,0,0,.34)!important;border:1px solid rgba(201,169,110,.2)!important;
+  border-radius:14px!important;color:#F3E9D6!important;}
+#auth-screen .field-input::placeholder{color:rgba(243,233,214,.4)!important;}
+#auth-screen .field-input:focus{border-color:rgba(201,169,110,.5)!important;box-shadow:0 0 0 3px rgba(201,169,110,.14)!important;}
+/* 登入按鈕：古典金漸層＋深字（比橘金更沉穩高級） */
+#auth-screen .btn-primary{background:linear-gradient(135deg,#C9A96E,#9A7A4A)!important;color:#1A1206!important;
+  box-shadow:0 10px 24px -10px rgba(201,169,110,.7)!important;border-radius:16px!important;
+  font-weight:700!important;letter-spacing:.08em!important;}
+#auth-screen .msg{color:#F3E9D6!important;}
+/* 底部服務精神標語 */
+.login-bg-caption{color:rgba(201,169,110,.6)!important;letter-spacing:.16em!important;font-size:11px!important;}
 </style>
 </head>
 <body>
@@ -1544,7 +1588,7 @@ body,html{background:#FFF4E6!important;}
 
 <script>
 // ── 自動更新：開啟時比對版本，有新版就自動重載（免無痕）──
-const APP_VER='20260710130232';
+const APP_VER='20260710150141';
 function checkVersion(){try{fetch('ver.txt?_='+Date.now(),{cache:'no-store'}).then(function(r){return r.ok?r.text():null;}).then(function(v){if(!v)return;v=v.trim();if(v&&v!==APP_VER&&location.search.indexOf('v='+v)<0){location.replace(location.pathname+'?v='+encodeURIComponent(v));}}).catch(function(){});}catch(e){}}
 checkVersion();
 document.addEventListener('visibilitychange',function(){if(document.visibilityState==='visible')checkVersion();});
