@@ -1583,7 +1583,7 @@ html,body,button,input,select,textarea,
 
     <!-- INVENTORY TAB -->
     <div class="tab-panel" id="tab-inventory">
-      <div class="sec-header"><div class="sec-title">每日食材盤點</div><div class="divider"></div><div class="sec-sub">輸入數量按確認 → 完成該項 +5 點 ・ 只顯示今天與昨天</div></div>
+      <div class="sec-header"><div class="sec-title">每日食材盤點</div><div class="divider"></div><div class="sec-sub">輸入數量按確認 → 每項 +3 點（每人每日上限 8 項）・ 只顯示今天與昨天</div></div>
       <div id="inv-wrap"></div>
     </div>
 
@@ -1734,7 +1734,7 @@ html,body,button,input,select,textarea,
 
 <script>
 // ── 自動更新：開啟時比對版本，有新版就自動重載（免無痕）──
-const APP_VER='20260711220000';
+const APP_VER='20260712000000';
 const GT_KEY='gtk_9F3xQ7Lz_pW2rM8kT';  // 後台共用密鑰（階段A：前端帶上；階段B：後台驗證）
 function checkVersion(){try{fetch('ver.txt?_='+Date.now(),{cache:'no-store'}).then(function(r){return r.ok?r.text():null;}).then(function(v){if(!v)return;v=v.trim();if(v&&v!==APP_VER&&location.search.indexOf('v='+v)<0){location.replace(location.pathname+'?v='+encodeURIComponent(v));}}).catch(function(){});}catch(e){}}
 checkVersion();
@@ -3907,7 +3907,7 @@ function renderInvUI(items,rows){
       return `<div class="sub-row" style="gap:8px"><div style="flex:1;min-width:0"><div class="tc-title" style="font-size:14px">${esc(it.name)}</div></div><input class="form-input" id="inv-q-${it.id}" type="number" min="0" placeholder="數量" style="width:88px;padding:8px;text-align:center"><button class="btn-action" style="padding:8px 14px;flex-shrink:0" onclick="confirmInv('${it.id}')">確認</button></div>`;
     }).join('');
     const doneN=items.filter(it=>tMap[it.id]).length;
-    html+=`<div class="muted-note" style="margin-top:8px">已完成 ${doneN}/${items.length} 項 ・ 每完成一項 +5 點（不同人可分工盤點）</div>`;
+    html+=`<div class="muted-note" style="margin-top:8px">已完成 ${doneN}/${items.length} 項 ・ 每項 +3 點（每人每日給分上限 8 項，可分工盤點）</div>`;
   }
   html+=`</div>`;
   // 昨日盤點（唯讀）
@@ -3936,10 +3936,17 @@ async function confirmInv(itemId){
   const el=$('inv-q-'+itemId);const qty=(el&&el.value.trim())||'';
   if(qty===''){toast('請先輸入數量','red');return;}
   const entry={date:bizDay(),itemId:itemId,itemName:it.name,qty:qty,user:CU.username,userName:CU.name,ts:Date.now()};
+  // 今天此人已盤點幾項（每人每日給分上限 8 項）
+  const myToday=(_invRows||[]).filter(function(rr){return normDate(rr[0])===bizDay()&&String(rr[4]||'')===CU.username;}).length;
+  const willAward=myToday<8;
   // 立即回饋：先塞進本機快取讓畫面馬上顯示已盤點，雲端背景寫入
   _invRows.push([entry.date,itemId,it.name,qty,CU.username,CU.name,'',entry.ts,entry.date+'|'+itemId]);
-  const r=awardXp(CU.username,5);updateGameChip();
-  toast('✓ 已盤點「'+it.name+'」+5 點'+(r.leveledUp?'（升級 Lv.'+r.after+'！）':''),'gold');
+  if(willAward){
+    const r=awardXp(CU.username,3);updateGameChip();
+    toast('✓ 已盤點「'+it.name+'」+3 點'+(r.leveledUp?'（升級 Lv.'+r.after+'！）':'')+'（今日 '+(myToday+1)+'/8）','gold');
+  }else{
+    toast('✓ 已盤點「'+it.name+'」・今日已達 8 項給分上限，本項不加分','gold');
+  }
   renderInvUI(items,_invRows);
   if(syncOn())authApi({type:'inv_write',row:entry}).then(function(d){if(d&&d.status==='exists'){toast('這項剛才已被 '+(d.by||'他人')+' 盤點','red');}else if(!(d&&(d.status==='success'||d.status==='ok'))){toast('雲端儲存失敗，請重開再送','red');}}).catch(function(){toast('雲端儲存失敗，請確認網路','red');});
 }
