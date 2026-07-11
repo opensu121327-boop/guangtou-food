@@ -1694,6 +1694,27 @@ html,body,button,input,select,textarea,
   </div>
 </div>
 
+<!-- 照片裁切視窗（所有照片上傳共用） -->
+<div id="crop-modal" class="subform-overlay">
+  <div class="subform-card" style="max-width:380px">
+    <div class="subform-title">✂️ 裁切照片</div>
+    <div class="muted-note" style="margin:-4px 0 10px">拖曳移動、下方滑桿縮放，框內就是最後顯示的範圍</div>
+    <div id="crop-frame" style="position:relative;margin:0 auto;overflow:hidden;border-radius:14px;background:#000;touch-action:none;border:1px solid var(--line-gold)"
+      onmousedown="cropDragStart(event)" onmousemove="cropDragMove(event)" onmouseup="cropDragEnd()" onmouseleave="cropDragEnd()"
+      ontouchstart="cropDragStart(event)" ontouchmove="cropDragMove(event)" ontouchend="cropDragEnd()">
+      <img id="crop-img" alt="" style="position:absolute;left:0;top:0;pointer-events:none;-webkit-user-drag:none;user-select:none;max-width:none">
+    </div>
+    <div style="display:flex;align-items:center;gap:10px;margin-top:12px">
+      <span style="font-size:16px">🔍</span>
+      <input type="range" id="crop-zoom" min="1" max="4" step="0.01" value="1" style="flex:1" oninput="cropZoom(this.value)">
+    </div>
+    <div style="display:flex;gap:10px;margin-top:14px">
+      <button class="btn-sm btn-neutral" style="flex:0 0 auto;padding:12px 18px" onclick="cropCancel()">取消</button>
+      <button class="btn-action" style="flex:1;justify-content:center" onclick="cropConfirm()">✓ 確定裁切</button>
+    </div>
+  </div>
+</div>
+
 <!-- 登入→進入系統：開場載入動畫（生魚片盤・復古電視） -->
 <div id="app-loading">
   <div class="alx-word">員工管理系統</div>
@@ -1713,7 +1734,7 @@ html,body,button,input,select,textarea,
 
 <script>
 // ── 自動更新：開啟時比對版本，有新版就自動重載（免無痕）──
-const APP_VER='20260711200000';
+const APP_VER='20260711220000';
 const GT_KEY='gtk_9F3xQ7Lz_pW2rM8kT';  // 後台共用密鑰（階段A：前端帶上；階段B：後台驗證）
 function checkVersion(){try{fetch('ver.txt?_='+Date.now(),{cache:'no-store'}).then(function(r){return r.ok?r.text():null;}).then(function(v){if(!v)return;v=v.trim();if(v&&v!==APP_VER&&location.search.indexOf('v='+v)<0){location.replace(location.pathname+'?v='+encodeURIComponent(v));}}).catch(function(){});}catch(e){}}
 checkVersion();
@@ -3658,8 +3679,49 @@ function renderBom(){
 }
 let _bomOpen={};
 function bomToggle(id){_bomOpen[id]=!_bomOpen[id];renderBom();}
+// ── 照片裁切（共用）：cropImage(file,{aspect,max,q},cb) 回傳裁好的 base64 ──
+let _cropState=null;
+function cropImage(file,opts,cb){
+  opts=opts||{};var aspect=opts.aspect||1;var outW=opts.max||600;var outH=Math.round(outW/aspect);var q=opts.q||0.6;
+  var url=URL.createObjectURL(file);var img=new Image();
+  img.onload=function(){
+    var FW=Math.min(300,(window.innerWidth||360)-80);var FH=Math.round(FW/aspect);
+    var NW=img.naturalWidth||1,NH=img.naturalHeight||1;var baseScale=Math.max(FW/NW,FH/NH);
+    _cropState={img:img,url:url,NW:NW,NH:NH,FW:FW,FH:FH,baseScale:baseScale,zoom:1,ox:0,oy:0,outW:outW,outH:outH,q:q,cb:cb,drag:null};
+    var fr=$('crop-frame');fr.style.width=FW+'px';fr.style.height=FH+'px';
+    $('crop-img').src=url;$('crop-zoom').value=1;
+    // 置中
+    _cropState.ox=(FW-NW*baseScale)/2;_cropState.oy=(FH-NH*baseScale)/2;
+    _cropApply();$('crop-modal').classList.add('show');
+  };
+  img.src=url;
+}
+function _cropApply(){var s=_cropState;if(!s)return;
+  var dW=s.NW*s.baseScale*s.zoom,dH=s.NH*s.baseScale*s.zoom;
+  s.ox=Math.min(0,Math.max(s.FW-dW,s.ox));s.oy=Math.min(0,Math.max(s.FH-dH,s.oy));
+  var im=$('crop-img');im.style.width=dW+'px';im.style.height=dH+'px';im.style.left=s.ox+'px';im.style.top=s.oy+'px';
+}
+function cropZoom(v){var s=_cropState;if(!s)return;
+  var cx=s.FW/2,cy=s.FH/2;var oW=s.NW*s.baseScale*s.zoom,oH=s.NH*s.baseScale*s.zoom;
+  var rx=(cx-s.ox)/oW,ry=(cy-s.oy)/oH;s.zoom=parseFloat(v)||1;
+  var nW=s.NW*s.baseScale*s.zoom,nH=s.NH*s.baseScale*s.zoom;s.ox=cx-rx*nW;s.oy=cy-ry*nH;_cropApply();
+}
+function _cropPt(e){var t=e.touches&&e.touches[0];return{x:t?t.clientX:e.clientX,y:t?t.clientY:e.clientY};}
+function cropDragStart(e){var s=_cropState;if(!s)return;var p=_cropPt(e);s.drag={x:p.x,y:p.y,ox:s.ox,oy:s.oy};}
+function cropDragMove(e){var s=_cropState;if(!s||!s.drag)return;e.preventDefault();var p=_cropPt(e);s.ox=s.drag.ox+(p.x-s.drag.x);s.oy=s.drag.oy+(p.y-s.drag.y);_cropApply();}
+function cropDragEnd(){var s=_cropState;if(s)s.drag=null;}
+function cropCancel(){var s=_cropState;if(s&&s.url)URL.revokeObjectURL(s.url);_cropState=null;$('crop-modal').classList.remove('show');}
+function cropConfirm(){var s=_cropState;if(!s)return;
+  var sc=s.baseScale*s.zoom;var sx=(0-s.ox)/sc,sy=(0-s.oy)/sc,sw=s.FW/sc,sh=s.FH/sc;
+  var cv=document.createElement('canvas');cv.width=s.outW;cv.height=s.outH;var ctx=cv.getContext('2d');
+  ctx.fillStyle='#fff';ctx.fillRect(0,0,s.outW,s.outH);
+  try{ctx.drawImage(s.img,sx,sy,sw,sh,0,0,s.outW,s.outH);}catch(e){}
+  var data=cv.toDataURL('image/jpeg',s.q);var cb=s.cb;
+  if(s.url)URL.revokeObjectURL(s.url);_cropState=null;$('crop-modal').classList.remove('show');
+  if(cb)cb(data);
+}
 function bomPickImg(id){const el=$('bimg-'+id);if(el)el.click();}
-function bomImgUpload(id,el){const f=el.files&&el.files[0];if(!f)return;el.value='';fileToThumb(f,function(url){if(LS.set('rm_bomimg_'+id,url)){toast('✓ 已更新照片','gold');renderBom();}},480,0.55);}
+function bomImgUpload(id,el){const f=el.files&&el.files[0];if(!f)return;el.value='';cropImage(f,{aspect:1,max:480,q:0.55},function(url){if(LS.set('rm_bomimg_'+id,url)){toast('✓ 已更新照片','gold');renderBom();}});}
 function recipeCard(rc,isSemi){
   const r=recipeCost(rc);const total=r.cost,miss=r.miss;
   const open=!!_bomOpen[rc.id];
@@ -4270,7 +4332,7 @@ function rwCheckout(){
   toast('🛒 兌換成功（共 '+total+' EXP），等待主管發放','gold');
   renderRewards();updateGameChip();
 }
-function rwImgUpload(id,el){const f=el.files&&el.files[0];if(!f)return;el.value='';fileToThumb(f,function(url){if(LS.set('rm_rwimg_'+id,url)){toast('✓ 已更新獎勵照片','gold');renderRewards();}},560,0.6);}
+function rwImgUpload(id,el){const f=el.files&&el.files[0];if(!f)return;el.value='';cropImage(f,{aspect:1,max:560,q:0.6},function(url){if(LS.set('rm_rwimg_'+id,url)){toast('✓ 已更新獎勵照片','gold');renderRewards();}});}
 
 function renderRewardAdmin(){
   const wrap=$('reward-admin-wrap');if(!wrap)return;
