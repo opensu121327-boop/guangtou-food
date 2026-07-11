@@ -1090,6 +1090,22 @@ body,html{background:#FFF4E6!important;}
 .sec-sub{color:#FBF2E0!important;text-shadow:0 1px 2px rgba(90,40,10,.5)!important;font-weight:600!important;}
 
 /* ============================================================
+   ★ 獎勵商店（購物車商店樣式・含照片）
+   ============================================================ */
+.rw-grid{display:grid!important;grid-template-columns:1fr 1fr;gap:12px;}
+.rw-prod{background:#fff;border:1px solid var(--line-gold);border-radius:18px;overflow:hidden;
+  display:flex;flex-direction:column;box-shadow:var(--shadow-warm-sm);}
+.rw-thumb{aspect-ratio:1/1;background:linear-gradient(160deg,#FFF0DF,#FFE6CC);display:flex;align-items:center;justify-content:center;overflow:hidden;}
+.rw-thumb img{width:100%;height:100%;object-fit:cover;}
+.rw-thumb .rw-noimg{font-size:40px;opacity:.5;}
+.rw-info{padding:10px 12px 12px;display:flex;flex-direction:column;gap:6px;flex:1;}
+.rw-nm{font-weight:700;font-size:13.5px;color:#3A2417;line-height:1.3;}
+.rw-cost{font-family:'Inter';font-weight:800;font-size:14px;color:#800020;}
+.rw-add{margin-top:auto;padding:9px!important;font-size:12.5px!important;border-radius:12px!important;}
+.rw-qbtn{width:28px;height:28px;border-radius:8px;border:1px solid var(--line-gold);background:#fff;color:#800020;font-size:16px;font-weight:800;line-height:1;cursor:pointer;}
+.rw-adminthumb{width:46px;height:46px;border-radius:10px;object-fit:cover;border:1px solid var(--line-gold);flex:none;background:#FFF0DF;}
+
+/* ============================================================
    ★ 登入→進入系統 開場載入動畫（僅此期間顯示）
    ============================================================ */
 #app-loading{position:fixed;inset:0;z-index:300;background:#050403;display:none;
@@ -1552,7 +1568,8 @@ html,body,button,input,select,textarea,
     <div class="tab-panel" id="tab-rewards">
       <div class="sec-header"><div class="sec-title">獎勵商店</div><div class="divider"></div><div class="sec-sub">用點數兌換獎勵（由主管實際發放）</div></div>
       <div class="c-card"><div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px"><div class="c-card-title" style="margin:0">🎁 我的 EXP</div><span class="pts-pill" id="rw-balance">0 EXP</span></div></div>
-      <div class="c-card"><div class="c-card-title">🛒 可兌換</div><div id="reward-list"></div></div>
+      <div id="reward-cart"></div>
+      <div class="c-card"><div class="c-card-title">🛒 獎勵商店</div><div id="reward-list" class="rw-grid"></div></div>
       <div class="c-card"><div class="c-card-title">🧾 我的兌換紀錄</div><div id="my-redeems"></div></div>
       <div id="mgr-redeem-wrap"></div>
       <div id="reward-admin-wrap"></div>
@@ -1696,7 +1713,7 @@ html,body,button,input,select,textarea,
 
 <script>
 // ── 自動更新：開啟時比對版本，有新版就自動重載（免無痕）──
-const APP_VER='20260711180000';
+const APP_VER='20260711200000';
 const GT_KEY='gtk_9F3xQ7Lz_pW2rM8kT';  // 後台共用密鑰（階段A：前端帶上；階段B：後台驗證）
 function checkVersion(){try{fetch('ver.txt?_='+Date.now(),{cache:'no-store'}).then(function(r){return r.ok?r.text():null;}).then(function(v){if(!v)return;v=v.trim();if(v&&v!==APP_VER&&location.search.indexOf('v='+v)<0){location.replace(location.pathname+'?v='+encodeURIComponent(v));}}).catch(function(){});}catch(e){}}
 checkVersion();
@@ -4185,12 +4202,15 @@ function renderRewards(){
   const c=getChar();
   $('rw-balance').textContent=c.points+' EXP';
   const rewards=LS.get('rm_rewards',[]);
-  $('reward-list').innerHTML=rewards.map(r=>{
-    const afford=c.points>=r.cost;
-    return `<div class="reward-card">
-      <div class="tc-body"><div class="tc-title">${r.title}</div><div class="tc-xp">需要 ${r.cost} EXP</div></div>
-      <button class="btn-action" style="padding:10px 16px;${afford?'':'opacity:.45'}" ${afford?'':'disabled'} onclick="redeem('${r.id}')">${r.cost} EXP 兌換</button></div>`;
-  }).join('');
+  $('reward-list').innerHTML=rewards.length?rewards.map(r=>{
+    const img=LS.get('rm_rwimg_'+r.id,'')||'';
+    return `<div class="rw-prod">
+      <div class="rw-thumb">${img?`<img src="${img}" alt="">`:`<span class="rw-noimg">🎁</span>`}</div>
+      <div class="rw-info"><div class="rw-nm">${esc(r.title)}</div><div class="rw-cost">${r.cost} EXP</div>
+        <button class="btn-action rw-add" onclick="rwAdd('${r.id}')">加入購物車</button></div>
+    </div>`;
+  }).join(''):'<div class="game-empty" style="grid-column:1/-1">目前沒有可兌換的獎勵</div>';
+  renderRwCart();
 
   const reds=LS.get('rm_redemptions',[]);
   const mine=reds.filter(x=>x.user===CU.username).sort((a,b)=>b.ts-a.ts);
@@ -4215,6 +4235,43 @@ function renderRewards(){
   }else{wrap.innerHTML='';}
   renderRewardAdmin();
 }
+// ── 購物車 ──
+function rwAdd(id){window._rwCart=window._rwCart||{};window._rwCart[id]=(window._rwCart[id]||0)+1;toast('🛒 已加入購物車','gold');renderRewards();}
+function rwInc(id){window._rwCart=window._rwCart||{};window._rwCart[id]=(window._rwCart[id]||0)+1;renderRewards();}
+function rwDec(id){window._rwCart=window._rwCart||{};window._rwCart[id]=(window._rwCart[id]||0)-1;if(window._rwCart[id]<=0)delete window._rwCart[id];renderRewards();}
+function renderRwCart(){
+  const el=$('reward-cart');if(!el)return;
+  const cart=window._rwCart||{};const rewards=LS.get('rm_rewards',[]);const c=getChar();
+  const lines=Object.keys(cart).map(id=>{const r=rewards.find(x=>x.id===id);return r?{r,qty:cart[id]}:null;}).filter(Boolean);
+  if(!lines.length){el.innerHTML='';return;}
+  const total=lines.reduce((a,l)=>a+l.r.cost*l.qty,0);const afford=c.points>=total;
+  el.innerHTML=`<div class="c-card"><div class="c-card-title">🛒 購物車</div>
+    ${lines.map(l=>`<div class="sub-row" style="gap:8px"><div style="flex:1;min-width:0"><div class="tc-title" style="font-size:14px">${esc(l.r.title)}</div><div class="xp-text">${l.r.cost} EXP</div></div>
+      <div style="display:flex;align-items:center;gap:10px"><button class="rw-qbtn" onclick="rwDec('${l.r.id}')">−</button><b style="font-family:Inter">${l.qty}</b><button class="rw-qbtn" onclick="rwInc('${l.r.id}')">＋</button></div></div>`).join('')}
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-top:12px;flex-wrap:wrap;gap:8px">
+      <div style="font-size:14px">合計 <b style="color:#800020;font-family:Inter">${total}</b> EXP <span class="muted-note">（餘額 ${c.points}）</span></div>
+      <button class="btn-action" style="padding:10px 22px;${afford?'':'opacity:.45'}" ${afford?'':'disabled'} onclick="rwCheckout()">結帳兌換</button>
+    </div>${afford?'':'<div class="muted-note" style="color:#c0392b;margin-top:6px">EXP 不足，請先移除部分商品</div>'}</div>`;
+}
+function rwCheckout(){
+  const cart=window._rwCart||{};const rewards=LS.get('rm_rewards',[]);const c=getChar();
+  const lines=Object.keys(cart).map(id=>{const r=rewards.find(x=>x.id===id);return r?{r,qty:cart[id]}:null;}).filter(Boolean);
+  if(!lines.length){toast('購物車是空的','red');return;}
+  const total=lines.reduce((a,l)=>a+l.r.cost*l.qty,0);
+  if(c.points<total){toast('EXP 不足','red');return;}
+  c.points-=total;saveChar(c);
+  const reds=LS.get('rm_redemptions',[]);
+  lines.forEach(function(l,idx){
+    const entry={id:'rd'+Date.now()+'_'+idx,rewardId:l.r.id,title:l.r.title+(l.qty>1?(' ×'+l.qty):''),cost:l.r.cost*l.qty,qty:l.qty,user:CU.username,userName:CU.name,status:'pending',ts:Date.now()};
+    reds.push(entry);
+    if(syncOn())authApi({type:'redeem_write',row:entry}).catch(function(){});
+  });
+  LS.set('rm_redemptions',reds);window._rwCart={};
+  toast('🛒 兌換成功（共 '+total+' EXP），等待主管發放','gold');
+  renderRewards();updateGameChip();
+}
+function rwImgUpload(id,el){const f=el.files&&el.files[0];if(!f)return;el.value='';fileToThumb(f,function(url){if(LS.set('rm_rwimg_'+id,url)){toast('✓ 已更新獎勵照片','gold');renderRewards();}},560,0.6);}
+
 function renderRewardAdmin(){
   const wrap=$('reward-admin-wrap');if(!wrap)return;
   if(CU.role!=='BOSS'){wrap.innerHTML='';return;}
@@ -4223,7 +4280,13 @@ function renderRewardAdmin(){
     <div class="form-group"><label class="form-label">獎勵名稱</label><input class="form-input" id="nr-title" placeholder="例：電影票一張"></div>
     <div class="form-group"><label class="form-label">所需點數</label><input class="form-input" id="nr-cost" type="number" min="1" value="200"></div>
     <button class="btn-action" onclick="addReward()">➕ 新增獎勵</button>
-    <div style="margin-top:14px">${rewards.map(r=>`<div class="sub-row"><div style="flex:1;min-width:0"><div class="tc-title" style="font-size:14px">${r.title}</div><div class="xp-text">${r.cost} EXP${r.type==='skin'?' ・ 皮膚':''}</div></div><button class="btn-sm btn-warn" onclick="delReward('${r.id}')">刪除</button></div>`).join('')||'<div class="muted-note">目前沒有獎勵</div>'}</div>
+    <div class="muted-note" style="margin-top:6px">新增後，點下方每個獎勵的「照片」即可上傳商品圖。</div>
+    <div style="margin-top:14px">${rewards.map(r=>{const img=LS.get('rm_rwimg_'+r.id,'')||'';return `<div class="sub-row" style="gap:10px">
+      ${img?`<img class="rw-adminthumb" src="${img}">`:`<div class="rw-adminthumb" style="display:flex;align-items:center;justify-content:center;font-size:20px;opacity:.5">🎁</div>`}
+      <div style="flex:1;min-width:0"><div class="tc-title" style="font-size:14px">${esc(r.title)}</div><div class="xp-text">${r.cost} EXP</div></div>
+      <label class="btn-sm btn-neutral" style="cursor:pointer">照片<input type="file" accept="image/*" style="display:none" onchange="rwImgUpload('${r.id}',this)"></label>
+      <button class="btn-sm btn-warn" onclick="delReward('${r.id}')">刪除</button>
+    </div>`;}).join('')||'<div class="muted-note">目前沒有獎勵</div>'}</div>
   </div>`;
 }
 function addReward(){
@@ -4233,7 +4296,7 @@ function addReward(){
   const rewards=LS.get('rm_rewards',[]);rewards.push({id:'rw'+Date.now(),title,cost,type:'perk'});LS.set('rm_rewards',rewards);
   toast('✓ 已新增獎勵','gold');renderRewards();
 }
-function delReward(id){const rewards=LS.get('rm_rewards',[]).filter(r=>r.id!==id);LS.set('rm_rewards',rewards);toast('已刪除獎勵','red');renderRewards();}
+function delReward(id){const rewards=LS.get('rm_rewards',[]).filter(r=>r.id!==id);LS.set('rm_rewards',rewards);LS.set('rm_rwimg_'+id,'');if(window._rwCart)delete window._rwCart[id];toast('已刪除獎勵','red');renderRewards();}
 function redeem(id){
   const rewards=LS.get('rm_rewards',[]);const r=rewards.find(x=>x.id===id);if(!r)return;
   const c=getChar();
