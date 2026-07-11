@@ -1696,7 +1696,8 @@ html,body,button,input,select,textarea,
 
 <script>
 // ── 自動更新：開啟時比對版本，有新版就自動重載（免無痕）──
-const APP_VER='20260711040000';
+const APP_VER='20260711180000';
+const GT_KEY='gtk_9F3xQ7Lz_pW2rM8kT';  // 後台共用密鑰（階段A：前端帶上；階段B：後台驗證）
 function checkVersion(){try{fetch('ver.txt?_='+Date.now(),{cache:'no-store'}).then(function(r){return r.ok?r.text():null;}).then(function(v){if(!v)return;v=v.trim();if(v&&v!==APP_VER&&location.search.indexOf('v='+v)<0){location.replace(location.pathname+'?v='+encodeURIComponent(v));}}).catch(function(){});}catch(e){}}
 checkVersion();
 document.addEventListener('visibilitychange',function(){if(document.visibilityState==='visible')checkVersion();});
@@ -1717,6 +1718,7 @@ async function api(body) {
 // 帳號系統走「同步後台」（直接讀寫帳號管理表）
 async function authApi(body){
   if(body&&body.data&&typeof body.data==='object'){body=Object.assign({},body.data,body);}
+  body=Object.assign({key:GT_KEY},body);  // 帶上後台共用密鑰
   const r=await fetch(SYNC_URL,{method:'POST',body:JSON.stringify(body),headers:{'Content-Type':'text/plain'}});
   return r.json();
 }
@@ -2655,7 +2657,7 @@ const LS={
 // ════════ 跨裝置同步層（填上 SYNC_URL 才啟動）════════
 const SYNC_URL='https://script.google.com/macros/s/AKfycbwSSOZDNWsHm9NqEK4eg3zjfwC7nXgJssCidWfxOiB08dZk_7SmgMtwJ3Ir5PrqPUwH_A/exec';  // 跨裝置同步後台
 function syncOn(){return !!SYNC_URL;}
-function kv(type,extra){return fetch(SYNC_URL,{method:'POST',body:JSON.stringify(Object.assign({type:type},extra||{})),headers:{'Content-Type':'text/plain'}}).then(r=>r.json());}
+function kv(type,extra){return fetch(SYNC_URL,{method:'POST',body:JSON.stringify(Object.assign({type:type,key:GT_KEY},extra||{})),headers:{'Content-Type':'text/plain'}}).then(r=>r.json());}
 let _pushTimers={};
 function cloudPush(key){if(!syncOn())return;clearTimeout(_pushTimers[key]);_pushTimers[key]=setTimeout(function(){const val=localStorage.getItem(key);if(val!=null)kv('kv_set',{key:key,value:val}).catch(function(){});},600);}
 // light=true 時，向後台要求略過大型照片(rm_bomimg_/rm_subphoto_)，避免每次輪詢都重抓照片造成延遲
