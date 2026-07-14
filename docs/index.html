@@ -1734,7 +1734,7 @@ html,body,button,input,select,textarea,
 
 <script>
 // ── 自動更新：開啟時比對版本，有新版就自動重載（免無痕）──
-const APP_VER='20260713010000';
+const APP_VER='20260714010000';
 const GT_KEY='gtk_9F3xQ7Lz_pW2rM8kT';  // 後台共用密鑰（階段A：前端帶上；階段B：後台驗證）
 function checkVersion(){try{fetch('ver.txt?_='+Date.now(),{cache:'no-store'}).then(function(r){return r.ok?r.text():null;}).then(function(v){if(!v)return;v=v.trim();if(v&&v!==APP_VER&&location.search.indexOf('v='+v)<0){location.replace(location.pathname+'?v='+encodeURIComponent(v));}}).catch(function(){});}catch(e){}}
 checkVersion();
@@ -2440,8 +2440,8 @@ function buildTips(m){
   if(m.totalRev<=0)return t;
   if(m.foodRate>32)t.push({tag:'🔴 成本',title:'食材成本率偏高',body:`目前 ${m.foodRate.toFixed(0)}%（健康 <32%）。行動：對漲最多的食材議價或換供應商、檢視高成本菜色售價。`,c:'#dc2626'});
   if(m.laborRate>25)t.push({tag:'🔴 人事',title:'人事費用率偏高',body:`目前 ${m.laborRate.toFixed(0)}%（健康 <25%）。行動：檢視離峰時段排班，離峰少 1 人即可省下可觀人事。`,c:'#dc2626'});
-  if(m.ups&&m.ups.length){const u=m.ups[0];t.push({tag:'🟠 食材',title:`${u.name} 漲最兇`,body:`單價 ${f(u.prev)}→${f(u.cur)}（+${u.chg.toFixed(0)}%）。行動：跟供應商議價或找替代品，必要時微調相關菜色售價。`,c:'#ea580c'});}
-  if(m.downs&&m.downs.length){const d=m.downs[0];t.push({tag:'🟢 機會',title:`${d.name} 變便宜了`,body:`單價 ${f(d.prev)}→${f(d.cur)}（${d.chg.toFixed(0)}%）。行動：可順勢主推含此食材的餐點，毛利更好。`,c:'#16a34a'});}
+  if(m.ups&&m.ups.length){const u=m.ups[0];const un=u.unit?('/'+u.unit):'';t.push({tag:'🟠 食材',title:`${u.name} 漲最兇`,body:`單價 ${f(u.prev)}${un}→${f(u.cur)}${un}（+${u.chg.toFixed(0)}%）。行動：跟供應商議價或找替代品，必要時微調相關菜色售價。`,c:'#ea580c'});}
+  if(m.downs&&m.downs.length){const d=m.downs[0];const dn=d.unit?('/'+d.unit):'';t.push({tag:'🟢 機會',title:`${d.name} 變便宜了`,body:`單價 ${f(d.prev)}${dn}→${f(d.cur)}${dn}（${d.chg.toFixed(0)}%）。行動：可順勢主推含此食材的餐點，毛利更好。`,c:'#16a34a'});}
   const wk=weekdayAvg(m.revRows);if(wk)t.push({tag:'🔵 時段',title:`${wk.bestName}最旺、${wk.worstName}最淡`,body:`${wk.bestName}平均 ${f(wk.best)}、${wk.worstName}平均 ${f(wk.worst)}。行動：${wk.worstName}推限定優惠衝來客，${wk.bestName}主推高毛利餐點。`,c:'#2563eb'});
   const dlv=m.revRows.reduce((a,r)=>a+(r.foodpanda||0)+(r.ubereats||0),0);const dr=m.totalRev>0?dlv/m.totalRev*100:0;
   if(dr>15)t.push({tag:'🔵 通路',title:'外送占比不低',body:`外送約占 ${dr.toFixed(0)}%，平台抽成約 30% 實收較少。行動：店內主推會員/現金優惠，把客人導回到店消費。`,c:'#2563eb'});
@@ -2475,9 +2475,12 @@ function renderAnalysis(revRows,purRows,totalRev,cc){
   const netRevenue=totalRev-totalFee;      // 預估實收
   const net=netRevenue-opCost,netRate=totalRev>0?net/totalRev*100:0; // 淨利以預估實收計算
   const fmap={};
-  _allPurData.forEach(r=>{if(!isMainFood(r.category))return;const uc=Number(r.unitCost)||0;if(uc<=0)return;const nm=r.name;if(!nm)return;if(!fmap[nm])fmap[nm]={name:nm,cat:r.category,recs:[],total:0};fmap[nm].recs.push({d:normDate(r.date),uc:uc});fmap[nm].total+=(Number(r.cost)||0);});
+  _allPurData.forEach(r=>{if(!isMainFood(r.category))return;const uc=Number(r.unitCost)||0;if(uc<=0)return;const nm=r.name;if(!nm)return;if(!fmap[nm])fmap[nm]={name:nm,cat:r.category,recs:[],total:0};fmap[nm].recs.push({d:normDate(r.date),uc:uc,unit:String(r.unit||'').trim()});fmap[nm].total+=(Number(r.cost)||0);});
   const foods=Object.keys(fmap).map(k=>fmap[k]);
-  foods.forEach(f=>{f.recs.sort((a,b)=>a.d<b.d?-1:1);const n=f.recs.length;f.cur=f.recs[n-1].uc;f.prev=n>=2?f.recs[n-2].uc:null;f.date=f.recs[n-1].d;f.chg=(f.prev!=null&&f.prev>0)?((f.cur-f.prev)/f.prev*100):null;});
+  foods.forEach(f=>{f.recs.sort((a,b)=>a.d<b.d?-1:1);const n=f.recs.length;const last=f.recs[n-1];f.cur=last.uc;f.date=last.d;f.unit=last.unit;
+    // 只跟「相同單位」的前一筆比，避免 隻 vs 包（如 22元/隻 對 180元/包）不同單位被誤判成暴漲
+    let pr=null;for(let i=n-2;i>=0;i--){if(f.recs[i].unit===last.unit){pr=f.recs[i];break;}}
+    f.prev=pr?pr.uc:null;f.chg=(f.prev!=null&&f.prev>0)?((f.cur-f.prev)/f.prev*100):null;});
   const changed=foods.filter(f=>f.chg!=null).sort((a,b)=>b.chg-a.chg);
   const ups=changed.filter(f=>f.chg>0.5),downs=changed.filter(f=>f.chg<-0.5);
   const moved=ups.concat(downs).sort((a,b)=>b.chg-a.chg); // 只留真的有漲跌的
@@ -2501,7 +2504,7 @@ function renderAnalysis(revRows,purRows,totalRev,cc){
     h+=`<div style="font-size:12px;color:var(--text-3);margin-bottom:8px">漲價 ${ups.length} 項 ・ 跌價 ${downs.length} 項（主食材，不含調味品）</div>`;
     if(moved.length){
       if(top5.length)h+=`<div class="chart-wrap"><canvas id="top5-chart"></canvas></div>`;
-      h+=`<div style="display:flex;flex-direction:column;gap:8px;margin-top:12px">`+moved.slice(0,15).map(f=>{const up=f.chg>0.5,down=f.chg<-0.5;const col=up?'#dc2626':(down?'#16a34a':'#9ca3af');const arr=up?'↑':(down?'↓':'—');return `<div style="border-left:4px solid ${col};background:#fff7ef;border-radius:10px;padding:8px 12px;display:flex;align-items:center;gap:10px"><div style="flex:1;min-width:0"><div style="font-weight:700;font-size:13px">${esc(f.name)}</div><div style="font-size:11px;color:var(--text-3)">最近 ${f.date}</div></div><div style="text-align:right;font-size:12px"><div>$${round2(f.cur)} <span style="color:var(--text-3)">/ 上次 $${round2(f.prev)}</span></div><div style="color:${col};font-weight:800">${arr} ${f.chg>0?'+':''}${f.chg.toFixed(1)}%</div></div></div>`;}).join('')+`</div>`;
+      h+=`<div style="display:flex;flex-direction:column;gap:8px;margin-top:12px">`+moved.slice(0,15).map(f=>{const up=f.chg>0.5,down=f.chg<-0.5;const col=up?'#dc2626':(down?'#16a34a':'#9ca3af');const arr=up?'↑':(down?'↓':'—');return `<div style="border-left:4px solid ${col};background:#fff7ef;border-radius:10px;padding:8px 12px;display:flex;align-items:center;gap:10px"><div style="flex:1;min-width:0"><div style="font-weight:700;font-size:13px">${esc(f.name)}</div><div style="font-size:11px;color:var(--text-3)">最近 ${f.date}</div></div><div style="text-align:right;font-size:12px"><div>$${round2(f.cur)}${f.unit?'/'+esc(f.unit):''} <span style="color:var(--text-3)">/ 上次 $${round2(f.prev)}</span></div><div style="color:${col};font-weight:800">${arr} ${f.chg>0?'+':''}${f.chg.toFixed(1)}%</div></div></div>`;}).join('')+`</div>`;
       if(moved.length>15)h+=`<div style="font-size:11px;color:var(--text-3);margin-top:8px">（僅顯示漲跌前 15 項）</div>`;
     }else{
       h+=`<div class="muted-note" style="margin-top:8px">主食材價格穩定，目前無明顯漲跌 👍</div>`;
