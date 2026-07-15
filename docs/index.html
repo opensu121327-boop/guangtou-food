@@ -1610,6 +1610,41 @@ html,body,button,input,select,textarea,
       <div id="hb-admin-wrap"></div>
     </div>
 
+    <!-- 霸凌申訴 TAB -->
+    <div class="tab-panel" id="tab-bully">
+      <div class="sec-header"><div class="sec-title">霸凌申訴</div><div class="divider"></div><div class="sec-sub">職場霸凌／不法侵害申訴管道・保密處理</div></div>
+      <div class="c-card">
+        <div class="c-card-title">🛡️ 你的權益（請安心申訴）</div>
+        <div class="muted-note" style="line-height:1.7">
+          依《職業安全衛生法》，雇主應預防執行職務遭受身體或精神不法侵害（職場霸凌），並提供申訴管道。<br>
+          ・<b>保密</b>：本申訴僅由老闆本人查看與處理，不會公開給其他同事或店長。<br>
+          ・<b>不報復</b>：公司不得因你提出申訴而對你有任何不利處分（如調職、減薪、刁難）。<br>
+          ・<b>可匿名</b>：你可以選擇不留姓名。<br>
+          ・若涉及肢體暴力、傷害或立即危險，請先確保安全並視情況報警 <b>110</b>。
+        </div>
+      </div>
+      <div class="c-card">
+        <div class="c-card-title">📞 政府外部申訴管道（可直接聯繫）</div>
+        <div class="muted-note" style="line-height:1.8">
+          ・<b>勞動部 1955 勞工諮詢申訴專線</b>（24 小時・全國・免付費）<br>
+          ・<b>各縣市政府勞工局／處</b>（當地勞動主管機關，可申訴、申請勞資爭議調解）<br>
+          ・<b>勞動部 職業安全衛生署</b>（職場不法侵害預防之中央主管機關）<br>
+          <span style="color:var(--text-3)">＊外部管道獨立於公司，你可同時或單獨使用。</span>
+        </div>
+      </div>
+      <div class="c-card">
+        <div class="c-card-title">✍️ 提出申訴</div>
+        <div class="form-group"><label class="form-label">事發日期（約略即可）</label><input class="form-input" id="bl-date" type="date"></div>
+        <div class="form-group"><label class="form-label">事發經過 <span style="color:#c0392b">*必填</span></label><textarea class="form-input" id="bl-desc" rows="5" placeholder="請描述發生了什麼事、在哪裡、如何讓你受到身體或精神上的傷害…越具體越好"></textarea></div>
+        <div class="form-group"><label class="form-label">涉及對象（選填）</label><input class="form-input" id="bl-who" type="text" placeholder="例：某位同事／某位主管（可不填）"></div>
+        <div class="form-group"><label class="form-label">你希望的處理方式（選填）</label><input class="form-input" id="bl-want" type="text" placeholder="例：希望調開班表／希望公司出面制止／只是先留紀錄"></div>
+        <label style="display:flex;align-items:center;gap:8px;font-size:14px;margin:4px 0 12px;cursor:pointer"><input type="checkbox" id="bl-anon" style="width:18px;height:18px"> 我要匿名申訴（不留姓名）</label>
+        <button class="btn-action" onclick="submitBully()">🛡️ 送出申訴（保密）</button>
+        <div class="muted-note" style="margin-top:8px">送出後只有老闆看得到；你也可再撥打上方 1955 專線。</div>
+      </div>
+      <div id="bully-admin-wrap"></div>
+    </div>
+
     <!-- CHALLENGE TAB -->
     <div class="tab-panel" id="tab-challenge">
       <div class="sec-header"><div class="sec-title">共同挑戰</div><div class="divider"></div><div class="sec-sub">全店業績目標達標，當日上班人員一起加分</div></div>
@@ -1734,7 +1769,7 @@ html,body,button,input,select,textarea,
 
 <script>
 // ── 自動更新：開啟時比對版本，有新版就自動重載（免無痕）──
-const APP_VER='20260715010000';
+const APP_VER='20260715030000';
 const GT_KEY='gtk_9F3xQ7Lz_pW2rM8kT';  // 後台共用密鑰（階段A：前端帶上；階段B：後台驗證）
 function checkVersion(){try{fetch('ver.txt?_='+Date.now(),{cache:'no-store'}).then(function(r){return r.ok?r.text():null;}).then(function(v){if(!v)return;v=v.trim();if(v&&v!==APP_VER&&location.search.indexOf('v='+v)<0){location.replace(location.pathname+'?v='+encodeURIComponent(v));}}).catch(function(){});}catch(e){}}
 checkVersion();
@@ -1937,6 +1972,7 @@ function switchTab(name,btn) {
   if(name==='handbook')renderHandbook();
   if(name==='challenge')renderChallenge();
   if(name==='home')renderHome();
+  if(name==='bully')renderBully();
   document.querySelectorAll('.drawer-item').forEach(b=>b.classList.toggle('active',b.dataset.tab===name));
 }
 function goTab(id){const b=[...document.querySelectorAll('.nav-btn')].find(x=>x.dataset.tab===id);if(b)b.click();}
@@ -1971,7 +2007,8 @@ const ICONS={
   challenge:_svg('<circle cx="12" cy="12" r="8.5"/><circle cx="12" cy="12" r="4.6"/><circle cx="12" cy="12" r="1.1" fill="currentColor"/>'),
   leaderboard:_svg('<path d="M8 4h8v3a4 4 0 01-8 0z"/><path d="M8 5H5.5v1.5A2.5 2.5 0 008 9M16 5h2.5v1.5A2.5 2.5 0 0116 9"/><path d="M10 15h4l1 4H9z"/>'),
   character:_svg('<circle cx="12" cy="8" r="4"/><path d="M4.5 20a7.5 7.5 0 0115 0"/>'),
-  accounts:_svg('<circle cx="9" cy="9" r="3.2"/><path d="M3.5 19a5.5 5.5 0 0111 0"/><path d="M16 6.2a3.2 3.2 0 010 5.6M15.5 19a5.5 5.5 0 015.5-5.5"/>')
+  accounts:_svg('<circle cx="9" cy="9" r="3.2"/><path d="M3.5 19a5.5 5.5 0 0111 0"/><path d="M16 6.2a3.2 3.2 0 010 5.6M15.5 19a5.5 5.5 0 015.5-5.5"/>'),
+  bully:_svg('<path d="M12 3l7 2.6v5.2c0 4.4-3 7.6-7 9.2-4-1.6-7-4.8-7-9.2V5.6z"/><path d="M12 8.5v4M12 15.2v.1"/>')
 };
 function tabIcon(id){return ICONS[id]||'';}
 // 🎨 卡片標題 emoji → 線條圖示 自動替換（全 App 分頁內小圖統一風格）
@@ -2707,7 +2744,7 @@ function cloudPush(key){if(!syncOn())return;clearTimeout(_pushTimers[key]);_push
 // light=true 時，向後台要求略過大型照片(rm_bomimg_/rm_subphoto_)，避免每次輪詢都重抓照片造成延遲
 function cloudPull(light){if(!syncOn())return Promise.resolve();return kv('kv_all',light?{light:1}:{}).then(function(res){if(res&&res.status==='ok'&&res.data){for(var k in res.data){if(k.indexOf('rm_')===0&&res.data[k]!=null)localStorage.setItem(k,res.data[k]);}}}).catch(function(){});}
 function isTyping(){var a=document.activeElement;if(!a)return false;var t=(a.tagName||'').toUpperCase();return t==='INPUT'||t==='TEXTAREA'||t==='SELECT'||a.isContentEditable===true;}
-function reRenderTab(id){const map={home:renderHome,reports:loadReports,handover:renderHandover,handbook:renderHandbook,tasks:renderTasks,rewards:renderRewards,challenge:renderChallenge,leaderboard:renderLeaderboard,character:renderCharacter,inventory:renderInventory};if(map[id]){try{map[id]();}catch(e){}}if(id==='accounts'){try{loadPending();loadAccounts();}catch(e){}}}
+function reRenderTab(id){const map={home:renderHome,reports:loadReports,handover:renderHandover,handbook:renderHandbook,tasks:renderTasks,rewards:renderRewards,challenge:renderChallenge,leaderboard:renderLeaderboard,character:renderCharacter,inventory:renderInventory,bully:renderBully};if(map[id]){try{map[id]();}catch(e){}}if(id==='accounts'){try{loadPending();loadAccounts();}catch(e){}}}
 // 輪詢：平時走輕量(不抓照片)，每 5 次(約100秒)才連照片一起抓一次
 function startSyncPoll(){if(!syncOn()||window._syncPoll)return;window._syncPoll=setInterval(function(){window._syncCnt=(window._syncCnt||0)+1;var full=(window._syncCnt%5===0);cloudPull(!full).then(function(){if(!CU)return;updateGameChip();if(isTyping())return;const act=document.querySelector('.tab-panel.active');if(act)reRenderTab(act.id.replace('tab-',''));});},20000);}
 // 立即同步一次（輕量拉雲端＋重繪目前分頁）
@@ -2855,6 +2892,7 @@ const ALL_TABS=[
   {id:'challenge',icon:'🤝',label:'共同挑戰',roles:['BOSS','MGR','EMP']},
   {id:'leaderboard',icon:'🏆',label:'排行榜',roles:['BOSS','MGR','EMP']},
   {id:'character',icon:'🎮',label:'我的角色',roles:['BOSS','MGR','EMP']},
+  {id:'bully',icon:'🛡️',label:'霸凌申訴',roles:['BOSS','MGR','EMP']},
   {id:'accounts',icon:'👥',label:'帳號管理',roles:['BOSS']},
 ];
 function getParts(){
@@ -3974,6 +4012,36 @@ async function confirmInv(itemId){
   }
   renderInvUI(items,_invRows);
   if(syncOn())authApi({type:'inv_write',row:entry}).then(function(d){if(d&&d.status==='exists'){toast('這項剛才已被 '+(d.by||'他人')+' 盤點','red');}else if(!(d&&(d.status==='success'||d.status==='ok'))){toast('雲端儲存失敗，請重開再送','red');}}).catch(function(){toast('雲端儲存失敗，請確認網路','red');});
+}
+
+// ── 霸凌申訴（保密：不存本機 rm_、不同步到其他人手機；僅老闆可查）──
+async function renderBully(){
+  if($('bl-date')&&!$('bl-date').value)$('bl-date').value=bizDay();
+  const wrap=$('bully-admin-wrap');if(!wrap)return;
+  if(CU.role!=='BOSS'){wrap.innerHTML='';return;}
+  wrap.innerHTML=`<div class="c-card"><div class="c-card-title">🗂️ 申訴紀錄（僅老闆可見）</div><div id="bully-list"><div class="muted-note">載入中…</div></div></div>`;
+  try{
+    const d=await authApi({type:'query_bully',by:CU.username});
+    const box=$('bully-list');if(!box)return;
+    if(!(d&&(d.status==='ok'||d.status==='success'))){box.innerHTML='<div class="muted-note">'+esc((d&&d.message)||'無法載入')+'</div>';return;}
+    const rows=(d.rows||[]).slice(1).map(r=>({ts:Number(r[6])||0,date:String(r[1]||''),by:String(r[2]||''),desc:String(r[3]||''),who:String(r[4]||''),want:String(r[5]||'')})).sort((a,b)=>b.ts-a.ts);
+    box.innerHTML=rows.length?rows.map(r=>`<div class="sub-row" style="flex-direction:column;align-items:stretch;gap:4px">
+      <div style="display:flex;justify-content:space-between;flex-wrap:wrap;gap:6px"><div class="tc-title" style="font-size:14px;color:#800020">🛡️ 申訴人：${esc(r.by||'匿名')}</div><div class="xp-text">事發 ${esc(r.date)} ・ ${fmtTime(r.ts)}</div></div>
+      <div style="white-space:pre-wrap;color:#2b1519;font-size:14px">${esc(r.desc)}</div>
+      ${r.who?`<div class="muted-note">涉及對象：${esc(r.who)}</div>`:''}
+      ${r.want?`<div class="muted-note">希望處理：${esc(r.want)}</div>`:''}
+    </div>`).join(''):'<div class="game-empty">目前沒有申訴紀錄</div>';
+  }catch(e){const box=$('bully-list');if(box)box.innerHTML='<div class="muted-note">連線失敗，請稍後再試</div>';}
+}
+function submitBully(){
+  const desc=($('bl-desc')&&$('bl-desc').value.trim())||'';
+  if(!desc){toast('請至少填寫「事發經過」','red');return;}
+  const anon=$('bl-anon')&&$('bl-anon').checked;
+  const entry={date:($('bl-date')&&$('bl-date').value)||bizDay(),desc:desc,who:($('bl-who')&&$('bl-who').value.trim())||'',want:($('bl-want')&&$('bl-want').value.trim())||'',by:anon?'匿名':(CU.name||''),byUser:anon?'':(CU.username||''),ts:Date.now()};
+  ['bl-desc','bl-who','bl-want'].forEach(id=>{if($(id))$(id).value='';});
+  if($('bl-anon'))$('bl-anon').checked=false;
+  toast('🛡️ 申訴已送出，將由老闆保密處理','gold');
+  if(syncOn())authApi({type:'bully_write',row:entry}).then(function(d){if(!(d&&(d.status==='success'||d.status==='ok')))toast('送出失敗，請重試或改撥 1955 專線','red');}).catch(function(){toast('送出失敗，請確認網路或改撥 1955 專線','red');});
 }
 
 // ── 交接表 ──
