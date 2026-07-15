@@ -1734,7 +1734,7 @@ html,body,button,input,select,textarea,
 
 <script>
 // ── 自動更新：開啟時比對版本，有新版就自動重載（免無痕）──
-const APP_VER='20260714010000';
+const APP_VER='20260715010000';
 const GT_KEY='gtk_9F3xQ7Lz_pW2rM8kT';  // 後台共用密鑰（階段A：前端帶上；階段B：後台驗證）
 function checkVersion(){try{fetch('ver.txt?_='+Date.now(),{cache:'no-store'}).then(function(r){return r.ok?r.text():null;}).then(function(v){if(!v)return;v=v.trim();if(v&&v!==APP_VER&&location.search.indexOf('v='+v)<0){location.replace(location.pathname+'?v='+encodeURIComponent(v));}}).catch(function(){});}catch(e){}}
 checkVersion();
@@ -3891,6 +3891,21 @@ function delHbSection(id){const list=(LS.get('rm_handbook',[])||[]).filter(s=>s.
 // ── 每日食材盤點 ──
 function prevBizDay(){const d=new Date(bizDay()+'T12:00:00');d.setDate(d.getDate()-1);const p=n=>String(n).padStart(2,'0');return d.getFullYear()+'-'+p(d.getMonth()+1)+'-'+p(d.getDate());}
 let _invRows=[];
+let _invEditing=null;
+function editInv(id){_invEditing=id;renderInvUI(LS.get('rm_inv_items',[])||[],_invRows);}
+function cancelInvEdit(){_invEditing=null;renderInvUI(LS.get('rm_inv_items',[])||[],_invRows);}
+async function saveInvEdit(id){
+  const items=LS.get('rm_inv_items',[])||[];const it=items.find(x=>x.id===id);if(!it)return;
+  const el=$('inv-e-'+id);const qty=el&&el.value.trim();
+  if(qty===''||qty==null){toast('請輸入數量','red');return;}
+  // 本機快取即時更新今日該項（只改數量與時間，保留原盤點人）
+  const key=bizDay()+'|'+id;
+  (_invRows||[]).forEach(function(rr){if(String(rr[8]||'')===key){rr[3]=qty;rr[6]=new Date().toISOString();}});
+  _invEditing=null;toast('✓ 已修正數量','gold');renderInvUI(items,_invRows);
+  // 雲端更新（背景，不加分）
+  const entry={date:bizDay(),itemId:id,itemName:it.name,qty:qty,user:CU.username,userName:CU.name,ts:Date.now()};
+  if(syncOn())authApi({type:'inv_write',row:entry,update:1}).then(function(d){if(!(d&&(d.status==='success'||d.status==='ok'))){toast('雲端更新失敗，請重試','red');}}).catch(function(){toast('雲端更新失敗，請確認網路','red');});
+}
 async function renderInventory(){
   const wrap=$('inv-wrap');if(!wrap)return;
   const items=LS.get('rm_inv_items',[])||[];
@@ -3900,7 +3915,7 @@ async function renderInventory(){
 function renderInvUI(items,rows){
   const wrap=$('inv-wrap');if(!wrap)return;
   const today=bizDay(),yday=prevBizDay();
-  const map={};rows.forEach(r=>{const dy=normDate(r[0]);const iid=String(r[1]||'');if(!map[dy])map[dy]={};map[dy][iid]={qty:r[3],name:String(r[2]||''),userName:String(r[5]||'')};});
+  const map={};rows.forEach(r=>{const dy=normDate(r[0]);const iid=String(r[1]||'');if(!map[dy])map[dy]={};map[dy][iid]={qty:r[3],name:String(r[2]||''),userName:String(r[5]||''),user:String(r[4]||'')};});
   const tMap=map[today]||{},yMap=map[yday]||{};
   let html='';
   // 今日盤點
@@ -3909,7 +3924,11 @@ function renderInvUI(items,rows){
   else{
     html+=items.map(it=>{
       const done=tMap[it.id];
-      if(done)return `<div class="sub-row"><div style="flex:1;min-width:0"><div class="tc-title" style="font-size:14px">${esc(it.name)}</div><div class="xp-text" style="color:#15803d!important">✅ 數量 ${esc(String(done.qty))} ・ ${esc(done.userName)}</div></div></div>`;
+      if(done){
+        if(_invEditing===it.id)return `<div class="sub-row" style="gap:8px"><div style="flex:1;min-width:0"><div class="tc-title" style="font-size:14px">${esc(it.name)}</div><div class="xp-text">修正數量</div></div><input class="form-input" id="inv-e-${it.id}" type="number" min="0" value="${esc(String(done.qty))}" style="width:80px;padding:8px;text-align:center"><button class="btn-action" style="padding:8px 12px;flex-shrink:0" onclick="saveInvEdit('${it.id}')">儲存</button><button class="btn-sm btn-neutral" style="padding:8px 10px;flex-shrink:0" onclick="cancelInvEdit()">取消</button></div>`;
+        const canEdit=isMgr()||done.user===CU.username;
+        return `<div class="sub-row"><div style="flex:1;min-width:0"><div class="tc-title" style="font-size:14px">${esc(it.name)}</div><div class="xp-text" style="color:#15803d!important">✅ 數量 ${esc(String(done.qty))} ・ ${esc(done.userName)}</div></div>${canEdit?`<button class="btn-sm btn-neutral" style="padding:6px 12px;flex-shrink:0" onclick="editInv('${it.id}')">修正</button>`:''}</div>`;
+      }
       return `<div class="sub-row" style="gap:8px"><div style="flex:1;min-width:0"><div class="tc-title" style="font-size:14px">${esc(it.name)}</div></div><input class="form-input" id="inv-q-${it.id}" type="number" min="0" placeholder="數量" style="width:88px;padding:8px;text-align:center"><button class="btn-action" style="padding:8px 14px;flex-shrink:0" onclick="confirmInv('${it.id}')">確認</button></div>`;
     }).join('');
     const doneN=items.filter(it=>tMap[it.id]).length;
