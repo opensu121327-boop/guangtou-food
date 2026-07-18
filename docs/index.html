@@ -1877,7 +1877,7 @@ async function enterApp() {
   hideAppLoading();   // 準備好後淡出（至少顯示 5 秒）
   // 背景把資料抓齊並刷新目前畫面（含照片），慢的雲端不再擋住登入
   if(syncOn())setTimeout(function(){
-    cloudPull(true).then(function(){if(!CU)return;updateGameChip();if(isTyping())return;var act=document.querySelector('.tab-panel.active');if(act)reRenderTab(act.id.replace('tab-',''));}).catch(function(){});
+    cloudPull(true).then(function(){if(!CU)return;updateGameChip();runLockCheck();if(isTyping())return;var act=document.querySelector('.tab-panel.active');if(act)reRenderTab(act.id.replace('tab-',''));}).catch(function(){});
     cloudPull(false).catch(function(){});
   },1600);
 }
@@ -3036,6 +3036,7 @@ function normChar(c){c=c||{};const d=defAvatar();const a=c.avatar||{};
     xp:c.xp||0, points:c.points||0,
     lastCheckin:c.lastCheckin||'', tasksDone:c.tasksDone||0, chosen:!!c.chosen, lastHandover:c.lastHandover||'',
     lastSuggestAward:c.lastSuggestAward||'', lastPraiseAward:c.lastPraiseAward||'',
+    locked:!!c.locked, unlockProg:c.unlockProg||0, lockChkDay:c.lockChkDay||'',
     avatar:{bgColor:a.bgColor||d.bgColor,bgImg:a.bgImg||'',skinColor:a.skinColor||d.skinColor,hairColor:a.hairColor||d.hairColor,parts}
   };
 }
@@ -3046,10 +3047,49 @@ function saveChar(c,u){LS.set(charKey(u),c);}
 function awardXp(username,amt){
   const c=getChar(username);
   const before=levelOf(c.xp);
-  c.xp+=amt; c.points+=amt;
+  c.xp+=amt;
+  if(c.locked&&amt>0){
+    // 被鎖定：賺的點先拿去還「解鎖債」50 點，不計入餘額；還滿 50 即解鎖，溢出的才進餘額
+    c.unlockProg=(c.unlockProg||0)+amt;
+    if(c.unlockProg>=50){const carry=c.unlockProg-50;c.locked=false;c.unlockProg=0;c.lockChkDay=bizDay();c.points+=carry;}
+  }else{
+    c.points+=amt;
+  }
   const after=levelOf(c.xp);
   saveChar(c,username);
   return {before,after,leveledUp:after>before};
+}
+// ── 上班日必做「欠款制」鎖定：登入時追溯過去有排班卻沒完成的日子 → 鎖定（欠50點解鎖）──
+function mustDoneForDay(D){
+  const dtasks=(LS.get('rm_tasks',[])||[]).map(normTask).filter(t=>t.cat==='daily');
+  const subs=LS.get('rm_submissions',[])||[];
+  const taskOK=dtasks.length===0||dtasks.every(t=>subs.some(s=>s.taskId===t.id&&s.status!=='rejected'&&bizDay(s.ts)===D));
+  const items=LS.get('rm_inv_items',[])||[];
+  const cnt={};(_invRows||[]).forEach(r=>{if(normDate(r[0])===D)cnt[String(r[1]||'')]=1;});
+  const invOK=items.length===0||items.every(it=>cnt[it.id]);
+  return taskOK&&invOK;
+}
+function dayShift(D,delta){const p=String(D).split('-');const dt=new Date(+p[0],+p[1]-1,+p[2]);dt.setDate(dt.getDate()+delta);const z=n=>String(n).padStart(2,'0');return dt.getFullYear()+'-'+z(dt.getMonth()+1)+'-'+z(dt.getDate());}
+function evalLockNow(){
+  if(!CU)return false;
+  const c=getChar();const today=bizDay();const yest=dayShift(today,-1);
+  if(!c.lockChkDay){c.lockChkDay=yest;saveChar(c);return false;}        // 首次啟用：昨天(含)以前不追溯
+  if(c.locked){if(c.lockChkDay!==yest){c.lockChkDay=yest;saveChar(c);}return true;} // 已鎖不疊加
+  const roster=LS.get('rm_roster',{})||{};
+  let D=dayShift(c.lockChkDay,1),guard=0,hit=false;
+  while(D<=yest&&guard<60){
+    if((roster[D]||[]).includes(CU.username)&&!mustDoneForDay(D)){hit=true;break;}
+    D=dayShift(D,1);guard++;
+  }
+  if(hit){c.locked=true;c.unlockProg=0;}
+  c.lockChkDay=yest;saveChar(c);
+  return hit;
+}
+// 確保盤點歷史載入後再判定鎖定，然後刷新畫面
+function runLockCheck(){
+  function go(){evalLockNow();updateGameChip();const rw=$('tab-rewards');if(rw&&rw.classList.contains('active'))renderRewards();const hm=$('tab-home');if(hm&&hm.classList.contains('active'))renderHome();}
+  if(syncOn())authApi({type:'query_inv'}).then(function(d){if(d&&(d.status==='ok'||d.status==='success')&&d.rows)_invRows=d.rows.slice(1);go();}).catch(go);
+  else go();
 }
 
 // 員工守則預設內容（來自 RESOURSCES 的 SOP）
@@ -3240,20 +3280,28 @@ function mustDoStatus(){
   return {taskN,taskTotal,taskDone:taskTotal===0||taskN>=taskTotal,
           invN,invTotal,invDone:invTotal===0||invN>=invTotal};
 }
-// 使用/兌換點數是否被鎖：今日必做未完成 且 目前點數<50（完成必做、或累積滿50點即解鎖）
-function ptsLocked(){const s=mustDoStatus();return !(s.taskDone&&s.invDone)&&((getChar().points||0)<50);}
+// 獎勵兌換是否被鎖：讀取儲存的欠款狀態（由 evalLockNow 於登入時依過去排班日設定；賺滿50點還清即解鎖）
+function ptsLocked(){return !!getChar().locked;}
 function rwLockHtml(){
-  if(!ptsLocked())return '';
-  const pts=getChar().points||0;
-  return `<div class="c-card" style="border:2px solid #fca5a5;background:linear-gradient(180deg,#fef2f2,#ffffff)"><div class="c-card-title" style="color:#b91c1c">🔒 獎勵兌換已鎖定</div><div class="muted-note" style="color:#b91c1c">今日必做（每日任務＋食材盤點）尚未完成。完成今日必做、或累積滿 50 點即可解鎖（你目前 ${pts} 點，還差 ${Math.max(0,50-pts)} 點）。</div></div>`;
+  const c=getChar();if(!c.locked)return '';
+  const prog=c.unlockProg||0;
+  const pct=Math.min(100,Math.round(prog/50*100));
+  const bar=`<div style="margin-top:10px">
+    <div style="display:flex;justify-content:space-between;font-size:12px;color:#b91c1c;font-weight:700;margin-bottom:4px"><span>解鎖進度</span><span>${prog} / 50 點</span></div>
+    <div style="height:12px;background:#f6d5d5;border-radius:999px;overflow:hidden"><div style="height:100%;width:${pct}%;background:linear-gradient(90deg,#ef4444,#b91c1c);border-radius:999px;transition:width .3s"></div></div>
+  </div>`;
+  return `<div class="c-card" style="border:2px solid #fca5a5;background:linear-gradient(180deg,#fef2f2,#ffffff)"><div class="c-card-title" style="color:#b91c1c">🔒 獎勵兌換已鎖定</div><div class="muted-note" style="color:#b91c1c">你有上班日未完成每日任務＋盤點，獎勵兌換已鎖。需再賺滿 50 點解鎖（這 50 點不計入餘額，還差 ${Math.max(0,50-prog)} 點）。</div>${bar}</div>`;
 }
 function applyRwLock(){const el=$('rw-lock');if(el)el.innerHTML=rwLockHtml();}
 function mustDoCardHtml(){
   const s=mustDoStatus();const allDone=s.taskDone&&s.invDone;
-  const pts=(getChar().points||0);
-  const lockLine=allDone?'':(pts<50
-    ?`<div class="muted-note" style="color:#b91c1c;font-weight:700;margin-bottom:6px">🔒 未完成前「獎勵兌換」會鎖住，完成今日必做、或再累積 ${50-pts} 點（目前 ${pts} 點）即可解鎖</div>`
-    :`<div class="muted-note" style="color:#15803d;margin-bottom:6px">（你已累積滿 50 點，獎勵兌換不受鎖定）</div>`);
+  const c=getChar();const locked=!!c.locked;const prog=c.unlockProg||0;
+  const onDuty=!!(CU&&rosterToday().includes(CU.username));
+  const lockLine=locked
+    ?`<div class="muted-note" style="color:#b91c1c;font-weight:700;margin-bottom:6px">🔒 你目前被鎖定：需再賺滿 50 點解鎖（已還 ${prog}/50，這 50 點不計入餘額）</div>`
+    :((!allDone&&onDuty)
+      ?`<div class="muted-note" style="color:#b45309;font-weight:700;margin-bottom:6px">⚠️ 今天沒完成的話，明天起「獎勵兌換」會被鎖定（需另賺 50 點解鎖）</div>`
+      :'');
   const row=(icon,label,done,n,total,tab)=>{
     const right=total===0?'<span style="color:#9a7a4a;font-size:13px">尚未設定</span>'
       :done?'<span style="color:#15803d;font-weight:800">✅ 完成</span>'
