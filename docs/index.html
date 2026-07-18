@@ -1116,6 +1116,11 @@ body,html{background:#FFF4E6!important;}
   background:#050403;animation:alxIn .5s ease both;}
 @keyframes alxIn{0%{opacity:0}100%{opacity:1}}
 @media(prefers-reduced-motion:reduce){#app-loading #alx-video{animation-duration:.001ms!important;}}
+/* 被鎖定員工的全域警示邊框：固定在所有分頁之上，切頁不消失、不擋操作 */
+#lock-frame{position:fixed;inset:0;z-index:240;pointer-events:none;display:none;}
+#lock-frame.show{display:block;}
+#lock-frame img{width:100%;height:100%;object-fit:fill;display:block;}
+@media(prefers-reduced-motion:reduce){#lock-frame{opacity:.75;}}
 
 /* ============================================================
    ★ 全站字體改用粉圓體 jf-openhuninn（自帶字檔，swap 不卡載入）
