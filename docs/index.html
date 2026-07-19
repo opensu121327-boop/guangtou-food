@@ -1754,7 +1754,7 @@ html,body,button,input,select,textarea,
 
 <script>
 // ── 自動更新：開啟時比對版本，有新版就自動重載（免無痕）──
-const APP_VER='20260719120000';
+const APP_VER='20260719180000';
 const GT_KEY='gtk_9F3xQ7Lz_pW2rM8kT';  // 後台共用密鑰（階段A：前端帶上；階段B：後台驗證）
 function checkVersion(){try{fetch('ver.txt?_='+Date.now(),{cache:'no-store'}).then(function(r){return r.ok?r.text():null;}).then(function(v){if(!v)return;v=v.trim();if(v&&v!==APP_VER&&location.search.indexOf('v='+v)<0){location.replace(location.pathname+'?v='+encodeURIComponent(v));}}).catch(function(){});}catch(e){}}
 checkVersion();
@@ -1911,7 +1911,7 @@ function initApp() {
   const labels={BOSS:'老闆',MGR:'店長',EMP:'員工'};
   roleTag.textContent=labels[CU.role]||CU.role;
   roleTag.className='role-tag role-'+CU.role;
-  seedGame();ensureSalesTask();ensurePsaleTask();wireTaskInput();wirePartInput();recordName(CU.username,CU.name);updateGameChip();
+  seedGame();ensureSalesTask();ensurePsaleTask();wireTaskInput();wirePartInput();recordName(CU.username,CU.name);oneTimeUnlock();updateGameChip();
 
   // build nav
   const tabs=ALL_TABS.filter(t=>t.roles.includes(CU.role));
@@ -3046,7 +3046,7 @@ function normChar(c){c=c||{};const d=defAvatar();const a=c.avatar||{};
     xp:c.xp||0, points:c.points||0,
     lastCheckin:c.lastCheckin||'', tasksDone:c.tasksDone||0, chosen:!!c.chosen, lastHandover:c.lastHandover||'',
     lastSuggestAward:c.lastSuggestAward||'', lastPraiseAward:c.lastPraiseAward||'',
-    locked:!!c.locked, unlockProg:c.unlockProg||0, lockChkDay:c.lockChkDay||'',
+    locked:!!c.locked, unlockProg:c.unlockProg||0, lockChkDay:c.lockChkDay||'', unlockReset:c.unlockReset||'',
     avatar:{bgColor:a.bgColor||d.bgColor,bgImg:a.bgImg||'',skinColor:a.skinColor||d.skinColor,hairColor:a.hairColor||d.hairColor,parts}
   };
 }
@@ -3069,6 +3069,16 @@ function awardXp(username,amt){
   saveChar(c,username);
   return {before,after,leveledUp:after>before};
 }
+// 一次性全體解鎖（老闆指示）：清除既有鎖定與解鎖進度，並把追溯起點設為今天，避免立刻又被舊日子鎖回去。
+// 每人各自執行一次（記錄在自己的角色資料，不會互相蓋掉）；要再次全體解鎖時把日期字串改新的即可。
+const UNLOCK_RESET_ID='20260719';
+function oneTimeUnlock(){
+  if(!CU)return;
+  const c=getChar();
+  if(c.unlockReset===UNLOCK_RESET_ID)return;
+  c.locked=false;c.unlockProg=0;c.lockChkDay=bizDay();c.unlockReset=UNLOCK_RESET_ID;
+  saveChar(c);
+}
 // ── 上班日必做「欠款制」鎖定：登入時追溯過去有排班卻沒完成的日子 → 鎖定（欠50點解鎖）──
 function mustDoneForDay(D){
   const dtasks=(LS.get('rm_tasks',[])||[]).map(normTask).filter(t=>t.cat==='daily');
@@ -3076,7 +3086,7 @@ function mustDoneForDay(D){
   const taskOK=dtasks.length===0||dtasks.every(t=>subs.some(s=>s.taskId===t.id&&s.status!=='rejected'&&bizDay(s.ts)===D));
   const items=LS.get('rm_inv_items',[])||[];
   const cnt={};(_invRows||[]).forEach(r=>{if(normDate(r[0])===D)cnt[String(r[1]||'')]=1;});
-  const invOK=items.length===0||items.every(it=>cnt[it.id]);
+  const invOK=!isInvDay(D)||items.length===0||items.every(it=>cnt[it.id]);  // 非盤點日不要求盤點
   return taskOK&&invOK;
 }
 function dayShift(D,delta){const p=String(D).split('-');const dt=new Date(+p[0],+p[1]-1,+p[2]);dt.setDate(dt.getDate()+delta);const z=n=>String(n).padStart(2,'0');return dt.getFullYear()+'-'+z(dt.getMonth()+1)+'-'+z(dt.getDate());}
@@ -3288,17 +3298,20 @@ function dailyCheckin(){
 
 // ── 首頁（角色置中 + 漂浮按鈕）──
 // ── 今日必做（每次上班必完成：每日任務＋食材盤點，全店當日清單做完為準）──
+// 盤點日：每週一、每週五（0=日 1=一 … 5=五）
+function isInvDay(D){const p=String(D||bizDay()).split('-');const w=new Date(+p[0],+p[1]-1,+p[2]).getDay();return w===1||w===5;}
 function mustDoStatus(){
   const dtasks=(LS.get('rm_tasks',[])||[]).map(normTask).filter(t=>t.cat==='daily');
   const taskTotal=dtasks.length;
   const taskN=dtasks.filter(t=>!!dailyClaim(t.id)).length;
+  const today=bizDay();const invDay=isInvDay(today);
   const items=LS.get('rm_inv_items',[])||[];
-  const invTotal=items.length;
-  const today=bizDay();const counted={};
+  const invTotal=invDay?items.length:0;
+  const counted={};
   (_invRows||[]).forEach(r=>{if(normDate(r[0])===today)counted[String(r[1]||'')]=1;});
-  const invN=items.filter(it=>counted[it.id]).length;
+  const invN=invDay?items.filter(it=>counted[it.id]).length:0;
   return {taskN,taskTotal,taskDone:taskTotal===0||taskN>=taskTotal,
-          invN,invTotal,invDone:invTotal===0||invN>=invTotal};
+          invDay,invN,invTotal,invDone:!invDay||invTotal===0||invN>=invTotal};
 }
 // 獎勵兌換是否被鎖：讀取儲存的欠款狀態（由 evalLockNow 於登入時依過去排班日設定；賺滿50點還清即解鎖）
 function ptsLocked(){return !!getChar().locked;}
@@ -3334,7 +3347,10 @@ function mustDoCardHtml(){
     :'<div class="c-card-title" style="color:#b91c1c">🔴 今日上班必做（尚未完成）</div><div class="muted-note" style="margin-bottom:6px">每次上班都要完成下列項目，全部完成才算今日達標</div>';
   const style=allDone?'border:2px solid #86efac;background:linear-gradient(180deg,#f0fdf4,#ffffff)'
     :'border:2px solid #fca5a5;background:linear-gradient(180deg,#fef2f2,#ffffff)';
-  return `<div class="c-card" id="mustdo-card" style="${style}">${head}${lockLine}${row('✅','每日任務',s.taskDone,s.taskN,s.taskTotal,'tasks')}${row('🧾','食材盤點',s.invDone,s.invN,s.invTotal,'inventory')}</div>`;
+  const invRow=s.invDay
+    ?row('🧾','食材盤點（今日盤點日）',s.invDone,s.invN,s.invTotal,'inventory')
+    :`<div class="sub-row" style="gap:10px;align-items:center"><div style="flex:1;min-width:0"><div class="tc-title" style="font-size:14px">🧾 食材盤點</div></div><span style="color:#9a7a4a;font-size:13px">今日不需盤點（週一・週五）</span></div>`;
+  return `<div class="c-card" id="mustdo-card" style="${style}">${head}${lockLine}${row('✅','每日任務',s.taskDone,s.taskN,s.taskTotal,'tasks')}${invRow}</div>`;
 }
 function renderHome(){
   const stage=$('home-stage');if(!stage||!CU)return;
@@ -4049,7 +4065,11 @@ function renderInvUI(items,rows){
   const tMap=map[today]||{},yMap=map[yday]||{};
   let html='';
   // 今日盤點
+  const invDayNow=isInvDay(today);
   html+=`<div class="c-card"><div class="c-card-title">📋 今日盤點（${today}）</div>`;
+  html+=invDayNow
+    ?`<div class="muted-note" style="color:#15803d;font-weight:700;margin-bottom:6px">📅 今日是盤點日（每週一・週五），每項 +3 點</div>`
+    :`<div class="muted-note" style="color:#9a7a4a;font-weight:700;margin-bottom:6px">📅 今日非盤點日 ・ 盤點日為每週一・週五。仍可記錄數量，但不加分</div>`;
   if(!items.length){html+='<div class="game-empty">尚無盤點食材，請老闆/店長在下方新增</div>';}
   else{
     html+=items.map(it=>{
@@ -4062,7 +4082,7 @@ function renderInvUI(items,rows){
       return `<div class="sub-row" style="gap:8px"><div style="flex:1;min-width:0"><div class="tc-title" style="font-size:14px">${esc(it.name)}</div></div><input class="form-input" id="inv-q-${it.id}" type="number" min="0" placeholder="數量" style="width:88px;padding:8px;text-align:center"><button class="btn-action" style="padding:8px 14px;flex-shrink:0" onclick="confirmInv('${it.id}')">確認</button></div>`;
     }).join('');
     const doneN=items.filter(it=>tMap[it.id]).length;
-    html+=`<div class="muted-note" style="margin-top:8px">已完成 ${doneN}/${items.length} 項 ・ 每項 +3 點（每人每日給分上限 8 項，可分工盤點）</div>`;
+    html+=`<div class="muted-note" style="margin-top:8px">已完成 ${doneN}/${items.length} 項 ・ ${invDayNow?'每項 +3 點（每人每日給分上限 8 項，可分工盤點）':'今日非盤點日，記錄不加分'}</div>`;
   }
   html+=`</div>`;
   // 昨日盤點（唯讀）
@@ -4093,12 +4113,15 @@ async function confirmInv(itemId){
   const entry={date:bizDay(),itemId:itemId,itemName:it.name,qty:qty,user:CU.username,userName:CU.name,ts:Date.now()};
   // 今天此人已盤點幾項（每人每日給分上限 8 項）
   const myToday=(_invRows||[]).filter(function(rr){return normDate(rr[0])===bizDay()&&String(rr[4]||'')===CU.username;}).length;
-  const willAward=myToday<8;
+  const invDay=isInvDay();                       // 只有週一/週五盤點才給分
+  const willAward=invDay&&myToday<8;
   // 立即回饋：先塞進本機快取讓畫面馬上顯示已盤點，雲端背景寫入
   _invRows.push([entry.date,itemId,it.name,qty,CU.username,CU.name,'',entry.ts,entry.date+'|'+itemId]);
   if(willAward){
     const r=awardXp(CU.username,3);updateGameChip();
     toast('✓ 已盤點「'+it.name+'」+3 點'+(r.leveledUp?'（升級 Lv.'+r.after+'！）':'')+'（今日 '+(myToday+1)+'/8）','gold');
+  }else if(!invDay){
+    toast('✓ 已記錄「'+it.name+'」・今日非盤點日（週一/週五盤點才加分）','gold');
   }else{
     toast('✓ 已盤點「'+it.name+'」・今日已達 8 項給分上限，本項不加分','gold');
   }
