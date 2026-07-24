@@ -1280,7 +1280,8 @@ html,body,button,input,select,textarea,
           <span class="total-sep">·</span>
           <span class="total-item">外送手續費 <strong id="t-dfee">$0</strong></span>
         </div>
-        <button class="btn-action" onclick="submitRev()">✓ 確認送出</button>
+        <div id="rv-editbar" style="display:none;color:#800020;font-weight:700;margin-bottom:8px;font-size:13px"></div>
+        <button class="btn-action" id="rv-submit" onclick="submitRev()">✓ 確認送出</button>
       </div>
     </div>
 
@@ -1354,7 +1355,8 @@ html,body,button,input,select,textarea,
           <input class="form-input" id="pu-cost" type="number" placeholder="0">
           <div class="muted-note" style="margin-top:4px">單位成本＝總成本 ÷ 數量，系統自動計算</div>
         </div>
-        <button class="btn-action" onclick="submitPu()">✓ 新增進貨</button>
+        <div id="pu-editbar" style="display:none;color:#800020;font-weight:700;margin-bottom:8px;font-size:13px"></div>
+        <button class="btn-action" id="pu-submit" onclick="submitPu()">✓ 新增進貨</button>
       </div>
       <div class="c-card"><div class="c-card-title">🧾 最近進貨記錄</div><div id="recent-pu"><div class="muted-note">切換到此頁時載入…</div></div></div>
     </div>
@@ -1766,7 +1768,7 @@ html,body,button,input,select,textarea,
 
 <script>
 // ── 自動更新：開啟時比對版本，有新版就自動重載（免無痕）──
-const APP_VER='20260724120000';
+const APP_VER='20260724180000';
 const GT_KEY='gtk_9F3xQ7Lz_pW2rM8kT';  // 後台共用密鑰（階段A：前端帶上；階段B：後台驗證）
 function checkVersion(){try{fetch('ver.txt?_='+Date.now(),{cache:'no-store'}).then(function(r){return r.ok?r.text():null;}).then(function(v){if(!v)return;v=v.trim();if(v&&v!==APP_VER&&location.search.indexOf('v='+v)<0){location.replace(location.pathname+'?v='+encodeURIComponent(v));}}).catch(function(){});}catch(e){}}
 checkVersion();
@@ -2088,6 +2090,14 @@ async function submitRev() {
     cardFee:Math.round(card*0.015),twqrFee:Math.round(twqr*0.006),
     deliveryFee:Math.round((fp+ue)*0.3),platformRemittance:0,offRecord:off,
     filler:(CU&&CU.username)||''};
+  if(window._rvEdit){   // 編輯模式：原地更新該列
+    const ed=window._rvEdit;
+    authApi({type:'revenue_update',row:ed.row,oldDate:ed.oldDate,r:row,by:(CU&&CU.username)||'',role:(CU&&CU.role)||''}).then(function(d){
+      if(d&&(d.status==='success'||d.status==='ok')){toast('✓ 已修改營收','gold');rvCancelEdit();loadReports();}
+      else{toast((d&&d.message)||'修改失敗，請重新整理再試','red');}
+    }).catch(function(){toast('連線失敗','red');});
+    return;
+  }
   // 立即回饋、雲端背景寫入；若失敗自動還原欄位避免資料遺失
   const _rvIds=['rv-cash','rv-card','rv-twqr','rv-fp','rv-ue','rv-off','rv-note'];
   const _rvSaved={};_rvIds.forEach(id=>{_rvSaved[id]=$(id)?$(id).value:'';});
@@ -2095,6 +2105,30 @@ async function submitRev() {
   _rvIds.forEach(id=>{if($(id))$(id).value='';});calcRev();
   const _rvRestore=function(){_rvIds.forEach(id=>{if($(id))$(id).value=_rvSaved[id];});calcRev();};
   authApi({type:'revenue',rows:[row]}).then(function(d){if(!(d&&(d.status==='success'||d.status==='ok'))){_rvRestore();toast('⚠️ 營收儲存失敗，已還原資料請重送','red');}}).catch(function(){_rvRestore();toast('⚠️ 營收儲存失敗，已還原資料請確認網路','red');});
+}
+// 每日結帳：修改既有一筆（帶入表單→submitRev 進入編輯模式）
+const RV_FIELDS=['rv-cash','rv-card','rv-twqr','rv-fp','rv-ue','rv-off','rv-note'];
+function editRevenue(rw){
+  const rec=(_allRevData||[]).find(function(x){return x._row===rw;});
+  if(!rec){toast('找不到資料，請重新整理','red');return;}
+  if($('rv-date'))$('rv-date').value=normDate(rec.date);
+  if($('rv-note'))$('rv-note').value=rec.note||'';
+  if($('rv-cash'))$('rv-cash').value=rec.cash||'';
+  if($('rv-card'))$('rv-card').value=rec.card||'';
+  if($('rv-twqr'))$('rv-twqr').value=rec.twqr||'';
+  if($('rv-fp'))$('rv-fp').value=rec.foodpanda||'';
+  if($('rv-ue'))$('rv-ue').value=rec.ubereats||'';
+  if($('rv-off'))$('rv-off').value=rec.off||'';
+  calcRev();
+  window._rvEdit={row:rw,oldDate:normDate(rec.date)};
+  rvEditBar();goTab('revenue');
+  var el=$('rv-date');if(el)el.scrollIntoView({behavior:'smooth',block:'center'});
+}
+function rvCancelEdit(){window._rvEdit=null;RV_FIELDS.forEach(function(id){if($(id))$(id).value='';});calcRev();rvEditBar();}
+function rvEditBar(){
+  var bar=$('rv-editbar'),btn=$('rv-submit');
+  if(window._rvEdit){if(bar){bar.style.display='';bar.innerHTML='✏️ 修改中：'+window._rvEdit.oldDate+' 這筆　<a href="#" onclick="rvCancelEdit();return false" style="color:#800020;text-decoration:underline">取消修改</a>';}if(btn)btn.textContent='✓ 儲存修改';}
+  else{if(bar)bar.style.display='none';if(btn)btn.textContent='✓ 確認送出';}
 }
 
 // ── PURCHASE ──
@@ -2198,6 +2232,14 @@ async function submitPu() {
     '單位量詞':$('pu-unit').value,'總成本':cost,
     '單位成本':unit,'供應商':$('pu-supplier').value,'填表人':(CU&&CU.username)||''
   };
+  if(window._puEdit){   // 編輯模式：原地更新該列
+    const ed=window._puEdit;
+    authApi({type:'purchase_update',row:ed.row,oldName:ed.oldName,r:row,by:(CU&&CU.username)||'',role:(CU&&CU.role)||''}).then(function(d){
+      if(d&&(d.status==='success'||d.status==='ok')){toast('✓ 已修改進貨','gold');puCancelEdit();loadMaterials(true);renderRecentPurchases();}
+      else{toast((d&&d.message)||'修改失敗，請重新整理再試','red');}
+    }).catch(function(){toast('連線失敗','red');});
+    return;
+  }
   // 立即回饋、雲端背景寫入；失敗自動還原欄位避免資料遺失
   const _puIds=['pu-name','pu-code','pu-cat','pu-qty','pu-cost','pu-supplier','pu-packq'];
   const _puSaved={};_puIds.forEach(id=>{_puSaved[id]=$(id)?$(id).value:'';});
@@ -2205,6 +2247,29 @@ async function submitPu() {
   _puIds.forEach(id=>{if($(id))$(id).value='';});if($('pu-mat'))$('pu-mat').value='';if($('pu-mat-cat'))$('pu-mat-cat').value='';
   const _puRestore=function(){_puIds.forEach(id=>{if($(id))$(id).value=_puSaved[id];});};
   authApi({type:'purchase',rows:[row]}).then(function(d){if(d&&(d.status==='success'||d.status==='ok')){loadMaterials(true);renderRecentPurchases();}else{_puRestore();toast('⚠️ 進貨儲存失敗，已還原資料請重送','red');}}).catch(function(){_puRestore();toast('⚠️ 進貨儲存失敗，已還原資料請確認網路','red');});
+}
+// 進貨記錄：修改既有一筆（帶入表單→submitPu 進入編輯模式）
+const PU_FIELDS=['pu-name','pu-code','pu-cat','pu-qty','pu-cost','pu-supplier','pu-packq'];
+function puSetUnit(v){var u=$('pu-unit');if(!u)return;v=String(v||'');u.value=v;if(u.value!==v&&v){var op=document.createElement('option');op.text=v;op.value=v;u.add(op);u.value=v;}}
+function editPurchase(k){
+  var r=_recentPu[k];if(!r){toast('找不到資料，請重新整理','red');return;}
+  if($('pu-date'))$('pu-date').value=normDate(r[0]);
+  if($('pu-code'))$('pu-code').value=String(r[1]||'');
+  if($('pu-cat'))$('pu-cat').value=String(r[2]||'');
+  if($('pu-name'))$('pu-name').value=String(r[3]||'');
+  if($('pu-qty'))$('pu-qty').value=(r[4]!==''&&r[4]!=null)?r[4]:'';
+  puSetUnit(r[5]);
+  if($('pu-cost'))$('pu-cost').value=(r[6]!==''&&r[6]!=null)?r[6]:'';
+  if($('pu-supplier'))$('pu-supplier').value=String(r[8]||'');
+  window._puEdit={row:k+1,oldName:String(r[3]||'')};
+  puEditBar();goTab('purchase');
+  var el=$('pu-name');if(el)el.scrollIntoView({behavior:'smooth',block:'center'});
+}
+function puCancelEdit(){window._puEdit=null;PU_FIELDS.forEach(function(id){if($(id))$(id).value='';});puEditBar();}
+function puEditBar(){
+  var bar=$('pu-editbar'),btn=$('pu-submit');
+  if(window._puEdit){if(bar){bar.style.display='';bar.innerHTML='✏️ 修改中：'+esc(window._puEdit.oldName)+'　<a href="#" onclick="puCancelEdit();return false" style="color:#800020;text-decoration:underline">取消修改</a>';}if(btn)btn.textContent='✓ 儲存修改';}
+  else{if(bar)bar.style.display='none';if(btn)btn.textContent='✓ 新增進貨';}
 }
 let _recentPu=[];
 async function renderRecentPurchases(){
@@ -2225,7 +2290,7 @@ async function renderRecentPurchases(){
       const byName=by?(names[by]||by):'';
       html+=`<div style="background:#f5efe6;border:1px solid rgba(128,0,32,.12);border-radius:12px;padding:10px 12px;margin-bottom:8px;display:flex;align-items:center;gap:10px">
         <div style="flex:1;min-width:0"><div style="font-weight:700;color:#2b1519">${esc(name)}</div><div style="font-size:12px;color:rgba(43,21,25,.55)">${date} ・ ${qty}${esc(unit)} ・ $${cost}${supplier?(' ・ '+esc(supplier)):''}${byName?(' ・ 填表：'+esc(byName)):''}</div></div>
-        ${canDel?`<button class="btn-sm btn-warn" style="flex-shrink:0" onclick="delPurchase(${k})">刪</button>`:''}
+        ${canDel?`<button class="btn-sm btn-neutral" style="flex-shrink:0" onclick="editPurchase(${k})">改</button> <button class="btn-sm btn-warn" style="flex-shrink:0" onclick="delPurchase(${k})">刪</button>`:''}
       </div>`;}
     box.innerHTML=html;
   }catch(e){box.innerHTML='<div class="muted-note">載入失敗</div>';}
@@ -2452,7 +2517,7 @@ function renderReports() {
     $('rev-tbody').innerHTML = revRows.slice(-20).reverse().map(r=>{
       const by=String(r.filler||'');const byName=by?(_names[by]||by):'';
       const canDel=isMgr()||(!!by&&by===CU.username&&normDate(r.date)===_bdToday);
-      return `<tr><td>${normDate(r.date)}</td><td>${r.cash?'$'+r.cash.toLocaleString():'-'}</td><td>${r.card?'$'+r.card.toLocaleString():'-'}</td><td>${r.twqr?'$'+r.twqr.toLocaleString():'-'}</td><td>${r.foodpanda?'$'+r.foodpanda.toLocaleString():'-'}</td><td>${r.ubereats?'$'+r.ubereats.toLocaleString():'-'}</td><td style="font-weight:600;color:var(--gold-light)">${r.total?'$'+r.total.toLocaleString():'-'}</td><td style="font-size:12px;color:var(--text-2)">${esc(byName)}</td><td>${canDel?`<button class="btn-sm btn-warn" onclick="delRevenue(${r._row},'${normDate(r.date)}')">刪</button>`:''}</td></tr>`;
+      return `<tr><td>${normDate(r.date)}</td><td>${r.cash?'$'+r.cash.toLocaleString():'-'}</td><td>${r.card?'$'+r.card.toLocaleString():'-'}</td><td>${r.twqr?'$'+r.twqr.toLocaleString():'-'}</td><td>${r.foodpanda?'$'+r.foodpanda.toLocaleString():'-'}</td><td>${r.ubereats?'$'+r.ubereats.toLocaleString():'-'}</td><td style="font-weight:600;color:var(--gold-light)">${r.total?'$'+r.total.toLocaleString():'-'}</td><td style="font-size:12px;color:var(--text-2)">${esc(byName)}</td><td>${canDel?`<button class="btn-sm btn-neutral" onclick="editRevenue(${r._row})">改</button> <button class="btn-sm btn-warn" onclick="delRevenue(${r._row},'${normDate(r.date)}')">刪</button>`:''}</td></tr>`;
     }).join('') || '<tr><td colspan="9" style="text-align:center;padding:30px;color:var(--text-3)">此區段無營收記錄</td></tr>';
   } else {
     $('trend-empty').style.display='block';
@@ -2640,7 +2705,7 @@ async function loadReports() {
     const purOk = purRes.status==='ok' || purRes.status==='success';
     _allRevData = revOk
       ? (revRes.rows
-          ? revRes.rows.slice(1).map((r,i)=>({date:r[0],cash:Number(r[2])||0,card:Number(r[3])||0,twqr:Number(r[4])||0,foodpanda:Number(r[5])||0,ubereats:Number(r[6])||0,total:Number(r[7])||0,cardFee:Number(r[8])||0,twqrFee:Number(r[9])||0,deliveryFee:Number(r[10])||0,filler:String(r[19]||''),_row:i+2}))
+          ? revRes.rows.slice(1).map((r,i)=>({date:r[0],note:String(r[1]||''),cash:Number(r[2])||0,card:Number(r[3])||0,twqr:Number(r[4])||0,foodpanda:Number(r[5])||0,ubereats:Number(r[6])||0,total:Number(r[7])||0,cardFee:Number(r[8])||0,twqrFee:Number(r[9])||0,deliveryFee:Number(r[10])||0,off:Number(r[12])||0,filler:String(r[19]||''),_row:i+2}))
           : (revRes.data||[]))
       : [];
     _allPurData = purOk
