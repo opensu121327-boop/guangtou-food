@@ -3101,7 +3101,16 @@ function saveCharLocal(c,u){try{localStorage.setItem(charKey(u),JSON.stringify(c
 function charDelta(user,dxp,dpoints,dtasks){
   if(!syncOn())return Promise.resolve(false);
   return kv('char_delta',{user:user,dxp:dxp||0,dpoints:dpoints||0,dtasks:dtasks||0,today:bizDay()})
-    .then(function(d){if(d&&d.status==='ok'&&typeof d.char==='string'){try{localStorage.setItem('rm_char_'+user,d.char);}catch(e){}return true;}return false;})
+    .then(function(d){
+      if(d&&d.status==='ok'&&typeof d.char==='string'){
+        // 只把「數值欄位」從伺服器權威值合併回本機，保留本機頭像/設定
+        try{var srv=JSON.parse(d.char)||{};var loc=JSON.parse(localStorage.getItem('rm_char_'+user)||'{}')||{};
+          ['xp','points','tasksDone','locked','unlockProg','lockChkDay'].forEach(function(k){loc[k]=srv[k];});
+          localStorage.setItem('rm_char_'+user,JSON.stringify(loc));}catch(e){}
+        return true;
+      }
+      return false;
+    })
     .catch(function(){return false;});
 }
 
