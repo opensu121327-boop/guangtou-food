@@ -2988,7 +2988,7 @@ function paintScene(idn){const el=$(idn);if(!el)return;const c=getChar();const l
 function updateScenes(){paintScene('dress-scene');paintScene('cc-scene');}
 // ── 排行榜 ──
 function recordName(u,name){if(!u||!name)return;const m=LS.get('rm_names',{})||{};if(m[u]!==name){m[u]=name;LS.set('rm_names',m);}}
-function leaderboard(){const out=[];const names=LS.get('rm_names',{})||{};for(let i=0;i<localStorage.length;i++){const k=localStorage.key(i);if(k&&k.indexOf('rm_char_')===0){const u=k.slice(8);if(u.indexOf('demo_')===0)continue;const c=normChar(LS.get(k,null));out.push({u,name:names[u]||u,xp:c.xp,points:c.points,lv:levelOf(c.xp),tasksDone:c.tasksDone,avatar:c.avatar});}}out.sort((a,b)=>b.xp-a.xp||b.points-a.points);return out;}
+function leaderboard(){const out=[];const names=LS.get('rm_names',{})||{};for(let i=0;i<localStorage.length;i++){const k=localStorage.key(i);if(k&&k.indexOf('rm_char_')===0){const u=k.slice(8);if(u.indexOf('demo_')===0||u.indexOf('__')===0)continue;const c=normChar(LS.get(k,null));out.push({u,name:names[u]||u,xp:c.xp,points:c.points,lv:levelOf(c.xp),tasksDone:c.tasksDone,avatar:c.avatar});}}out.sort((a,b)=>b.xp-a.xp||b.points-a.points);return out;}
 function renderLeaderboard(){
   renderPraiseChampion();
   const wrap=$('lb-list');if(!wrap)return;
