@@ -1766,7 +1766,7 @@ html,body,button,input,select,textarea,
 
 <script>
 // ── 自動更新：開啟時比對版本，有新版就自動重載（免無痕）──
-const APP_VER='20260723190000';
+const APP_VER='20260724120000';
 const GT_KEY='gtk_9F3xQ7Lz_pW2rM8kT';  // 後台共用密鑰（階段A：前端帶上；階段B：後台驗證）
 function checkVersion(){try{fetch('ver.txt?_='+Date.now(),{cache:'no-store'}).then(function(r){return r.ok?r.text():null;}).then(function(v){if(!v)return;v=v.trim();if(v&&v!==APP_VER&&location.search.indexOf('v='+v)<0){location.replace(location.pathname+'?v='+encodeURIComponent(v));}}).catch(function(){});}catch(e){}}
 checkVersion();
@@ -3094,9 +3094,20 @@ function normChar(c){c=c||{};const d=defAvatar();const a=c.avatar||{};
 }
 function getChar(u){return normChar(LS.get(charKey(u),null));}
 function saveChar(c,u){LS.set(charKey(u),c);}
+// 只寫本機、不推整包（樂觀更新用；權威值由伺服器 char_delta 回填）
+function saveCharLocal(c,u){try{localStorage.setItem(charKey(u),JSON.stringify(c));}catch(e){}}
+// 伺服器端「原子累加」rm_char_<user> 的 xp/points/tasksDone（含被鎖時的解鎖債轉換），
+// 避免跨裝置整包覆蓋造成點數遺失。成功→以伺服器權威值覆蓋本機並回傳 true；失敗→回傳 false（呼叫端回退整包寫入）。
+function charDelta(user,dxp,dpoints,dtasks){
+  if(!syncOn())return Promise.resolve(false);
+  return kv('char_delta',{user:user,dxp:dxp||0,dpoints:dpoints||0,dtasks:dtasks||0,today:bizDay()})
+    .then(function(d){if(d&&d.status==='ok'&&typeof d.char==='string'){try{localStorage.setItem('rm_char_'+user,d.char);}catch(e){}return true;}return false;})
+    .catch(function(){return false;});
+}
 
-// 給某員工加經驗值＋點數（裝備依等級即時推算，不需解鎖清單）
-function awardXp(username,amt){
+// 給某員工加經驗值＋點數（裝備依等級即時推算，不需解鎖清單）。tasksInc：完成任務件數增量（審核通過時+1）
+function awardXp(username,amt,tasksInc){
+  username=username||(CU&&CU.username);
   const c=getChar(username);
   const before=levelOf(c.xp);
   c.xp+=amt;
@@ -3107,8 +3118,17 @@ function awardXp(username,amt){
   }else{
     c.points+=amt;
   }
+  if(tasksInc)c.tasksDone=(c.tasksDone||0)+(tasksInc||0);
   const after=levelOf(c.xp);
-  saveChar(c,username);
+  if(syncOn()){
+    saveCharLocal(c,username);                         // 先樂觀更新本機（不推整包）
+    charDelta(username,amt,amt,tasksInc||0).then(function(ok){
+      if(!ok)saveChar(c,username);                     // 後台未支援/失敗 → 回退舊的整包寫入（安全）
+      else if(username===(CU&&CU.username))updateGameChip();
+    });
+  }else{
+    saveChar(c,username);
+  }
   return {before,after,leveledUp:after>before};
 }
 // 一次性全體解鎖（老闆指示）：清除既有鎖定與解鎖進度，並把追溯起點設為今天，避免立刻又被舊日子鎖回去。
@@ -4508,8 +4528,7 @@ function reviewSub(id,ok){
   s.status=ok?'approved':'rejected';s.reviewer=CU.name;if(s.photoKeys){s.photoKeys.forEach(k=>LS.set(k,''));s.photoKeys=[];}s.photo='';
   LS.set('rm_submissions',subs);
   if(ok){
-    const r=awardXp(s.user,s.xp);
-    const c=getChar(s.user);c.tasksDone=(c.tasksDone||0)+1;saveChar(c,s.user);
+    const r=awardXp(s.user,s.xp,1);   // +XP/+點數 並 tasksDone+1（原子累加，避免整包覆蓋）
     recordName(s.user,s.userName);
     toast(`✓ 已通過，給 ${s.userName} +${s.xp} XP`+(r.leveledUp?`（升級 Lv.${r.after}！）`:''),'gold');
   }else{toast('已退回該任務','red');}
@@ -4589,7 +4608,8 @@ function rwCheckout(){
   if(!lines.length){toast('購物車是空的','red');return;}
   const total=lines.reduce((a,l)=>a+l.r.cost*l.qty,0);
   if(c.points<total){toast('EXP 不足','red');return;}
-  c.points-=total;saveChar(c);
+  c.points-=total;
+  if(syncOn()){saveCharLocal(c);charDelta(CU.username,0,-total,0).then(function(ok){if(!ok)saveChar(c);else updateGameChip();});}else saveChar(c);
   const reds=LS.get('rm_redemptions',[]);
   lines.forEach(function(l,idx){
     const entry={id:'rd'+Date.now()+'_'+idx,rewardId:l.r.id,title:l.r.title+(l.qty>1?(' ×'+l.qty):''),cost:l.r.cost*l.qty,qty:l.qty,user:CU.username,userName:CU.name,status:'pending',ts:Date.now()};
@@ -4632,7 +4652,8 @@ function redeem(id){
   const rewards=LS.get('rm_rewards',[]);const r=rewards.find(x=>x.id===id);if(!r)return;
   const c=getChar();
   if(c.points<r.cost){toast('EXP 不足','red');return;}
-  c.points-=r.cost;saveChar(c);
+  c.points-=r.cost;
+  if(syncOn()){saveCharLocal(c);charDelta(CU.username,0,-r.cost,0).then(function(ok){if(!ok)saveChar(c);else updateGameChip();});}else saveChar(c);
   const reds=LS.get('rm_redemptions',[]);
   const entry={id:'rd'+Date.now(),rewardId:r.id,title:r.title,cost:r.cost,
     user:CU.username,userName:CU.name,status:'pending',ts:Date.now()};
