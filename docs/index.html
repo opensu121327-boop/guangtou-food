@@ -1768,7 +1768,7 @@ html,body,button,input,select,textarea,
 
 <script>
 // ── 自動更新：開啟時比對版本，有新版就自動重載（免無痕）──
-const APP_VER='20260724200000';
+const APP_VER='20260724210000';
 const GT_KEY='gtk_9F3xQ7Lz_pW2rM8kT';  // 後台共用密鑰（階段A：前端帶上；階段B：後台驗證）
 function checkVersion(){try{fetch('ver.txt?_='+Date.now(),{cache:'no-store'}).then(function(r){return r.ok?r.text():null;}).then(function(v){if(!v)return;v=v.trim();if(v&&v!==APP_VER&&location.search.indexOf('v='+v)<0){location.replace(location.pathname+'?v='+encodeURIComponent(v));}}).catch(function(){});}catch(e){}}
 checkVersion();
@@ -1796,9 +1796,9 @@ async function authApi(body){
 }
 // 查詢資料用 GET（營運後台 doGet 才處理 query_*）
 async function apiGet(type,params){
-  let q='?type='+encodeURIComponent(type);
-  if(params)for(const k in params){q+='&'+encodeURIComponent(k)+'='+encodeURIComponent(params[k]);}
-  const r=await fetch(GAS+q);
+  // 查詢改走「同步後台」（原營運後台已併入此支）；POST 並帶共用密鑰
+  const body=Object.assign({type:type,key:GT_KEY,auth:GT_KEY},params||{});
+  const r=await fetch(SYNC_URL,{method:'POST',body:JSON.stringify(body),headers:{'Content-Type':'text/plain'}});
   return r.json();
 }
 
