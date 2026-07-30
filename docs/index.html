@@ -1526,6 +1526,26 @@ html,body,button,input,select,textarea,
       </div>
     </div>
 
+    <!-- AUDIT TAB（老闆稽核） -->
+    <div class="tab-panel" id="tab-audit">
+      <div class="sec-header">
+        <div class="sec-title">稽核紀錄</div>
+        <div class="divider"></div>
+        <div class="sec-sub">點數異動與財務變更（老闆限定）</div>
+      </div>
+      <div class="c-card">
+        <div class="c-card-title">🎯 點數異動紀錄</div>
+        <div class="muted-note">每一筆加點/扣點都會留紀錄（誰・何時・多少・目前餘額）。留意異常大額或來路不明的加點。</div>
+        <div id="audit-pts"><div class="loading-state"><div class="spin"></div>載入中</div></div>
+      </div>
+      <div class="c-card">
+        <div class="c-card-title">📝 財務變更紀錄</div>
+        <div class="muted-note">每日結帳、進貨的「修改／刪除」紀錄（誰・何時・哪一筆）。</div>
+        <div id="audit-fin"><div class="loading-state"><div class="spin"></div>載入中</div></div>
+      </div>
+      <button class="refresh-btn" onclick="renderAudit()" style="margin-top:4px">↻ 重新載入</button>
+    </div>
+
     <!-- HOME TAB -->
     <div class="tab-panel" id="tab-home">
       <div class="c-card"><div class="home-stage" id="home-stage"></div></div>
@@ -1768,7 +1788,7 @@ html,body,button,input,select,textarea,
 
 <script>
 // ── 自動更新：開啟時比對版本，有新版就自動重載（免無痕）──
-const APP_VER='20260724230000';
+const APP_VER='20260730120000';
 const GT_KEY='gtk_9F3xQ7Lz_pW2rM8kT';  // 後台共用密鑰（階段A：前端帶上；階段B：後台驗證）
 function checkVersion(){try{fetch('ver.txt?_='+Date.now(),{cache:'no-store'}).then(function(r){return r.ok?r.text():null;}).then(function(v){if(!v)return;v=v.trim();if(v&&v!==APP_VER&&location.search.indexOf('v='+v)<0){location.replace(location.pathname+'?v='+encodeURIComponent(v));}}).catch(function(){});}catch(e){}}
 checkVersion();
@@ -1962,6 +1982,7 @@ function switchTab(name,btn) {
   if(name==='inventory')renderInventory();
   if(name==='bom'){renderBom();Promise.all([loadMaterials(),loadRecipeCosts()]).then(renderBom);}
   if(name==='accounts'){loadPending();loadAccounts();}
+  if(name==='audit')renderAudit();
   if(name==='expense')renderExpenseList();
   if(name==='tasks')renderTasks();
   if(name==='rewards')renderRewards();
@@ -2756,6 +2777,35 @@ async function approveUser(username) {
   }catch(e){toast('連線失敗','red');}
 }
 
+// ── 老闆稽核：點數異動 / 財務變更紀錄 ──
+function fmtLogTime(v){try{var d=new Date(v);if(isNaN(d))return String(v||'').substring(0,16);var p=function(n){return String(n).padStart(2,'0');};return (d.getMonth()+1)+'/'+d.getDate()+' '+p(d.getHours())+':'+p(d.getMinutes());}catch(e){return String(v||'');}}
+function renderAudit(){
+  if(!(CU&&CU.role==='BOSS'))return;
+  const names=LS.get('rm_names',{})||{};
+  const ptsBox=$('audit-pts'),finBox=$('audit-fin');
+  if(ptsBox)ptsBox.innerHTML='<div class="muted-note">載入中…</div>';
+  if(finBox)finBox.innerHTML='<div class="muted-note">載入中…</div>';
+  apiGet('query_ptlog').then(function(d){
+    if(!ptsBox)return;
+    const rows=(d&&d.rows)?d.rows.slice(1):[];
+    if(!rows.length){ptsBox.innerHTML='<div class="game-empty">尚無點數異動紀錄（部署後產生的異動才會記錄）</div>';return;}
+    ptsBox.innerHTML=rows.slice().reverse().slice(0,120).map(function(r){
+      const nm=names[String(r[1]||'')]||String(r[1]||'');const dp=Number(r[3])||0;const cur=Number(r[6])||0;const reason=String(r[7]||'');
+      const col=dp>=0?'#15803d':'#b91c1c';const sign=dp>=0?'+':'';
+      return '<div class="sub-row"><div style="flex:1;min-width:0"><div class="tc-title" style="font-size:14px">'+esc(nm)+' <span style="color:'+col+';font-weight:800">'+sign+dp+' 點</span></div><div class="xp-text">'+fmtLogTime(r[0])+(reason?' ・ '+esc(reason):'')+' ・ 餘額 '+cur+'</div></div></div>';
+    }).join('');
+  }).catch(function(){if(ptsBox)ptsBox.innerHTML='<div class="muted-note">載入失敗</div>';});
+  apiGet('query_finlog').then(function(d){
+    if(!finBox)return;
+    const rows=(d&&d.rows)?d.rows.slice(1):[];
+    if(!rows.length){finBox.innerHTML='<div class="game-empty">尚無財務變更紀錄</div>';return;}
+    finBox.innerHTML=rows.slice().reverse().slice(0,120).map(function(r){
+      const type=String(r[1]||'');const nm=names[String(r[2]||'')]||String(r[2]||'');const detail=String(r[5]||'');
+      const col=type.indexOf('刪除')>=0?'#b91c1c':'#b45309';
+      return '<div class="sub-row"><div style="flex:1;min-width:0"><div class="tc-title" style="font-size:14px"><span style="color:'+col+';font-weight:800">'+esc(type)+'</span> '+esc(detail)+'</div><div class="xp-text">'+fmtLogTime(r[0])+' ・ '+esc(nm)+'</div></div></div>';
+    }).join('');
+  }).catch(function(){if(finBox)finBox.innerHTML='<div class="muted-note">載入失敗</div>';});
+}
 async function loadAccounts() {
   $('acc-list').innerHTML='<div class="loading-state"><div class="spin"></div>載入中</div>';
   try{
@@ -2987,6 +3037,7 @@ const ALL_TABS=[
   {id:'character',icon:'🎮',label:'我的角色',roles:['BOSS','MGR','EMP']},
   {id:'bully',icon:'🛡️',label:'霸凌申訴',roles:['BOSS','MGR','EMP']},
   {id:'accounts',icon:'👥',label:'帳號管理',roles:['BOSS']},
+  {id:'audit',icon:'🔍',label:'稽核紀錄',roles:['BOSS']},
 ];
 function getParts(){
   const u=LS.get('rm_parts',{})||{};const o={};
