@@ -1526,6 +1526,17 @@ html,body,button,input,select,textarea,
       </div>
     </div>
 
+    <!-- BULLETIN TAB（佈告欄・每日營運看板） -->
+    <div class="tab-panel" id="tab-bulletin">
+      <div class="sec-header">
+        <div class="sec-title">佈告欄</div>
+        <div class="divider"></div>
+        <div class="sec-sub">最近 10 天每日營運總覽</div>
+        <button class="refresh-btn" onclick="renderBulletin()" style="margin-left:auto">↻ 重新載入</button>
+      </div>
+      <div id="bulletin-wrap"><div class="loading-state"><div class="spin"></div>載入中</div></div>
+    </div>
+
     <!-- AUDIT TAB（老闆稽核） -->
     <div class="tab-panel" id="tab-audit">
       <div class="sec-header">
@@ -1788,7 +1799,7 @@ html,body,button,input,select,textarea,
 
 <script>
 // ── 自動更新：開啟時比對版本，有新版就自動重載（免無痕）──
-const APP_VER='20260731120000';
+const APP_VER='20260731130000';
 const GT_KEY='gtk_9F3xQ7Lz_pW2rM8kT';  // 後台共用密鑰（階段A：前端帶上；階段B：後台驗證）
 function checkVersion(){try{fetch('ver.txt?_='+Date.now(),{cache:'no-store'}).then(function(r){return r.ok?r.text():null;}).then(function(v){if(!v)return;v=v.trim();if(v&&v!==APP_VER&&location.search.indexOf('v='+v)<0){location.replace(location.pathname+'?v='+encodeURIComponent(v));}}).catch(function(){});}catch(e){}}
 checkVersion();
@@ -1983,6 +1994,7 @@ function switchTab(name,btn) {
   if(name==='bom'){renderBom();Promise.all([loadMaterials(),loadRecipeCosts()]).then(renderBom);}
   if(name==='accounts'){loadPending();loadAccounts();}
   if(name==='audit')renderAudit();
+  if(name==='bulletin')renderBulletin();
   if(name==='expense')renderExpenseList();
   if(name==='tasks')renderTasks();
   if(name==='rewards')renderRewards();
@@ -2777,6 +2789,67 @@ async function approveUser(username) {
   }catch(e){toast('連線失敗','red');}
 }
 
+// ── 佈告欄：最近10天每日營運總覽（財務只給老闆/店長；資料由現有查詢彙整）──
+function bWeekday(D){try{var p=String(D).split('-');return ['日','一','二','三','四','五','六'][new Date(+p[0],+p[1]-1,+p[2]).getDay()];}catch(e){return '';}}
+function bLine(label,val,col){return '<div style="display:flex;justify-content:space-between;gap:12px;padding:6px 0;border-bottom:1px solid rgba(43,21,25,.06);font-size:13.5px"><span style="color:var(--text-2);flex:none">'+label+'</span><b style="text-align:right;min-width:0;word-break:break-word'+(col?';color:'+col:'')+'">'+val+'</b></div>';}
+async function renderBulletin(){
+  const wrap=$('bulletin-wrap');if(!wrap)return;
+  wrap.innerHTML='<div class="loading-state"><div class="spin"></div>載入中</div>';
+  const mgr=isMgr();
+  const names=LS.get('rm_names',{})||{};
+  const roster=LS.get('rm_roster',{})||{};
+  const dtasks=(LS.get('rm_tasks',[])||[]).map(normTask).filter(t=>t.cat==='daily');
+  const subs=LS.get('rm_submissions',[])||[];
+  const items=LS.get('rm_inv_items',[])||[];
+  const days=[];{let d=bizDay();for(let i=0;i<10;i++){days.push(d);d=dayShift(d,-1);}}
+  let revRows=[],purRows=[],hoRows=[],saRows=[],invRows=[];
+  function q(type){return authApi({type:type}).then(function(d){return (d&&d.rows)?d.rows:[];}).catch(function(){return [];});}
+  const jobs=[];
+  if(mgr){jobs.push(q('query_revenue').then(function(r){revRows=r;}));jobs.push(q('query_purchase').then(function(r){purRows=r;}));}
+  jobs.push(q('query_handover').then(function(r){hoRows=r;}));
+  jobs.push(q('query_sales').then(function(r){saRows=r;}));
+  jobs.push(q('query_inv').then(function(r){invRows=r;}));
+  await Promise.all(jobs);
+  function grp(rows,dc){var m={};(rows||[]).slice(1).forEach(function(r){var d=normDate(r[dc]);(m[d]=m[d]||[]).push(r);});return m;}
+  const revBy=grp(revRows,0),purBy=grp(purRows,0),hoBy=grp(hoRows,1),saBy=grp(saRows,0);
+  const invBy={};(invRows||[]).slice(1).forEach(function(r){var d=normDate(r[0]);(invBy[d]=invBy[d]||{})[String(r[1]||'')]=1;});
+  const cards=days.map(function(D){
+    const isToday=(D===bizDay());const warn=[];
+    const ros=(roster[D]||[]);const rosNames=ros.map(function(u){return esc(names[u]||u);}).join('、');
+    if(!ros.length)warn.push('未設定上班人員');
+    const taskN=dtasks.filter(function(t){return subs.some(function(s){return s.taskId===t.id&&s.status!=='rejected'&&bizDay(s.ts)===D;});}).length;const taskTotal=dtasks.length;
+    if(taskTotal>0&&taskN<taskTotal)warn.push('每日任務未完成 '+taskN+'/'+taskTotal);
+    let invTxt;
+    if(isInvDay(D)){const cnt=invBy[D]||{};const doneN=items.filter(function(it){return cnt[it.id];}).length;invTxt=doneN+'/'+items.length+' 項';if(items.length>0&&doneN<items.length)warn.push('盤點未完成');}
+    else invTxt='非盤點日';
+    const ho=(hoBy[D]||[]);const hoTxt=ho.length?('有（'+ho.map(function(r){return esc(names[String(r[8]||'')]||String(r[2]||''));}).join('、')+'）'):'無';
+    if(!ho.length&&!isToday)warn.push('無交接表');
+    const sa=(saBy[D]||[])[0];let saTxt='';
+    if(sa){const best=[sa[3],sa[4],sa[5],sa[6],sa[7]].filter(function(x){return x&&String(x).trim();}).map(esc);const worst=[sa[8],sa[9],sa[10],sa[11],sa[12]].filter(function(x){return x&&String(x).trim();}).map(esc);saTxt=(best.length?'👍 '+best.join('、'):'')+(worst.length?'　👎 '+worst.join('、'):'');}
+    let finHtml='';
+    if(mgr){
+      const rev=(revBy[D]||[]);const revTotal=rev.reduce(function(a,r){return a+(Number(r[7])||0);},0);
+      const fee=rev.reduce(function(a,r){return a+(Number(r[8])||0)+(Number(r[9])||0)+(Number(r[10])||0);},0);
+      const pur=(purBy[D]||[]).filter(function(r){return String(r[2]||'').indexOf('員工')!==0;});
+      const purTotal=pur.reduce(function(a,r){return a+(Number(r[6])||0);},0);
+      const gross=Math.round(revTotal-fee-purTotal);
+      if(revTotal===0&&!isToday)warn.push('無營業額紀錄');
+      finHtml=bLine('💰 營業額','$'+Math.round(revTotal).toLocaleString(),'#800020')
+        +bLine('📦 進貨成本','$'+Math.round(purTotal).toLocaleString()+'（'+pur.length+'筆）')
+        +bLine('毛利（營收−手續費−進貨）','$'+gross.toLocaleString(),gross>=0?'#15803d':'#b91c1c');
+    }
+    const warnHtml=warn.length?('<div style="background:#fff7ed;border-left:4px solid #f97316;border-radius:8px;padding:8px 10px;margin-top:8px;color:#9a3412;font-size:12.5px;font-weight:600">⚠️ '+warn.map(esc).join('　・　')+'</div>'):'';
+    return '<div class="c-card"><div class="c-card-title">'+D+'（週'+bWeekday(D)+'）'+(isToday?' <span style="color:#ff6a1a">・今日</span>':'')+'</div>'
+      +finHtml
+      +bLine('🧑‍🍳 上班人員',rosNames||'—')
+      +bLine('✅ 每日任務',taskTotal?taskN+'/'+taskTotal:'未設定',(taskTotal>0&&taskN>=taskTotal)?'#15803d':'#b45309')
+      +bLine('🧾 盤點',invTxt)
+      +bLine('📋 交接表',hoTxt)
+      +(saTxt?bLine('🏆 賣最好/最差',saTxt):'')
+      +warnHtml+'</div>';
+  });
+  wrap.innerHTML=cards.join('')||'<div class="game-empty">尚無資料</div>';
+}
 // ── 老闆稽核：點數異動 / 財務變更紀錄 ──
 function fmtLogTime(v){try{var d=new Date(v);if(isNaN(d))return String(v||'').substring(0,16);var p=function(n){return String(n).padStart(2,'0');};return (d.getMonth()+1)+'/'+d.getDate()+' '+p(d.getHours())+':'+p(d.getMinutes());}catch(e){return String(v||'');}}
 function renderAudit(){
@@ -3023,6 +3096,7 @@ function defAvatar(){const P=getParts();const first=cat=>{const a=P[cat]||[];con
 // 全部分頁（首頁置頂，員工登入第一眼）
 const ALL_TABS=[
   {id:'home',icon:'🏠',label:'首頁',roles:['BOSS','MGR','EMP']},
+  {id:'bulletin',icon:'📋',label:'佈告欄',roles:['BOSS','MGR','EMP']},
   {id:'revenue',icon:'💳',label:'每日結帳',roles:['BOSS','MGR','EMP']},
   {id:'purchase',icon:'📦',label:'進貨記錄',roles:['BOSS','MGR','EMP']},
   {id:'inventory',icon:'🧾',label:'每日食材盤點',roles:['BOSS','MGR','EMP']},
