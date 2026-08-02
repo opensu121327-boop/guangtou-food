@@ -1283,6 +1283,16 @@ html,body,button,input,select,textarea,
         <div id="rv-editbar" style="display:none;color:#800020;font-weight:700;margin-bottom:8px;font-size:13px"></div>
         <button class="btn-action" id="rv-submit" onclick="submitRev()">✓ 確認送出</button>
       </div>
+      <div class="c-card" id="fee-settings" style="display:none">
+        <div class="c-card-title">⚙️ 手續費費率設定</div>
+        <div style="font-size:12.5px;color:#9a6a4a;line-height:1.6;margin-bottom:12px">費率變動時可在這裡調整。<b>只影響之後新增的結帳</b>，已存的歷史紀錄費率不會被改動。</div>
+        <div class="grid-3" style="margin-bottom:14px">
+          <div class="form-group"><label class="form-label">刷卡手續費 (%)</label><input class="form-input" id="fee-card" type="number" min="0" step="0.01" placeholder="1.5"></div>
+          <div class="form-group"><label class="form-label">TWQR手續費 (%)</label><input class="form-input" id="fee-twqr" type="number" min="0" step="0.01" placeholder="0.6"></div>
+          <div class="form-group"><label class="form-label">外送手續費 (%)</label><input class="form-input" id="fee-delivery" type="number" min="0" step="0.01" placeholder="30"></div>
+        </div>
+        <button class="btn-action" onclick="saveFeeRates()">✓ 儲存費率</button>
+      </div>
     </div>
 
     <!-- PURCHASE TAB -->
@@ -1799,7 +1809,7 @@ html,body,button,input,select,textarea,
 
 <script>
 // ── 自動更新：開啟時比對版本，有新版就自動重載（免無痕）──
-const APP_VER='20260801150000';
+const APP_VER='20260801160000';
 const GT_KEY='gtk_9F3xQ7Lz_pW2rM8kT';  // 後台共用密鑰（階段A：前端帶上；階段B：後台驗證）
 function checkVersion(){try{fetch('ver.txt?_='+Date.now(),{cache:'no-store'}).then(function(r){return r.ok?r.text():null;}).then(function(v){if(!v)return;v=v.trim();if(v&&v!==APP_VER&&location.search.indexOf('v='+v)<0){location.replace(location.pathname+'?v='+encodeURIComponent(v));}}).catch(function(){});}catch(e){}}
 checkVersion();
@@ -1974,6 +1984,7 @@ function initApp() {
   if($('rv-date'))$('rv-date').value=today;
   if($('pu-date'))$('pu-date').value=today;
   if($('ex-date'))$('ex-date').value=today;
+  initFeeCard();
 
   // load data
   if(tabs.some(t=>t.id==='reports')) loadReports();
@@ -1994,6 +2005,7 @@ function switchTab(name,btn) {
   if(name==='bom'){renderBom();Promise.all([loadMaterials(),loadRecipeCosts()]).then(renderBom);}
   if(name==='accounts'){loadPending();loadAccounts();}
   if(name==='audit')renderAudit();
+  if(name==='revenue')initFeeCard();
   if(name==='bulletin')renderBulletin();
   if(name==='expense')renderExpenseList();
   if(name==='tasks')renderTasks();
@@ -2101,14 +2113,44 @@ const EMOJI_ALIAS={'🧻':'clean','🧹':'clean','🧊':'clean','🗑️':'clean
 function cicon(v){if(!v)return '';if(CICONS[v])return '<span class="cico">'+CICONS[v]+'</span>';if(EMOJI_ALIAS[v])return '<span class="cico">'+CICONS[EMOJI_ALIAS[v]]+'</span>';return '<span class="cico-emoji">'+v+'</span>';}
 const CICON_OPTS='<option value="check">完成 / 打勾</option><option value="clean">清潔 / 整理</option><option value="food">餐點 / 出餐</option><option value="star">好評 / 亮點</option><option value="gift">禮物 / 獎勵</option><option value="cash">現金 / 獎金</option><option value="trophy">獎盃 / 大獎</option>';
 
+// ── 手續費費率（可調整，變動時老闆在結帳頁設定）──
+const FEE_DEFAULT={card:1.5,twqr:0.6,delivery:30};   // 百分比：刷卡1.5%、TWQR0.6%、外送30%
+function feePct(){   // 回傳百分比物件（給設定表單顯示用）
+  const d=LS.get('rm_fee_rates',null);
+  const r=(d&&typeof d==='object')?d:{};
+  const num=(x,def)=>{const n=parseFloat(x);return isFinite(n)&&n>=0?n:def;};
+  return {card:num(r.card,FEE_DEFAULT.card),twqr:num(r.twqr,FEE_DEFAULT.twqr),delivery:num(r.delivery,FEE_DEFAULT.delivery)};
+}
+function feeRates(){const p=feePct();return {card:p.card/100,twqr:p.twqr/100,delivery:p.delivery/100};}   // 小數，給計算用
+function initFeeCard(){   // 顯示（僅老闆）並填入目前費率
+  const card=$('fee-settings');if(!card)return;
+  if(!(CU&&CU.role==='BOSS')){card.style.display='none';return;}
+  card.style.display='';
+  const p=feePct();
+  if($('fee-card'))$('fee-card').value=p.card;
+  if($('fee-twqr'))$('fee-twqr').value=p.twqr;
+  if($('fee-delivery'))$('fee-delivery').value=p.delivery;
+}
+function saveFeeRates(){
+  if(!(CU&&CU.role==='BOSS')){toast('僅老闆可設定','red');return;}
+  const g=id=>{const n=parseFloat($(id)?$(id).value:'');return n;};
+  const c=g('fee-card'),q=g('fee-twqr'),d=g('fee-delivery');
+  if(![c,q,d].every(x=>isFinite(x)&&x>=0)){toast('費率請填 0 或以上的數字','red');return;}
+  LS.set('rm_fee_rates',{card:c,twqr:q,delivery:d});
+  if(typeof cloudPush==='function')cloudPush();
+  toast('✓ 費率已更新（僅影響之後新增的結帳）','gold');
+  calcRev();
+}
+
 // ── REVENUE CALC ──
 function calcRev() {
   const v=n=>parseFloat($(n)?.value||0)||0;
   const cash=v('rv-cash'),card=v('rv-card'),twqr=v('rv-twqr'),fp=v('rv-fp'),ue=v('rv-ue'),off=v('rv-off');
   const total=cash+card+twqr+fp+ue+off;
-  const cFee=Math.round(card*0.015);
-  const qFee=Math.round(twqr*0.006);
-  const dFee=Math.round((fp+ue)*0.3);
+  const _fr=feeRates();
+  const cFee=Math.round(card*_fr.card);
+  const qFee=Math.round(twqr*_fr.twqr);
+  const dFee=Math.round((fp+ue)*_fr.delivery);
   $('t-total').textContent='$'+total.toLocaleString();
   $('t-cfee').textContent='$'+cFee.toLocaleString();
   $('t-qfee').textContent='$'+qFee.toLocaleString();
@@ -2121,9 +2163,10 @@ async function submitRev() {
   if(!date){toast('請選擇日期','red');return}
   const cash=v('rv-cash'),card=v('rv-card'),twqr=v('rv-twqr'),fp=v('rv-fp'),ue=v('rv-ue'),off=v('rv-off');
   const total=cash+card+twqr+fp+ue+off;
+  const _fr=feeRates();
   const row={date,note:$('rv-note').value,cash,card,twqr,foodpanda:fp,ubereats:ue,total,
-    cardFee:Math.round(card*0.015),twqrFee:Math.round(twqr*0.006),
-    deliveryFee:Math.round((fp+ue)*0.3),platformRemittance:0,offRecord:off,
+    cardFee:Math.round(card*_fr.card),twqrFee:Math.round(twqr*_fr.twqr),
+    deliveryFee:Math.round((fp+ue)*_fr.delivery),platformRemittance:0,offRecord:off,
     filler:(CU&&CU.username)||''};
   if(window._rvEdit){   // 編輯模式：原地更新該列
     const ed=window._rvEdit;
