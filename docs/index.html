@@ -1283,16 +1283,6 @@ html,body,button,input,select,textarea,
         <div id="rv-editbar" style="display:none;color:#800020;font-weight:700;margin-bottom:8px;font-size:13px"></div>
         <button class="btn-action" id="rv-submit" onclick="submitRev()">✓ 確認送出</button>
       </div>
-      <div class="c-card" id="fee-settings" style="display:none">
-        <div class="c-card-title">⚙️ 手續費費率設定</div>
-        <div style="font-size:12.5px;color:#9a6a4a;line-height:1.6;margin-bottom:12px">費率變動時可在這裡調整。<b>只影響之後新增的結帳</b>，已存的歷史紀錄費率不會被改動。</div>
-        <div class="grid-3" style="margin-bottom:14px">
-          <div class="form-group"><label class="form-label">刷卡手續費 (%)</label><input class="form-input" id="fee-card" type="number" min="0" step="0.01" placeholder="1.5"></div>
-          <div class="form-group"><label class="form-label">TWQR手續費 (%)</label><input class="form-input" id="fee-twqr" type="number" min="0" step="0.01" placeholder="0.6"></div>
-          <div class="form-group"><label class="form-label">外送手續費 (%)</label><input class="form-input" id="fee-delivery" type="number" min="0" step="0.01" placeholder="30"></div>
-        </div>
-        <button class="btn-action" onclick="saveFeeRates()">✓ 儲存費率</button>
-      </div>
     </div>
 
     <!-- PURCHASE TAB -->
@@ -1567,6 +1557,36 @@ html,body,button,input,select,textarea,
       <button class="refresh-btn" onclick="renderAudit()" style="margin-top:4px">↻ 重新載入</button>
     </div>
 
+    <!-- SETTINGS TAB（制度設定・老闆限定）-->
+    <div class="tab-panel" id="tab-settings">
+      <div class="sec-header">
+        <div class="sec-title">制度設定</div>
+        <div class="divider"></div>
+        <div class="sec-sub">獎勵制度參數（老闆限定・隨時可改）</div>
+      </div>
+      <div class="c-card">
+        <div class="c-card-title">💳 手續費率</div>
+        <div style="font-size:12.5px;color:#9a6a4a;line-height:1.6;margin-bottom:12px">只影響<b>之後新增</b>的結帳，已存的歷史紀錄不會被改動。</div>
+        <div class="grid-3">
+          <div class="form-group"><label class="form-label">刷卡 (%)</label><input class="form-input" id="set-fee-card" type="number" min="0" step="0.01" placeholder="2.2"></div>
+          <div class="form-group"><label class="form-label">TWQR (%)</label><input class="form-input" id="set-fee-twqr" type="number" min="0" step="0.01" placeholder="2.2"></div>
+          <div class="form-group"><label class="form-label">外送 (%)</label><input class="form-input" id="set-fee-delivery" type="number" min="0" step="0.01" placeholder="31"></div>
+        </div>
+      </div>
+      <div class="c-card">
+        <div class="c-card-title">🎁 獎勵制度參數</div>
+        <div class="grid-2">
+          <div class="form-group"><label class="form-label">基礎時薪（元）</label><input class="form-input" id="set-wage" type="number" min="0" step="1" placeholder="196"></div>
+          <div class="form-group"><label class="form-label">月分潤比例（%）</label><input class="form-input" id="set-pool" type="number" min="0" step="0.5" placeholder="20"></div>
+          <div class="form-group"><label class="form-label">違規每次扣（%）</label><input class="form-input" id="set-penalty" type="number" min="0" step="0.5" placeholder="1"></div>
+          <div class="form-group"><label class="form-label">月固定成本（元）</label><input class="form-input" id="set-fixed" type="number" min="0" step="100" placeholder="0"></div>
+        </div>
+        <div style="font-size:12px;color:#9a6a4a;line-height:1.6;margin-top:8px">月固定成本＝房租＋固定底薪＋水電雜支，用來估算當月淨利與分潤池。</div>
+      </div>
+      <button class="btn-action" onclick="saveRewardCfg()">✓ 儲存制度設定</button>
+      <div class="muted-note" style="margin-top:10px">※ 加分行為點數、成長樹里程碑會在後續階段加入本頁一起管理。</div>
+    </div>
+
     <!-- HOME TAB -->
     <div class="tab-panel" id="tab-home">
       <div class="c-card"><div class="home-stage" id="home-stage"></div></div>
@@ -1809,7 +1829,7 @@ html,body,button,input,select,textarea,
 
 <script>
 // ── 自動更新：開啟時比對版本，有新版就自動重載（免無痕）──
-const APP_VER='20260801160000';
+const APP_VER='20260803100000';
 const GT_KEY='gtk_9F3xQ7Lz_pW2rM8kT';  // 後台共用密鑰（階段A：前端帶上；階段B：後台驗證）
 function checkVersion(){try{fetch('ver.txt?_='+Date.now(),{cache:'no-store'}).then(function(r){return r.ok?r.text():null;}).then(function(v){if(!v)return;v=v.trim();if(v&&v!==APP_VER&&location.search.indexOf('v='+v)<0){location.replace(location.pathname+'?v='+encodeURIComponent(v));}}).catch(function(){});}catch(e){}}
 checkVersion();
@@ -1984,7 +2004,6 @@ function initApp() {
   if($('rv-date'))$('rv-date').value=today;
   if($('pu-date'))$('pu-date').value=today;
   if($('ex-date'))$('ex-date').value=today;
-  initFeeCard();
 
   // load data
   if(tabs.some(t=>t.id==='reports')) loadReports();
@@ -2005,7 +2024,7 @@ function switchTab(name,btn) {
   if(name==='bom'){renderBom();Promise.all([loadMaterials(),loadRecipeCosts()]).then(renderBom);}
   if(name==='accounts'){loadPending();loadAccounts();}
   if(name==='audit')renderAudit();
-  if(name==='revenue')initFeeCard();
+  if(name==='settings')renderSettings();
   if(name==='bulletin')renderBulletin();
   if(name==='expense')renderExpenseList();
   if(name==='tasks')renderTasks();
@@ -2055,7 +2074,8 @@ const ICONS={
   accounts:_svg('<circle cx="9" cy="9" r="3.2"/><path d="M3.5 19a5.5 5.5 0 0111 0"/><path d="M16 6.2a3.2 3.2 0 010 5.6M15.5 19a5.5 5.5 0 015.5-5.5"/>'),
   bully:_svg('<path d="M12 3l7 2.6v5.2c0 4.4-3 7.6-7 9.2-4-1.6-7-4.8-7-9.2V5.6z"/><path d="M12 8.5v4M12 15.2v.1"/>'),
   bulletin:_svg('<path d="M4 10v4l4 .6 3 4h2V5.4l-3 4L4 10z"/><path d="M16 9a4 4 0 010 6"/>'),
-  audit:_svg('<circle cx="10.5" cy="10.5" r="6"/><path d="M15 15l5 5"/>')
+  audit:_svg('<circle cx="10.5" cy="10.5" r="6"/><path d="M15 15l5 5"/>'),
+  settings:_svg('<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.6 1.6 0 00.3 1.8l.1.1a2 2 0 11-2.8 2.8l-.1-.1a1.6 1.6 0 00-2.7 1.1V21a2 2 0 11-4 0v-.1A1.6 1.6 0 006 19.4l-.1.1a2 2 0 11-2.8-2.8l.1-.1A1.6 1.6 0 003 15a2 2 0 010-4 1.6 1.6 0 001.5-2.6l-.1-.1a2 2 0 112.8-2.8l.1.1A1.6 1.6 0 009 3.6V3a2 2 0 014 0v.1A1.6 1.6 0 0018 4.6l.1-.1a2 2 0 112.8 2.8l-.1.1A1.6 1.6 0 0021 11a2 2 0 010 4z"/>')
 };
 function tabIcon(id){return ICONS[id]||'';}
 // 🎨 卡片標題 emoji → 線條圖示 自動替換（全 App 分頁內小圖統一風格）
@@ -2114,32 +2134,39 @@ function cicon(v){if(!v)return '';if(CICONS[v])return '<span class="cico">'+CICO
 const CICON_OPTS='<option value="check">完成 / 打勾</option><option value="clean">清潔 / 整理</option><option value="food">餐點 / 出餐</option><option value="star">好評 / 亮點</option><option value="gift">禮物 / 獎勵</option><option value="cash">現金 / 獎金</option><option value="trophy">獎盃 / 大獎</option>';
 
 // ── 手續費費率（可調整，變動時老闆在結帳頁設定）──
-const FEE_DEFAULT={card:1.5,twqr:0.6,delivery:30};   // 百分比：刷卡1.5%、TWQR0.6%、外送30%
-function feePct(){   // 回傳百分比物件（給設定表單顯示用）
-  const d=LS.get('rm_fee_rates',null);
-  const r=(d&&typeof d==='object')?d:{};
+// ── 制度設定（獎勵制度所有參數，老闆可改；單一設定物件 rm_reward_cfg）──
+const REWARD_DEFAULT={baseWage:196,poolPct:20,penaltyPct:1,fixedCost:0,fee:{card:2.2,twqr:2.2,delivery:31}};  // 費率校正為真實 2.2/2.2/31
+function rewardCfg(){
   const num=(x,def)=>{const n=parseFloat(x);return isFinite(n)&&n>=0?n:def;};
-  return {card:num(r.card,FEE_DEFAULT.card),twqr:num(r.twqr,FEE_DEFAULT.twqr),delivery:num(r.delivery,FEE_DEFAULT.delivery)};
+  const d=LS.get('rm_reward_cfg',null); const c=(d&&typeof d==='object')?d:{};
+  const f=(c.fee&&typeof c.fee==='object')?c.fee:{};
+  const lg=LS.get('rm_fee_rates',null); const lf=(lg&&typeof lg==='object')?lg:{};   // 相容舊費率鍵
+  return {
+    baseWage:num(c.baseWage,REWARD_DEFAULT.baseWage),
+    poolPct:num(c.poolPct,REWARD_DEFAULT.poolPct),
+    penaltyPct:num(c.penaltyPct,REWARD_DEFAULT.penaltyPct),
+    fixedCost:num(c.fixedCost,REWARD_DEFAULT.fixedCost),
+    fee:{card:num(f.card,num(lf.card,REWARD_DEFAULT.fee.card)),twqr:num(f.twqr,num(lf.twqr,REWARD_DEFAULT.fee.twqr)),delivery:num(f.delivery,num(lf.delivery,REWARD_DEFAULT.fee.delivery))}
+  };
 }
-function feeRates(){const p=feePct();return {card:p.card/100,twqr:p.twqr/100,delivery:p.delivery/100};}   // 小數，給計算用
-function initFeeCard(){   // 顯示（僅老闆）並填入目前費率
-  const card=$('fee-settings');if(!card)return;
-  if(!(CU&&CU.role==='BOSS')){card.style.display='none';return;}
-  card.style.display='';
-  const p=feePct();
-  if($('fee-card'))$('fee-card').value=p.card;
-  if($('fee-twqr'))$('fee-twqr').value=p.twqr;
-  if($('fee-delivery'))$('fee-delivery').value=p.delivery;
+function feePct(){return rewardCfg().fee;}                 // 百分比（顯示用）
+function feeRates(){const p=feePct();return {card:p.card/100,twqr:p.twqr/100,delivery:p.delivery/100};}   // 小數（計算用）
+function renderSettings(){   // 制度設定頁：填入目前值（僅老闆）
+  if(!(CU&&CU.role==='BOSS'))return;
+  const c=rewardCfg(); const set=(id,v)=>{if($(id))$(id).value=v;};
+  set('set-wage',c.baseWage);set('set-pool',c.poolPct);set('set-penalty',c.penaltyPct);set('set-fixed',c.fixedCost);
+  set('set-fee-card',c.fee.card);set('set-fee-twqr',c.fee.twqr);set('set-fee-delivery',c.fee.delivery);
 }
-function saveFeeRates(){
+function saveRewardCfg(){
   if(!(CU&&CU.role==='BOSS')){toast('僅老闆可設定','red');return;}
-  const g=id=>{const n=parseFloat($(id)?$(id).value:'');return n;};
-  const c=g('fee-card'),q=g('fee-twqr'),d=g('fee-delivery');
-  if(![c,q,d].every(x=>isFinite(x)&&x>=0)){toast('費率請填 0 或以上的數字','red');return;}
-  LS.set('rm_fee_rates',{card:c,twqr:q,delivery:d});
+  const g=id=>parseFloat($(id)?$(id).value:'');
+  const wage=g('set-wage'),pool=g('set-pool'),pen=g('set-penalty'),fixed=g('set-fixed'),fc=g('set-fee-card'),ft=g('set-fee-twqr'),fd=g('set-fee-delivery');
+  if(![wage,pool,pen,fixed,fc,ft,fd].every(x=>isFinite(x)&&x>=0)){toast('所有欄位請填 0 或以上的數字','red');return;}
+  LS.set('rm_reward_cfg',{baseWage:wage,poolPct:pool,penaltyPct:pen,fixedCost:fixed,fee:{card:fc,twqr:ft,delivery:fd}});
+  LS.set('rm_fee_rates',{card:fc,twqr:ft,delivery:fd});   // 同步舊鍵，維持相容
   if(typeof cloudPush==='function')cloudPush();
-  toast('✓ 費率已更新（僅影響之後新增的結帳）','gold');
-  calcRev();
+  toast('✓ 制度設定已更新','gold');
+  if(typeof calcRev==='function')calcRev();
 }
 
 // ── REVENUE CALC ──
@@ -3171,6 +3198,7 @@ const ALL_TABS=[
   {id:'bully',icon:'🛡️',label:'霸凌申訴',roles:['BOSS','MGR','EMP']},
   {id:'accounts',icon:'👥',label:'帳號管理',roles:['BOSS']},
   {id:'audit',icon:'🔍',label:'稽核紀錄',roles:['BOSS']},
+  {id:'settings',icon:'⚙️',label:'制度設定',roles:['BOSS']},
 ];
 function getParts(){
   const u=LS.get('rm_parts',{})||{};const o={};
