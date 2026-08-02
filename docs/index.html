@@ -1370,18 +1370,6 @@ html,body,button,input,select,textarea,
         <button class="refresh-btn" onclick="loadReports()" style="margin-left:auto">↻ 重新整理</button>
       </div>
 
-      <!-- 創辦成本攤提（老闆限定）-->
-      <div class="c-card" id="founding-card" style="display:none;margin-bottom:16px">
-        <div class="c-card-title">🏦 創辦成本攤提（老闆限定）</div>
-        <div class="muted-note" style="margin:2px 0 10px">輸入前期創辦金額與預計攤提年份，系統會把每日攤提自動計入下方報表淨利。</div>
-        <div class="form-row">
-          <div class="form-group"><label class="form-label">前期創辦金額（$）</label><input class="form-input" id="fnd-amount" type="number" min="0" inputmode="numeric" placeholder="例：2000000"></div>
-          <div class="form-group"><label class="form-label">預計攤提年份</label><input class="form-input" id="fnd-years" type="number" min="0" step="0.5" inputmode="decimal" placeholder="例：5"></div>
-        </div>
-        <button class="btn-action" onclick="saveFounding()">儲存</button>
-        <div id="fnd-out" class="muted-note" style="margin-top:10px"></div>
-      </div>
-
       <!-- Time Range Selector -->
       <div id="report-range-bar" style="display:flex;align-items:center;gap:10px;margin-bottom:18px;flex-wrap:wrap">
         <span style="font-size:12px;color:var(--text-3);letter-spacing:.06em;white-space:nowrap">時間區段</span>
@@ -1848,7 +1836,7 @@ html,body,button,input,select,textarea,
 
 <script>
 // ── 自動更新：開啟時比對版本，有新版就自動重載（免無痕）──
-const APP_VER='20260803120000';
+const APP_VER='20260803130000';
 const GT_KEY='gtk_9F3xQ7Lz_pW2rM8kT';  // 後台共用密鑰（階段A：前端帶上；階段B：後台驗證）
 function checkVersion(){try{fetch('ver.txt?_='+Date.now(),{cache:'no-store'}).then(function(r){return r.ok?r.text():null;}).then(function(v){if(!v)return;v=v.trim();if(v&&v!==APP_VER&&location.search.indexOf('v='+v)<0){location.replace(location.pathname+'?v='+encodeURIComponent(v));}}).catch(function(){});}catch(e){}}
 checkVersion();
@@ -2527,34 +2515,10 @@ function filterByRange(rows) {
   });
 }
 
-// ── 創辦成本攤提（老闆限定）──
-function foundingCfg(){const c=LS.get('rm_founding',{})||{};return {amount:Math.max(0,Number(c.amount)||0),years:Math.max(0,Number(c.years)||0)};}
-function foundingDaily(){const c=foundingCfg();return c.years>0?c.amount/(c.years*365):0;}
-function foundingMonthly(){const c=foundingCfg();return c.years>0?c.amount/(c.years*12):0;}
+// ── 創辦成本攤提：金額改由「制度設定」的創辦成本攤提（月）提供；報表不再有輸入卡，但仍按區段天數計入淨利 ──
 function rangeDays(){try{const b=getDateBounds();const d=Math.round((new Date(b.to)-new Date(b.from))/86400000)+1;return d>0?d:1;}catch(e){return 1;}}
-function periodAmort(){if(!(CU&&CU.role==='BOSS'))return 0;return foundingDaily()*rangeDays();}   // 老闆限定；本區段應計攤提＝每日攤提×區段天數
-function saveFounding(){
-  if(!(CU&&CU.role==='BOSS')){toast('僅老闆可設定','red');return;}
-  const amount=Math.max(0,Math.round(Number(($('fnd-amount')&&$('fnd-amount').value)||0))||0);
-  const years=Math.max(0,Number(($('fnd-years')&&$('fnd-years').value)||0)||0);
-  LS.set('rm_founding',{amount:amount,years:years});
-  toast('✓ 已儲存創辦攤提設定','gold');
-  renderFounding();try{renderReports();}catch(e){}
-}
-function renderFounding(){
-  const card=$('founding-card');if(!card)return;
-  if(!(CU&&CU.role==='BOSS')){card.style.display='none';return;}
-  card.style.display='';
-  const c=foundingCfg();
-  if($('fnd-amount')&&document.activeElement!==$('fnd-amount'))$('fnd-amount').value=c.amount||'';
-  if($('fnd-years')&&document.activeElement!==$('fnd-years'))$('fnd-years').value=c.years||'';
-  const out=$('fnd-out');if(!out)return;
-  if(c.amount>0&&c.years>0){
-    out.innerHTML='每月攤提 <b style="color:#800020">$'+Math.round(foundingMonthly()).toLocaleString()+'</b> ・ 每日攤提 <b style="color:#800020">$'+Math.round(foundingDaily()).toLocaleString()+'</b>　（'+c.years+' 年 ＝ '+(c.years*12)+' 個月攤提完，已自動計入下方報表淨利）';
-  }else{out.textContent='輸入金額與年份後，每日攤提會自動計入報表淨利。';}
-}
+function periodAmort(){if(!(CU&&CU.role==='BOSS'))return 0;const monthly=(typeof rewardCfg==='function'?(rewardCfg().fcParts.loan||0):0);return monthly*12/365*rangeDays();}   // 創辦成本攤提＝月攤提×12÷365×區段天數
 function renderReports() {
-  renderFounding();
   const revRows = filterByRange(_allRevData);
   const purRows = filterByRange(_allPurData);
   const { from, to } = getDateBounds();
