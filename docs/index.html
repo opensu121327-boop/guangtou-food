@@ -1839,7 +1839,7 @@ html,body,button,input,select,textarea,
 
 <script>
 // ── 自動更新：開啟時比對版本，有新版就自動重載（免無痕）──
-const APP_VER='20260803170000';
+const APP_VER='20260803180000';
 const GT_KEY='gtk_9F3xQ7Lz_pW2rM8kT';  // 後台共用密鑰（階段A：前端帶上；階段B：後台驗證）
 function checkVersion(){try{fetch('ver.txt?_='+Date.now(),{cache:'no-store'}).then(function(r){return r.ok?r.text():null;}).then(function(v){if(!v)return;v=v.trim();if(v&&v!==APP_VER&&location.search.indexOf('v='+v)<0){location.replace(location.pathname+'?v='+encodeURIComponent(v));}}).catch(function(){});}catch(e){}}
 checkVersion();
@@ -3241,10 +3241,10 @@ function getParts(){
   }
   return o;
 }
-function autoEquip(level){const eqs=(getParts().equipment||[]).filter(e=>(e.lv||1)<=level).sort((a,b)=>(b.lv||1)-(a.lv||1));return eqs[0]||null;}
+function autoEquip(level){const eqs=(getParts().equipment||[]).slice().sort((a,b)=>(b.lv||1)-(a.lv||1));return eqs[0]||null;}   // 等級關卡已開放：直接穿戴最高階裝備，不受等級限制
 function getBgs(){const u=LS.get('rm_parts',{})||{};return (FILE_PARTS.background||[]).concat(u.background||[]);}
 function findBg(id){return getBgs().find(b=>b.id===id);}
-function bgOK(b,lv){return !!b&&((CU&&CU.role==='BOSS')||(lv||1)>=(b.lv||1));}
+function bgOK(b,lv){return !!b;}   // 等級關卡已開放：所有背景一律解鎖，不受等級限制
 function renderAvatar(av,level,opts){
   opts=opts||{};
   av=av||defAvatar();const P=getParts();
