@@ -1740,6 +1740,7 @@ html,body,button,input,select,textarea,
         </div>
         <div id="dress-options"></div>
       </div>
+      <div class="c-card" id="growth-tree"></div>
       <div class="c-card" id="char-extra"></div>
       <div id="char-badges"></div>
       <input type="file" id="skin-file-input" accept="image/*" style="display:none">
@@ -1830,7 +1831,7 @@ html,body,button,input,select,textarea,
 
 <script>
 // ── 自動更新：開啟時比對版本，有新版就自動重載（免無痕）──
-const APP_VER='20260803150000';
+const APP_VER='20260803160000';
 const GT_KEY='gtk_9F3xQ7Lz_pW2rM8kT';  // 後台共用密鑰（階段A：前端帶上；階段B：後台驗證）
 function checkVersion(){try{fetch('ver.txt?_='+Date.now(),{cache:'no-store'}).then(function(r){return r.ok?r.text():null;}).then(function(v){if(!v)return;v=v.trim();if(v&&v!==APP_VER&&location.search.indexOf('v='+v)<0){location.replace(location.pathname+'?v='+encodeURIComponent(v));}}).catch(function(){});}catch(e){}}
 checkVersion();
@@ -3556,8 +3557,42 @@ function updateGameChip(){
 }
 
 // ── 我的角色（換裝編輯器）──
+// ── 🌳 成長樹：終身累積點(char.points) → 時薪成長 + 里程碑獎勵 ──
+const TREE_DEFAULT=[
+  {p:300,wage:1,reward:''},
+  {p:500,wage:0,reward:'績效獎金 $500'},
+  {p:800,wage:1,reward:''},
+  {p:1200,wage:0,reward:'有薪假 1 天'},
+  {p:1500,wage:1,reward:''},
+  {p:2000,wage:0,reward:'每月優先選班'},
+  {p:2500,wage:1,reward:'升正職資格'}
+];
+function treeCfg(){var t=LS.get('rm_tree_cfg',null);return (Array.isArray(t)&&t.length)?t.map(function(m){return {p:Math.max(0,Number(m.p)||0),wage:Math.max(0,Number(m.wage)||0),reward:String(m.reward||'')};}).sort(function(a,b){return a.p-b.p;}):TREE_DEFAULT.slice();}
+function treeWage(points){var w=rewardCfg().baseWage;treeCfg().forEach(function(m){if((points||0)>=m.p)w+=m.wage;});return w;}
+function treeNext(points){var arr=treeCfg();for(var i=0;i<arr.length;i++){if((points||0)<arr[i].p)return arr[i];}return null;}
+function growthTreeHTML(c){
+  var pts=c.points||0,base=rewardCfg().baseWage,wage=treeWage(pts),bump=wage-base,nx=treeNext(pts),arr=treeCfg();
+  var h='<div class="c-card-title">🌳 成長樹（努力就加薪）</div>'
+    +'<div style="display:flex;gap:18px;flex-wrap:wrap;align-items:center;margin:6px 0 12px">'
+    +'<div><div style="font-size:12px;color:#9a6a4a">終身累積點</div><div style="font-size:22px;font-weight:800;color:#800020">'+pts.toLocaleString()+'</div></div>'
+    +'<div><div style="font-size:12px;color:#9a6a4a">目前時薪</div><div style="font-size:22px;font-weight:800;color:#15803d">$'+wage+(bump>0?' <span style="font-size:11px;color:#9a6a4a;font-weight:600">(基礎'+base+'+'+bump+')</span>':'')+'</div></div></div>';
+  if(nx){
+    var pct=Math.min(100,Math.round(pts/nx.p*100));
+    var nlab=(nx.wage>0?'時薪+$'+nx.wage:'')+(nx.reward?((nx.wage>0?' ＋ ':'')+nx.reward):'');
+    h+='<div style="font-size:12.5px;color:#5a3a2a;margin-bottom:4px">距下個里程碑 <b>'+nx.p+' 點</b>（還差 '+(nx.p-pts).toLocaleString()+' 點）→ '+esc(nlab)+'</div>'
+      +'<div class="xp-bar" style="margin:2px 0 12px"><div class="xp-fill" style="width:'+pct+'%"></div></div>';
+  }else h+='<div style="font-size:12.5px;color:#15803d;margin:2px 0 12px">🎉 已達成所有里程碑！</div>';
+  h+=arr.map(function(m){
+    var done=pts>=m.p,oneTime=!!m.reward;
+    var lab=(m.wage>0?'時薪 +$'+m.wage:'')+(m.reward?((m.wage>0?'　＋　':'')+m.reward):'');
+    var status=done?(oneTime?'<span class="pill pending">達成・待發放</span>':'<span class="pill approved">已生效 ✓</span>'):'<span class="muted-note">🔒 未達成</span>';
+    return '<div class="sub-row"><div style="flex:1;min-width:0"><b>'+m.p+' 點</b>　'+esc(lab)+'</div>'+status+'</div>';
+  }).join('');
+  return h;
+}
 function renderCharacter(){
   const c=getChar();const lv=levelOf(c.xp);
+  if($('growth-tree'))$('growth-tree').innerHTML=growthTreeHTML(c);
   paintScene('dress-scene');
   if($('dcat-row'))$('dcat-row').innerHTML=dressTabs(_dressCat);
   if($('dress-options'))$('dress-options').innerHTML=dressOptions(_dressCat);
