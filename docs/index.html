@@ -1567,17 +1567,24 @@ html,body,button,input,select,textarea,
           <div class="form-group"><label class="form-label">基礎時薪（元）</label><input class="form-input" id="set-wage" type="number" min="0" step="1" placeholder="196"></div>
           <div class="form-group"><label class="form-label">月分潤比例（%）</label><input class="form-input" id="set-pool" type="number" min="0" step="0.5" placeholder="20"></div>
           <div class="form-group"><label class="form-label">違規每次扣（%）</label><input class="form-input" id="set-penalty" type="number" min="0" step="0.5" placeholder="1"></div>
-          <div class="form-group"><label class="form-label">創辦成本攤提（月，元）</label><input class="form-input" id="set-founding" type="number" min="0" step="100" placeholder="10000"></div>
         </div>
-        <div style="font-size:12px;color:#9a6a4a;line-height:1.6;margin-top:8px">創辦成本攤提未記於進貨 Sheet，故單獨在此設定；會計入報表與月固定成本。</div>
       </div>
       <div class="c-card">
-        <div class="c-card-title">📊 月固定成本（依 Google Sheet 即時計算）</div>
-        <div style="font-size:12.5px;color:#9a6a4a;line-height:1.6;margin-bottom:10px">依當月進貨 Sheet 紀錄自動加總「人事＋設備＋耗材」，再加創辦成本攤提，用來估算當月淨利與分潤池。不需手動填。</div>
-        <div id="fixed-live" style="font-size:13.5px;color:#5a3a2a;line-height:1.9;padding:12px;background:#fbf6ee;border-radius:11px"><span class="muted-note">讀取中…</span></div>
-        <button class="refresh-btn" onclick="renderFixedLive()" style="margin-top:10px">↻ 重新計算</button>
+        <div class="c-card-title">🏦 創辦成本攤提</div>
+        <div class="muted-note" style="margin-bottom:10px">輸入前期創辦金額與攤提年份，自動算每月攤提，計入下方分潤試算與報表淨利。</div>
+        <div class="grid-2">
+          <div class="form-group"><label class="form-label">前期創辦金額（元）</label><input class="form-input" id="fnd-amount" type="number" min="0" inputmode="numeric" placeholder="例：2000000"></div>
+          <div class="form-group"><label class="form-label">預計攤提年份</label><input class="form-input" id="fnd-years" type="number" min="0" step="0.5" inputmode="decimal" placeholder="例：5"></div>
+        </div>
+        <div id="fnd-out" class="muted-note" style="margin-top:8px"></div>
       </div>
       <button class="btn-action" onclick="saveRewardCfg()">✓ 儲存制度設定</button>
+      <div class="c-card" style="margin-top:16px">
+        <div class="c-card-title">💰 分潤試算（依 Google Sheet 即時計算）</div>
+        <div style="font-size:12.5px;color:#9a6a4a;line-height:1.6;margin-bottom:10px">依當月營收與進貨 Sheet 即時試算，扣手續費、成本、創辦攤提後算出分潤池與預估獎金。</div>
+        <div id="profit-preview" style="font-size:13.5px;color:#3a2418;line-height:1.5;padding:12px;background:#fbf6ee;border-radius:11px"><span class="muted-note">讀取中…</span></div>
+        <button class="refresh-btn" onclick="renderProfitPreview()" style="margin-top:10px">↻ 重新計算</button>
+      </div>
       <div class="muted-note" style="margin-top:10px">※ 加分行為點數、成長樹里程碑會在後續階段加入本頁一起管理。</div>
     </div>
 
@@ -1823,7 +1830,7 @@ html,body,button,input,select,textarea,
 
 <script>
 // ── 自動更新：開啟時比對版本，有新版就自動重載（免無痕）──
-const APP_VER='20260803140000';
+const APP_VER='20260803150000';
 const GT_KEY='gtk_9F3xQ7Lz_pW2rM8kT';  // 後台共用密鑰（階段A：前端帶上；階段B：後台驗證）
 function checkVersion(){try{fetch('ver.txt?_='+Date.now(),{cache:'no-store'}).then(function(r){return r.ok?r.text():null;}).then(function(v){if(!v)return;v=v.trim();if(v&&v!==APP_VER&&location.search.indexOf('v='+v)<0){location.replace(location.pathname+'?v='+encodeURIComponent(v));}}).catch(function(){});}catch(e){}}
 checkVersion();
@@ -2129,7 +2136,7 @@ const CICON_OPTS='<option value="check">完成 / 打勾</option><option value="c
 
 // ── 手續費費率（可調整，變動時老闆在結帳頁設定）──
 // ── 制度設定（獎勵制度所有參數，老闆可改；單一設定物件 rm_reward_cfg）──
-const REWARD_DEFAULT={baseWage:196,poolPct:20,penaltyPct:1,foundingAmort:10000,fee:{card:2.2,twqr:2.2,delivery:31}};  // 費率校正2.2/2.2/31；月固定成本改由 Google Sheet 即時計算，不再儲存
+const REWARD_DEFAULT={baseWage:196,poolPct:20,penaltyPct:1,fee:{card:2.2,twqr:2.2,delivery:31}};  // 費率校正2.2/2.2/31；成本改由 Google Sheet 即時計算；創辦攤提存 rm_founding
 function rewardCfg(){
   const num=(x,def)=>{const n=parseFloat(x);return isFinite(n)&&n>=0?n:def;};
   const d=LS.get('rm_reward_cfg',null); const c=(d&&typeof d==='object')?d:{};
@@ -2139,7 +2146,6 @@ function rewardCfg(){
     baseWage:num(c.baseWage,REWARD_DEFAULT.baseWage),
     poolPct:num(c.poolPct,REWARD_DEFAULT.poolPct),
     penaltyPct:num(c.penaltyPct,REWARD_DEFAULT.penaltyPct),
-    foundingAmort:num(c.foundingAmort,num((c.fcParts&&c.fcParts.loan),REWARD_DEFAULT.foundingAmort)),
     fee:{card:num(f.card,num(lf.card,REWARD_DEFAULT.fee.card)),twqr:num(f.twqr,num(lf.twqr,REWARD_DEFAULT.fee.twqr)),delivery:num(f.delivery,num(lf.delivery,REWARD_DEFAULT.fee.delivery))}
   };
 }
@@ -2148,45 +2154,64 @@ function feeRates(){const p=feePct();return {card:p.card/100,twqr:p.twqr/100,del
 function renderSettings(){   // 制度設定頁：填入目前值（僅老闆）
   if(!(CU&&CU.role==='BOSS'))return;
   const c=rewardCfg(); const set=(id,v)=>{if($(id))$(id).value=v;};
-  set('set-wage',c.baseWage);set('set-pool',c.poolPct);set('set-penalty',c.penaltyPct);set('set-founding',c.foundingAmort);
+  set('set-wage',c.baseWage);set('set-pool',c.poolPct);set('set-penalty',c.penaltyPct);
   set('set-fee-card',c.fee.card);set('set-fee-twqr',c.fee.twqr);set('set-fee-delivery',c.fee.delivery);
-  renderFixedLive();
+  renderFounding();renderProfitPreview();
 }
 function _ymKey(v){return String(v||'').slice(0,7).replace(/\//g,'-');}   // 年月鍵 2026-08
-function sheetFixedParts(){   // 當月「非食材」進貨（人事/設備維修類/耗材雜項類），依 costClass
-  const m=_ymKey(bizDay()),o={labor:0,equip:0,misc:0};
-  (_allPurData||[]).forEach(function(r){ if(_ymKey(r.date)!==m)return; var k=(typeof costClass==='function')?costClass(r.category):null; if(k==='人事')o.labor+=Number(r.cost)||0; else if(k==='固定')o.equip+=Number(r.cost)||0; else if(k==='耗材')o.misc+=Number(r.cost)||0; });
-  return o;
+// ── 創辦成本攤提：前期創辦金額 ÷ 攤提年份 → 每月/每日（存 rm_founding）──
+function foundingCfg(){const c=LS.get('rm_founding',{})||{};return {amount:Math.max(0,Number(c.amount)||0),years:Math.max(0,Number(c.years)||0)};}
+function foundingMonthly(){const c=foundingCfg();return c.years>0?c.amount/(c.years*12):0;}
+function foundingDaily(){const c=foundingCfg();return c.years>0?c.amount/(c.years*365):0;}
+function renderFounding(){
+  const c=foundingCfg();
+  if($('fnd-amount')&&document.activeElement!==$('fnd-amount'))$('fnd-amount').value=c.amount||'';
+  if($('fnd-years')&&document.activeElement!==$('fnd-years'))$('fnd-years').value=c.years||'';
+  const out=$('fnd-out');if(!out)return;
+  if(c.amount>0&&c.years>0)out.innerHTML='每月攤提 <b style="color:#800020">$'+Math.round(foundingMonthly()).toLocaleString()+'</b>（'+c.years+' 年 ＝ '+(c.years*12)+' 個月攤提完，計入下方分潤試算與報表淨利）';
+  else out.textContent='輸入金額與年份後，自動算每月攤提。';
 }
-function fixedCostNow(){const p=sheetFixedParts();return Math.round(p.labor+p.equip+p.misc+(rewardCfg().foundingAmort||0));}   // 月固定成本＝當月非食材進貨＋創辦攤提（供分潤淨利估算）
-function loadPurForFixed(cb){
-  if(_allPurData&&_allPurData.length){cb();return;}
-  (typeof apiGet==='function'?apiGet('query_purchase'):Promise.resolve(null)).then(function(res){
-    if(res&&(res.status==='ok'||res.status==='success')&&res.rows){
-      _allPurData=res.rows.slice(1).map(function(r){return {date:r[0],cost:Number(r[6])||0,name:String(r[3]||''),category:String(r[2]||''),qty:Number(r[4])||0,unit:String(r[5]||''),unitCost:Number(r[7])||0,supplier:String(r[8]||'')};});
-    }
-    cb();
-  }).catch(function(){cb();});
+// ── 分潤試算：依當月營收＋進貨 Sheet 即時計算 ──
+function loadRevPurForPreview(cb){
+  var need=[];
+  if(!(_allPurData&&_allPurData.length)&&typeof apiGet==='function')need.push(apiGet('query_purchase').then(function(res){if(res&&(res.status==='ok'||res.status==='success')&&res.rows){_allPurData=res.rows.slice(1).map(function(r){return {date:r[0],cost:Number(r[6])||0,name:String(r[3]||''),category:String(r[2]||''),qty:Number(r[4])||0,unit:String(r[5]||''),unitCost:Number(r[7])||0,supplier:String(r[8]||'')};});}}));
+  if(!(_allRevData&&_allRevData.length)&&typeof apiGet==='function')need.push(apiGet('query_revenue').then(function(res){if(res&&(res.status==='ok'||res.status==='success')&&res.rows){_allRevData=res.rows.slice(1).map(function(r){return {date:r[0],total:Number(r[7])||0,cardFee:Number(r[8])||0,twqrFee:Number(r[9])||0,deliveryFee:Number(r[10])||0};});}}));
+  if(!need.length){cb();return;}
+  Promise.all(need).then(function(){cb();}).catch(function(){cb();});
 }
-function renderFixedLive(){
-  const host=$('fixed-live');if(!host)return;
+function renderProfitPreview(){
+  const host=$('profit-preview');if(!host)return;
   host.innerHTML='<span class="muted-note">讀取中…</span>';
-  loadPurForFixed(function(){
-    const m=_ymKey(bizDay()),p=sheetFixedParts(),amort=Math.round(rewardCfg().foundingAmort||0);
-    const total=Math.round(p.labor+p.equip+p.misc+amort);
-    host.innerHTML='本月（'+m+'）依進貨 Sheet 即時加總：<br>👥 人事 $'+Math.round(p.labor).toLocaleString()+'　🔧 設備/房租/POS類 $'+Math.round(p.equip).toLocaleString()+'　📦 水電/保險/雜項類 $'+Math.round(p.misc).toLocaleString()+'　🏦 創辦攤提 $'+amort.toLocaleString()+'<br><b style="color:#800020;font-size:16px">月固定成本 $'+total.toLocaleString()+'</b><br><span class="muted-note">（＝當月所有非食材支出 ＋ 創辦攤提；食材為變動成本另計）</span>';
+  loadRevPurForPreview(function(){
+    const m=_ymKey(bizDay());
+    let rev=0,fee=0;
+    (_allRevData||[]).forEach(function(r){if(_ymKey(r.date)!==m)return;rev+=Number(r.total)||0;fee+=(Number(r.cardFee)||0)+(Number(r.twqrFee)||0)+(Number(r.deliveryFee)||0);});
+    let food=0,labor=0,equip=0,misc=0;
+    (_allPurData||[]).forEach(function(r){if(_ymKey(r.date)!==m)return;var k=(typeof costClass==='function')?costClass(r.category):null;var cc=Number(r.cost)||0;if(k==='食材')food+=cc;else if(k==='人事')labor+=cc;else if(k==='固定')equip+=cc;else if(k==='耗材')misc+=cc;});
+    const netRev=rev-fee, amort=Math.round(foundingMonthly()), cost=food+labor+equip+misc, net=Math.round(netRev-cost-amort);
+    const cfg=rewardCfg(), pool=Math.max(0,Math.round(net*cfg.poolPct/100));
+    const row=(lbl,val,strong,color)=>'<div style="display:flex;justify-content:space-between;padding:3px 0'+(strong?';border-top:1px solid #e7d9c5;margin-top:4px;padding-top:6px':'')+'"><span'+(strong?' style="font-weight:800"':'')+'>'+lbl+'</span><span style="font-variant-numeric:tabular-nums'+(color?';color:'+color:'')+(strong?';font-weight:800':'')+'">$'+Math.round(val).toLocaleString()+'</span></div>';
+    host.innerHTML='<div style="font-size:12px;color:#9a6a4a;margin-bottom:6px">本月（'+m+'）即時試算</div>'
+      +row('營收',rev)+row('− 手續費',-fee)+row('= 預估實收',netRev,true)
+      +'<div style="font-size:12px;color:#9a6a4a;margin:8px 0 2px">成本結構</div>'
+      +row('　🥬 食材',-food)+row('　👥 人事',-labor)+row('　🔧 設備/房租/POS',-equip)+row('　📦 水電/保險/雜項',-misc)
+      +row('− 創辦攤提（月）',-amort)+row('= 淨利',net,true,net>=0?'#15803d':'#b91c1c')
+      +row('分潤池（'+cfg.poolPct+'%）',pool,true,'#800020')
+      +'<div style="font-size:12px;color:#9a6a4a;margin-top:8px;line-height:1.6">👥 這是本月要分給員工的獎金池。每人實際分得 ＝ 分潤池 × 個人點數比例（第2階段點數系統上線後，這裡會列出每個人的預估金額）。</div>';
   });
 }
 function saveRewardCfg(){
   if(!(CU&&CU.role==='BOSS')){toast('僅老闆可設定','red');return;}
   const g=id=>parseFloat($(id)?$(id).value:'');
-  const wage=g('set-wage'),pool=g('set-pool'),pen=g('set-penalty'),fnd=g('set-founding'),fc=g('set-fee-card'),ft=g('set-fee-twqr'),fd=g('set-fee-delivery');
-  if(![wage,pool,pen,fnd,fc,ft,fd].every(x=>isFinite(x)&&x>=0)){toast('所有欄位請填 0 或以上的數字','red');return;}
-  LS.set('rm_reward_cfg',{baseWage:wage,poolPct:pool,penaltyPct:pen,foundingAmort:fnd,fee:{card:fc,twqr:ft,delivery:fd}});
+  const wage=g('set-wage'),pool=g('set-pool'),pen=g('set-penalty'),fc=g('set-fee-card'),ft=g('set-fee-twqr'),fd=g('set-fee-delivery');
+  const famt=Math.max(0,Math.round(g('fnd-amount'))||0),fyr=Math.max(0,g('fnd-years')||0);
+  if(![wage,pool,pen,fc,ft,fd].every(x=>isFinite(x)&&x>=0)){toast('所有欄位請填 0 或以上的數字','red');return;}
+  LS.set('rm_reward_cfg',{baseWage:wage,poolPct:pool,penaltyPct:pen,fee:{card:fc,twqr:ft,delivery:fd}});
   LS.set('rm_fee_rates',{card:fc,twqr:ft,delivery:fd});   // 同步舊鍵，維持相容
+  LS.set('rm_founding',{amount:famt,years:fyr});
   if(typeof cloudPush==='function')cloudPush();
   toast('✓ 制度設定已更新','gold');
-  renderFixedLive();
+  renderFounding();renderProfitPreview();
   if(typeof calcRev==='function')calcRev();
 }
 
@@ -2517,7 +2542,7 @@ function filterByRange(rows) {
 
 // ── 創辦成本攤提：金額改由「制度設定」的創辦成本攤提（月）提供；報表不再有輸入卡，但仍按區段天數計入淨利 ──
 function rangeDays(){try{const b=getDateBounds();const d=Math.round((new Date(b.to)-new Date(b.from))/86400000)+1;return d>0?d:1;}catch(e){return 1;}}
-function periodAmort(){if(!(CU&&CU.role==='BOSS'))return 0;const monthly=(typeof rewardCfg==='function'?(rewardCfg().foundingAmort||0):0);return monthly*12/365*rangeDays();}   // 創辦成本攤提＝月攤提×12÷365×區段天數
+function periodAmort(){if(!(CU&&CU.role==='BOSS'))return 0;return foundingDaily()*rangeDays();}   // 創辦成本攤提＝每日攤提(前期金額÷年份÷365)×區段天數
 function renderReports() {
   const revRows = filterByRange(_allRevData);
   const purRows = filterByRange(_allPurData);
