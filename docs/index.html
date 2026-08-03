@@ -1567,28 +1567,15 @@ html,body,button,input,select,textarea,
           <div class="form-group"><label class="form-label">基礎時薪（元）</label><input class="form-input" id="set-wage" type="number" min="0" step="1" placeholder="196"></div>
           <div class="form-group"><label class="form-label">月分潤比例（%）</label><input class="form-input" id="set-pool" type="number" min="0" step="0.5" placeholder="20"></div>
           <div class="form-group"><label class="form-label">違規每次扣（%）</label><input class="form-input" id="set-penalty" type="number" min="0" step="0.5" placeholder="1"></div>
+          <div class="form-group"><label class="form-label">創辦成本攤提（月，元）</label><input class="form-input" id="set-founding" type="number" min="0" step="100" placeholder="10000"></div>
         </div>
+        <div style="font-size:12px;color:#9a6a4a;line-height:1.6;margin-top:8px">創辦成本攤提未記於進貨 Sheet，故單獨在此設定；會計入報表與月固定成本。</div>
       </div>
       <div class="c-card">
-        <div class="c-card-title">🧮 月固定成本試算</div>
-        <div style="font-size:12.5px;color:#9a6a4a;line-height:1.6;margin-bottom:12px">填入每月固定支出，按「按這裡試算」自動加總（含安全準備金）並帶入月固定成本，用來估算當月淨利與分潤池。</div>
-        <div class="grid-2">
-          <div class="form-group"><label class="form-label">租金與管理費</label><input class="form-input" id="fc-rent" type="number" min="0" step="100" placeholder="40000"></div>
-          <div class="form-group"><label class="form-label">固定人事薪資</label><input class="form-input" id="fc-labor" type="number" min="0" step="100" placeholder="120000"></div>
-          <div class="form-group"><label class="form-label">水電瓦斯網路</label><input class="form-input" id="fc-util" type="number" min="0" step="100" placeholder="15000"></div>
-          <div class="form-group"><label class="form-label">系統訂閱與 POS</label><input class="form-input" id="fc-pos" type="number" min="0" step="100" placeholder="5000"></div>
-          <div class="form-group"><label class="form-label">保險會計雜費</label><input class="form-input" id="fc-ins" type="number" min="0" step="100" placeholder="6000"></div>
-          <div class="form-group"><label class="form-label">創辦成本攤提</label><input class="form-input" id="fc-loan" type="number" min="0" step="100" placeholder="10000"></div>
-          <div class="form-group"><label class="form-label">固定行銷預算</label><input class="form-input" id="fc-mkt" type="number" min="0" step="100" placeholder="20000"></div>
-          <div class="form-group"><label class="form-label">其他固定支出</label><input class="form-input" id="fc-other" type="number" min="0" step="100" placeholder="15000"></div>
-        </div>
-        <div class="grid-2">
-          <div class="form-group"><label class="form-label">安全準備金比例（%）</label><input class="form-input" id="fc-reserve" type="number" min="0" step="1" placeholder="10"></div>
-          <div class="form-group"></div>
-        </div>
-        <button class="btn-action" onclick="calcFixedCost()">🧮 按這裡試算</button>
-        <div id="fc-result" style="font-size:13px;color:#5a3a2a;line-height:1.7;margin-top:10px"></div>
-        <div class="form-group" style="margin-top:10px"><label class="form-label">月固定成本（元）— 試算結果，可手動微調</label><input class="form-input" id="set-fixed" type="number" min="0" step="100" placeholder="0"></div>
+        <div class="c-card-title">📊 月固定成本（依 Google Sheet 即時計算）</div>
+        <div style="font-size:12.5px;color:#9a6a4a;line-height:1.6;margin-bottom:10px">依當月進貨 Sheet 紀錄自動加總「人事＋設備＋耗材」，再加創辦成本攤提，用來估算當月淨利與分潤池。不需手動填。</div>
+        <div id="fixed-live" style="font-size:13.5px;color:#5a3a2a;line-height:1.9;padding:12px;background:#fbf6ee;border-radius:11px"><span class="muted-note">讀取中…</span></div>
+        <button class="refresh-btn" onclick="renderFixedLive()" style="margin-top:10px">↻ 重新計算</button>
       </div>
       <button class="btn-action" onclick="saveRewardCfg()">✓ 儲存制度設定</button>
       <div class="muted-note" style="margin-top:10px">※ 加分行為點數、成長樹里程碑會在後續階段加入本頁一起管理。</div>
@@ -1836,7 +1823,7 @@ html,body,button,input,select,textarea,
 
 <script>
 // ── 自動更新：開啟時比對版本，有新版就自動重載（免無痕）──
-const APP_VER='20260803130000';
+const APP_VER='20260803140000';
 const GT_KEY='gtk_9F3xQ7Lz_pW2rM8kT';  // 後台共用密鑰（階段A：前端帶上；階段B：後台驗證）
 function checkVersion(){try{fetch('ver.txt?_='+Date.now(),{cache:'no-store'}).then(function(r){return r.ok?r.text():null;}).then(function(v){if(!v)return;v=v.trim();if(v&&v!==APP_VER&&location.search.indexOf('v='+v)<0){location.replace(location.pathname+'?v='+encodeURIComponent(v));}}).catch(function(){});}catch(e){}}
 checkVersion();
@@ -2142,7 +2129,7 @@ const CICON_OPTS='<option value="check">完成 / 打勾</option><option value="c
 
 // ── 手續費費率（可調整，變動時老闆在結帳頁設定）──
 // ── 制度設定（獎勵制度所有參數，老闆可改；單一設定物件 rm_reward_cfg）──
-const REWARD_DEFAULT={baseWage:196,poolPct:20,penaltyPct:1,fixedCost:254100,fee:{card:2.2,twqr:2.2,delivery:31},fcParts:{rent:40000,labor:120000,util:15000,pos:5000,ins:6000,loan:10000,mkt:20000,other:15000,reserve:10}};  // 費率校正2.2/2.2/31；固定成本預設帶老闆提供的明細(231000×1.1=254100)
+const REWARD_DEFAULT={baseWage:196,poolPct:20,penaltyPct:1,foundingAmort:10000,fee:{card:2.2,twqr:2.2,delivery:31}};  // 費率校正2.2/2.2/31；月固定成本改由 Google Sheet 即時計算，不再儲存
 function rewardCfg(){
   const num=(x,def)=>{const n=parseFloat(x);return isFinite(n)&&n>=0?n:def;};
   const d=LS.get('rm_reward_cfg',null); const c=(d&&typeof d==='object')?d:{};
@@ -2152,9 +2139,8 @@ function rewardCfg(){
     baseWage:num(c.baseWage,REWARD_DEFAULT.baseWage),
     poolPct:num(c.poolPct,REWARD_DEFAULT.poolPct),
     penaltyPct:num(c.penaltyPct,REWARD_DEFAULT.penaltyPct),
-    fixedCost:num(c.fixedCost,REWARD_DEFAULT.fixedCost),
-    fee:{card:num(f.card,num(lf.card,REWARD_DEFAULT.fee.card)),twqr:num(f.twqr,num(lf.twqr,REWARD_DEFAULT.fee.twqr)),delivery:num(f.delivery,num(lf.delivery,REWARD_DEFAULT.fee.delivery))},
-    fcParts:(function(){var fp=(c.fcParts&&typeof c.fcParts==='object')?c.fcParts:{},D=REWARD_DEFAULT.fcParts;return {rent:num(fp.rent,D.rent),labor:num(fp.labor,D.labor),util:num(fp.util,D.util),pos:num(fp.pos,D.pos),ins:num(fp.ins,D.ins),loan:num(fp.loan,D.loan),mkt:num(fp.mkt,D.mkt),other:num(fp.other,D.other),reserve:num(fp.reserve,D.reserve)};})()
+    foundingAmort:num(c.foundingAmort,num((c.fcParts&&c.fcParts.loan),REWARD_DEFAULT.foundingAmort)),
+    fee:{card:num(f.card,num(lf.card,REWARD_DEFAULT.fee.card)),twqr:num(f.twqr,num(lf.twqr,REWARD_DEFAULT.fee.twqr)),delivery:num(f.delivery,num(lf.delivery,REWARD_DEFAULT.fee.delivery))}
   };
 }
 function feePct(){return rewardCfg().fee;}                 // 百分比（顯示用）
@@ -2162,31 +2148,45 @@ function feeRates(){const p=feePct();return {card:p.card/100,twqr:p.twqr/100,del
 function renderSettings(){   // 制度設定頁：填入目前值（僅老闆）
   if(!(CU&&CU.role==='BOSS'))return;
   const c=rewardCfg(); const set=(id,v)=>{if($(id))$(id).value=v;};
-  set('set-wage',c.baseWage);set('set-pool',c.poolPct);set('set-penalty',c.penaltyPct);set('set-fixed',c.fixedCost);
+  set('set-wage',c.baseWage);set('set-pool',c.poolPct);set('set-penalty',c.penaltyPct);set('set-founding',c.foundingAmort);
   set('set-fee-card',c.fee.card);set('set-fee-twqr',c.fee.twqr);set('set-fee-delivery',c.fee.delivery);
-  const p=c.fcParts;
-  set('fc-rent',p.rent);set('fc-labor',p.labor);set('fc-util',p.util);set('fc-pos',p.pos);set('fc-ins',p.ins);set('fc-loan',p.loan);set('fc-mkt',p.mkt);set('fc-other',p.other);set('fc-reserve',p.reserve);
+  renderFixedLive();
 }
-function calcFixedCost(){   // 固定成本試算：八項加總 ×(1+安全準備金%) → 帶入月固定成本
-  const g=id=>{const n=parseFloat($(id)?$(id).value:'');return isFinite(n)&&n>=0?n:0;};
-  const parts=g('fc-rent')+g('fc-labor')+g('fc-util')+g('fc-pos')+g('fc-ins')+g('fc-loan')+g('fc-mkt')+g('fc-other');
-  const reserve=g('fc-reserve');
-  const total=Math.round(parts*(1+reserve/100));
-  if($('set-fixed'))$('set-fixed').value=total;
-  if($('fc-result'))$('fc-result').innerHTML='固定支出合計 $'+parts.toLocaleString()+'　＋　安全準備金 '+reserve+'%　＝　<b style="color:#800020">月固定成本 $'+total.toLocaleString()+'</b><br>已帶入下方欄位，記得按最下面的「儲存制度設定」。';
-  toast('✓ 已試算：月固定成本 $'+total.toLocaleString(),'gold');
+function _ymKey(v){return String(v||'').slice(0,7).replace(/\//g,'-');}   // 年月鍵 2026-08
+function sheetFixedParts(){   // 當月「非食材」進貨（人事/設備維修類/耗材雜項類），依 costClass
+  const m=_ymKey(bizDay()),o={labor:0,equip:0,misc:0};
+  (_allPurData||[]).forEach(function(r){ if(_ymKey(r.date)!==m)return; var k=(typeof costClass==='function')?costClass(r.category):null; if(k==='人事')o.labor+=Number(r.cost)||0; else if(k==='固定')o.equip+=Number(r.cost)||0; else if(k==='耗材')o.misc+=Number(r.cost)||0; });
+  return o;
+}
+function fixedCostNow(){const p=sheetFixedParts();return Math.round(p.labor+p.equip+p.misc+(rewardCfg().foundingAmort||0));}   // 月固定成本＝當月非食材進貨＋創辦攤提（供分潤淨利估算）
+function loadPurForFixed(cb){
+  if(_allPurData&&_allPurData.length){cb();return;}
+  (typeof apiGet==='function'?apiGet('query_purchase'):Promise.resolve(null)).then(function(res){
+    if(res&&(res.status==='ok'||res.status==='success')&&res.rows){
+      _allPurData=res.rows.slice(1).map(function(r){return {date:r[0],cost:Number(r[6])||0,name:String(r[3]||''),category:String(r[2]||''),qty:Number(r[4])||0,unit:String(r[5]||''),unitCost:Number(r[7])||0,supplier:String(r[8]||'')};});
+    }
+    cb();
+  }).catch(function(){cb();});
+}
+function renderFixedLive(){
+  const host=$('fixed-live');if(!host)return;
+  host.innerHTML='<span class="muted-note">讀取中…</span>';
+  loadPurForFixed(function(){
+    const m=_ymKey(bizDay()),p=sheetFixedParts(),amort=Math.round(rewardCfg().foundingAmort||0);
+    const total=Math.round(p.labor+p.equip+p.misc+amort);
+    host.innerHTML='本月（'+m+'）依進貨 Sheet 即時加總：<br>👥 人事 $'+Math.round(p.labor).toLocaleString()+'　🔧 設備/房租/POS類 $'+Math.round(p.equip).toLocaleString()+'　📦 水電/保險/雜項類 $'+Math.round(p.misc).toLocaleString()+'　🏦 創辦攤提 $'+amort.toLocaleString()+'<br><b style="color:#800020;font-size:16px">月固定成本 $'+total.toLocaleString()+'</b><br><span class="muted-note">（＝當月所有非食材支出 ＋ 創辦攤提；食材為變動成本另計）</span>';
+  });
 }
 function saveRewardCfg(){
   if(!(CU&&CU.role==='BOSS')){toast('僅老闆可設定','red');return;}
   const g=id=>parseFloat($(id)?$(id).value:'');
-  const wage=g('set-wage'),pool=g('set-pool'),pen=g('set-penalty'),fixed=g('set-fixed'),fc=g('set-fee-card'),ft=g('set-fee-twqr'),fd=g('set-fee-delivery');
-  const fcp={rent:g('fc-rent'),labor:g('fc-labor'),util:g('fc-util'),pos:g('fc-pos'),ins:g('fc-ins'),loan:g('fc-loan'),mkt:g('fc-mkt'),other:g('fc-other'),reserve:g('fc-reserve')};
-  const allNums=[wage,pool,pen,fixed,fc,ft,fd].concat(Object.keys(fcp).map(function(k){return fcp[k];}));
-  if(!allNums.every(x=>isFinite(x)&&x>=0)){toast('所有欄位請填 0 或以上的數字','red');return;}
-  LS.set('rm_reward_cfg',{baseWage:wage,poolPct:pool,penaltyPct:pen,fixedCost:fixed,fee:{card:fc,twqr:ft,delivery:fd},fcParts:fcp});
+  const wage=g('set-wage'),pool=g('set-pool'),pen=g('set-penalty'),fnd=g('set-founding'),fc=g('set-fee-card'),ft=g('set-fee-twqr'),fd=g('set-fee-delivery');
+  if(![wage,pool,pen,fnd,fc,ft,fd].every(x=>isFinite(x)&&x>=0)){toast('所有欄位請填 0 或以上的數字','red');return;}
+  LS.set('rm_reward_cfg',{baseWage:wage,poolPct:pool,penaltyPct:pen,foundingAmort:fnd,fee:{card:fc,twqr:ft,delivery:fd}});
   LS.set('rm_fee_rates',{card:fc,twqr:ft,delivery:fd});   // 同步舊鍵，維持相容
   if(typeof cloudPush==='function')cloudPush();
   toast('✓ 制度設定已更新','gold');
+  renderFixedLive();
   if(typeof calcRev==='function')calcRev();
 }
 
@@ -2517,7 +2517,7 @@ function filterByRange(rows) {
 
 // ── 創辦成本攤提：金額改由「制度設定」的創辦成本攤提（月）提供；報表不再有輸入卡，但仍按區段天數計入淨利 ──
 function rangeDays(){try{const b=getDateBounds();const d=Math.round((new Date(b.to)-new Date(b.from))/86400000)+1;return d>0?d:1;}catch(e){return 1;}}
-function periodAmort(){if(!(CU&&CU.role==='BOSS'))return 0;const monthly=(typeof rewardCfg==='function'?(rewardCfg().fcParts.loan||0):0);return monthly*12/365*rangeDays();}   // 創辦成本攤提＝月攤提×12÷365×區段天數
+function periodAmort(){if(!(CU&&CU.role==='BOSS'))return 0;const monthly=(typeof rewardCfg==='function'?(rewardCfg().foundingAmort||0):0);return monthly*12/365*rangeDays();}   // 創辦成本攤提＝月攤提×12÷365×區段天數
 function renderReports() {
   const revRows = filterByRange(_allRevData);
   const purRows = filterByRange(_allPurData);
