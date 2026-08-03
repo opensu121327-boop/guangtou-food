@@ -1626,6 +1626,16 @@ html,body,button,input,select,textarea,
       </div>
     </div>
 
+    <!-- 營收達標門檻（老闆/店長）-->
+    <div class="tab-panel" id="tab-revthr">
+      <div class="sec-header"><div class="sec-title">營收達標門檻</div><div class="divider"></div><div class="sec-sub">近 8 週各星期中位數 × 係數 = 本月門檻</div></div>
+      <div class="c-card">
+        <div class="c-card-title">📈 本月營收門檻</div>
+        <div id="revthr-body"><div class="loading-state"><div class="spin"></div>載入中</div></div>
+        <button class="refresh-btn" onclick="renderRevThreshold(true)" style="margin-top:10px">↻ 立即重新計算</button>
+      </div>
+    </div>
+
     <!-- HOME TAB -->
     <div class="tab-panel" id="tab-home">
       <div class="c-card"><div class="home-stage" id="home-stage"></div></div>
@@ -1869,7 +1879,7 @@ html,body,button,input,select,textarea,
 
 <script>
 // ── 自動更新：開啟時比對版本，有新版就自動重載（免無痕）──
-const APP_VER='20260803230000';
+const APP_VER='20260803240000';
 const GT_KEY='gtk_9F3xQ7Lz_pW2rM8kT';  // 後台共用密鑰（階段A：前端帶上；階段B：後台驗證）
 function checkVersion(){try{fetch('ver.txt?_='+Date.now(),{cache:'no-store'}).then(function(r){return r.ok?r.text():null;}).then(function(v){if(!v)return;v=v.trim();if(v&&v!==APP_VER&&location.search.indexOf('v='+v)<0){location.replace(location.pathname+'?v='+encodeURIComponent(v));}}).catch(function(){});}catch(e){}}
 checkVersion();
@@ -2066,6 +2076,7 @@ function switchTab(name,btn) {
   if(name==='audit')renderAudit();
   if(name==='settings')renderSettings();
   if(name==='focuscfg')renderFocusCfg();
+  if(name==='revthr')renderRevThreshold();
   if(name==='bulletin')renderBulletin();
   if(name==='expense')renderExpenseList();
   if(name==='tasks')renderTasks();
@@ -2116,7 +2127,8 @@ const ICONS={
   bulletin:_svg('<path d="M4 10v4l4 .6 3 4h2V5.4l-3 4L4 10z"/><path d="M16 9a4 4 0 010 6"/>'),
   audit:_svg('<circle cx="10.5" cy="10.5" r="6"/><path d="M15 15l5 5"/>'),
   settings:_svg('<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.6 1.6 0 00.3 1.8l.1.1a2 2 0 11-2.8 2.8l-.1-.1a1.6 1.6 0 00-2.7 1.1V21a2 2 0 11-4 0v-.1A1.6 1.6 0 006 19.4l-.1.1a2 2 0 11-2.8-2.8l.1-.1A1.6 1.6 0 003 15a2 2 0 010-4 1.6 1.6 0 001.5-2.6l-.1-.1a2 2 0 112.8-2.8l.1.1A1.6 1.6 0 009 3.6V3a2 2 0 014 0v.1A1.6 1.6 0 0018 4.6l.1-.1a2 2 0 112.8 2.8l-.1.1A1.6 1.6 0 0021 11a2 2 0 010 4z"/>'),
-  focuscfg:_svg('<circle cx="12" cy="12" r="8.5"/><circle cx="12" cy="12" r="4.6"/><circle cx="12" cy="12" r="1.1" fill="currentColor"/>')
+  focuscfg:_svg('<circle cx="12" cy="12" r="8.5"/><circle cx="12" cy="12" r="4.6"/><circle cx="12" cy="12" r="1.1" fill="currentColor"/>'),
+  revthr:_svg('<path d="M4 4v16h16"/><path d="M7 15l3-4 3 2 4-6"/>')
 };
 function tabIcon(id){return ICONS[id]||'';}
 // 🎨 卡片標題 emoji → 線條圖示 自動替換（全 App 分頁內小圖統一風格）
@@ -2235,6 +2247,39 @@ function delFocusCfg(id){
   if(!canFocusCfg()){toast('僅老闆或店長可設定','red');return;}
   LS.set('rm_focus_cfg',focusCfgList().filter(function(m){return m.id!==id;}));
   toast('已刪除','red');renderFocusCfg();
+}
+// ── 📈 營收達標門檻：近8週各星期中位數 × 係數，每月換月自動重算 ──
+function _wdOf(dateStr){var s=String(dateStr||'').slice(0,10).replace(/\//g,'-').split('-');if(s.length<3)return -1;return new Date(+s[0],+s[1]-1,+s[2]).getDay();}   // 0=日..6=六
+function _median(arr){if(!arr.length)return 0;var a=arr.slice().sort(function(x,y){return x-y;});var n=a.length,m=Math.floor(n/2);return n%2?a[m]:(a[m-1]+a[m])/2;}
+function computeRevThreshold(){
+  var COEF=1.05,WEEKS=8;
+  var byWd={0:[],1:[],2:[],3:[],4:[],5:[],6:[]};
+  var rows=(_allRevData||[]).filter(function(r){return (Number(r.total)||0)>0;}).slice()
+    .sort(function(a,b){return String(b.date).slice(0,10).replace(/\//g,'-').localeCompare(String(a.date).slice(0,10).replace(/\//g,'-'));});
+  rows.forEach(function(r){var w=_wdOf(r.date);if(w<0)return;if(byWd[w].length<WEEKS)byWd[w].push(Number(r.total)||0);});
+  var days={};for(var w=0;w<7;w++){var med=_median(byWd[w]);days[w]={median:Math.round(med),n:byWd[w].length,threshold:Math.round(med*COEF)};}
+  return {ym:_ymKey(bizDay()),coef:COEF,weeks:WEEKS,days:days,updated:bizDay()};
+}
+function renderRevThreshold(force){
+  if(!(CU&&(CU.role==='BOSS'||CU.role==='MGR')))return;
+  var host=$('revthr-body');if(!host)return;
+  host.innerHTML='<div class="loading-state"><div class="spin"></div>載入中</div>';
+  loadRevPurForPreview(function(){
+    var ym=_ymKey(bizDay());
+    var t=LS.get('rm_rev_threshold',null);
+    if(force===true||!t||t.ym!==ym||!t.days){t=computeRevThreshold();LS.set('rm_rev_threshold',t);}   // 每月換月後首次開啟(含1號)自動重算
+    var names=['星期日','星期一','星期二','星期三','星期四','星期五','星期六'],order=[1,2,3,4,5,6,0];
+    var body=order.map(function(w){var d=(t.days&&t.days[w])||{median:0,threshold:0,n:0};
+      return '<tr><td style="padding:6px 4px">'+names[w]+'</td>'
+        +'<td style="padding:6px 4px;text-align:right;font-variant-numeric:tabular-nums">'+(d.median||0).toLocaleString()+' <span style="font-size:10px;color:#9a6a4a">('+(d.n||0)+'週)</span></td>'
+        +'<td style="padding:6px 4px;text-align:center">'+t.coef+'</td>'
+        +'<td style="padding:6px 4px;text-align:right;font-weight:800;color:#800020;font-variant-numeric:tabular-nums">$'+(d.threshold||0).toLocaleString()+'</td></tr>';
+    }).join('');
+    host.innerHTML='<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:13px">'
+      +'<thead><tr style="color:#9a6a4a;font-size:11px;border-bottom:1px solid #e7d9c5"><th style="text-align:left;padding:4px">星期</th><th style="text-align:right;padding:4px">近8週中位數</th><th style="padding:4px">係數</th><th style="text-align:right;padding:4px">本月門檻</th></tr></thead>'
+      +'<tbody>'+body+'</tbody></table></div>'
+      +'<div class="muted-note" style="margin-top:10px">自動更新日：'+t.updated+'　（每月換月後首次開啟，自動以近 8 週各星期中位數 × '+t.coef+' 重算）</div>';
+  });
 }
 // ── 創辦成本攤提：前期創辦金額 ÷ 攤提年份 → 每月/每日（存 rm_founding）──
 function foundingCfg(){const c=LS.get('rm_founding',{})||{};return {amount:Math.max(0,Number(c.amount)||0),years:Math.max(0,Number(c.years)||0)};}
@@ -3297,6 +3342,7 @@ const ALL_TABS=[
   {id:'accounts',icon:'👥',label:'帳號管理',roles:['BOSS']},
   {id:'audit',icon:'🔍',label:'稽核紀錄',roles:['BOSS']},
   {id:'focuscfg',icon:'🎯',label:'主推商品設定',roles:['BOSS','MGR']},
+  {id:'revthr',icon:'📈',label:'營收達標門檻',roles:['BOSS','MGR']},
   {id:'settings',icon:'⚙️',label:'制度設定',roles:['BOSS']},
 ];
 function getParts(){
