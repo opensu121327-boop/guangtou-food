@@ -1585,7 +1585,15 @@ html,body,button,input,select,textarea,
         <div id="profit-preview" style="font-size:13.5px;color:#3a2418;line-height:1.5;padding:12px;background:#fbf6ee;border-radius:11px"><span class="muted-note">讀取中…</span></div>
         <button class="refresh-btn" onclick="renderProfitPreview()" style="margin-top:10px">↻ 重新計算</button>
       </div>
-      <div class="muted-note" style="margin-top:10px">※ 加分行為點數、成長樹里程碑會在後續階段加入本頁一起管理。</div>
+      <div class="c-card">
+        <div class="c-card-title">🌳 成長樹里程碑設定</div>
+        <div class="muted-note" style="margin-bottom:10px">設定「累積點門檻 → 時薪加多少（元）＋獎勵文字」。獎勵留空＝純加薪。可增減。</div>
+        <div style="display:flex;gap:6px;font-size:11px;color:#9a6a4a;margin-bottom:4px"><span style="width:88px">點數門檻</span><span style="width:76px">時薪+$</span><span style="flex:1">獎勵（留空=純加薪）</span><span style="width:34px"></span></div>
+        <div id="tree-editor"></div>
+        <button class="btn-sm btn-neutral" onclick="addTreeRow()" style="margin-top:6px">＋ 新增里程碑</button>
+        <button class="btn-action" onclick="saveTree()" style="margin-top:10px">✓ 儲存成長樹</button>
+      </div>
+      <div class="muted-note" style="margin-top:10px">※ 加分行為的點數會在下一子步（加分任務卡）加入管理。</div>
     </div>
 
     <!-- HOME TAB -->
@@ -1831,7 +1839,7 @@ html,body,button,input,select,textarea,
 
 <script>
 // ── 自動更新：開啟時比對版本，有新版就自動重載（免無痕）──
-const APP_VER='20260803160000';
+const APP_VER='20260803170000';
 const GT_KEY='gtk_9F3xQ7Lz_pW2rM8kT';  // 後台共用密鑰（階段A：前端帶上；階段B：後台驗證）
 function checkVersion(){try{fetch('ver.txt?_='+Date.now(),{cache:'no-store'}).then(function(r){return r.ok?r.text():null;}).then(function(v){if(!v)return;v=v.trim();if(v&&v!==APP_VER&&location.search.indexOf('v='+v)<0){location.replace(location.pathname+'?v='+encodeURIComponent(v));}}).catch(function(){});}catch(e){}}
 checkVersion();
@@ -1988,7 +1996,7 @@ function initApp() {
   const labels={BOSS:'老闆',MGR:'店長',EMP:'員工'};
   roleTag.textContent=labels[CU.role]||CU.role;
   roleTag.className='role-tag role-'+CU.role;
-  seedGame();ensureSalesTask();ensurePsaleTask();wireTaskInput();wirePartInput();recordName(CU.username,CU.name);oneTimeUnlock();updateGameChip();
+  seedGame();ensureSalesTask();ensurePsaleTask();wireTaskInput();wirePartInput();recordName(CU.username,CU.name);oneTimeUnlock();oneTimePointsReset();updateGameChip();
 
   // build nav
   const tabs=ALL_TABS.filter(t=>t.roles.includes(CU.role));
@@ -2157,7 +2165,7 @@ function renderSettings(){   // 制度設定頁：填入目前值（僅老闆）
   const c=rewardCfg(); const set=(id,v)=>{if($(id))$(id).value=v;};
   set('set-wage',c.baseWage);set('set-pool',c.poolPct);set('set-penalty',c.penaltyPct);
   set('set-fee-card',c.fee.card);set('set-fee-twqr',c.fee.twqr);set('set-fee-delivery',c.fee.delivery);
-  renderFounding();renderProfitPreview();
+  renderFounding();renderProfitPreview();renderTreeEditor();
 }
 function _ymKey(v){return String(v||'').slice(0,7).replace(/\//g,'-');}   // 年月鍵 2026-08
 // ── 創辦成本攤提：前期創辦金額 ÷ 攤提年份 → 每月/每日（存 rm_founding）──
@@ -3386,7 +3394,7 @@ function normChar(c){c=c||{};const d=defAvatar();const a=c.avatar||{};
     xp:c.xp||0, points:c.points||0,
     lastCheckin:c.lastCheckin||'', tasksDone:c.tasksDone||0, chosen:!!c.chosen, lastHandover:c.lastHandover||'',
     lastSuggestAward:c.lastSuggestAward||'', lastPraiseAward:c.lastPraiseAward||'',
-    locked:!!c.locked, unlockProg:c.unlockProg||0, lockChkDay:c.lockChkDay||'', unlockReset:c.unlockReset||'',
+    locked:!!c.locked, unlockProg:c.unlockProg||0, lockChkDay:c.lockChkDay||'', unlockReset:c.unlockReset||'', pointsReset:c.pointsReset||'',
     avatar:{bgColor:a.bgColor||d.bgColor,bgImg:a.bgImg||'',skinColor:a.skinColor||d.skinColor,hairColor:a.hairColor||d.hairColor,parts}
   };
 }
@@ -3446,6 +3454,15 @@ function oneTimeUnlock(){
   const c=getChar();
   if(c.unlockReset===UNLOCK_RESET_ID)return;
   c.locked=false;c.unlockProg=0;c.lockChkDay=bizDay();c.unlockReset=UNLOCK_RESET_ID;
+  saveChar(c);
+}
+// 新獎勵制度上線：終身累積點全員歸零（每人登入時各執行一次，跨裝置收斂）。要再次歸零把日期改新的即可。
+const POINTS_RESET_ID='20260803';
+function oneTimePointsReset(){
+  if(!CU)return;
+  const c=getChar();
+  if(c.pointsReset===POINTS_RESET_ID)return;
+  c.points=0;c.pointsReset=POINTS_RESET_ID;   // 只歸零成長樹點數，遊戲經驗 xp/等級保留
   saveChar(c);
 }
 // ── 上班日必做「欠款制」鎖定：登入時追溯過去有排班卻沒完成的日子 → 鎖定（欠50點解鎖）──
@@ -3589,6 +3606,32 @@ function growthTreeHTML(c){
     return '<div class="sub-row"><div style="flex:1;min-width:0"><b>'+m.p+' 點</b>　'+esc(lab)+'</div>'+status+'</div>';
   }).join('');
   return h;
+}
+// ── 成長樹里程碑編輯器（制度設定，老闆可改）──
+function treeRowHTML(m,i){
+  return '<div class="tree-row" style="display:flex;gap:6px;align-items:center;margin-bottom:6px;flex-wrap:wrap">'
+    +'<input class="form-input tr-p" type="number" min="0" step="50" value="'+(m.p||0)+'" style="width:88px" placeholder="點數">'
+    +'<input class="form-input tr-wage" type="number" min="0" step="1" value="'+(m.wage||0)+'" style="width:76px" placeholder="時薪+">'
+    +'<input class="form-input tr-reward" type="text" value="'+esc(m.reward||'')+'" style="flex:1;min-width:110px" placeholder="獎勵(留空=純加薪)">'
+    +'<button class="btn-sm btn-warn" onclick="delTreeRow('+i+')">✗</button></div>';
+}
+function _readTreeRows(){
+  var rows=[]; document.querySelectorAll('#tree-editor .tree-row').forEach(function(el){
+    var p=parseFloat(el.querySelector('.tr-p').value), w=parseFloat(el.querySelector('.tr-wage').value), rw=el.querySelector('.tr-reward').value||'';
+    rows.push({p:isFinite(p)&&p>=0?p:0, wage:isFinite(w)&&w>=0?w:0, reward:String(rw)});
+  });
+  return rows;
+}
+function _renderTreeRows(rows){var host=$('tree-editor');if(!host)return;host.innerHTML=rows.length?rows.map(treeRowHTML).join(''):'<div class="muted-note">按「＋ 新增里程碑」開始</div>';}
+function renderTreeEditor(){_renderTreeRows(treeCfg());}
+function addTreeRow(){var rows=_readTreeRows();rows.push({p:0,wage:0,reward:''});_renderTreeRows(rows);}
+function delTreeRow(i){var rows=_readTreeRows();rows.splice(i,1);_renderTreeRows(rows);}
+function saveTree(){
+  if(!(CU&&CU.role==='BOSS')){toast('僅老闆可設定','red');return;}
+  var rows=_readTreeRows().filter(function(r){return r.p>0;}).sort(function(a,b){return a.p-b.p;});
+  LS.set('rm_tree_cfg',rows);   // LS.set 會自動同步雲端
+  toast('✓ 成長樹里程碑已更新','gold');
+  _renderTreeRows(rows);
 }
 function renderCharacter(){
   const c=getChar();const lv=levelOf(c.xp);
