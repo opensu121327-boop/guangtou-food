@@ -1923,7 +1923,7 @@ html,body,button,input,select,textarea,
 
 <script>
 // ── 自動更新：開啟時比對版本，有新版就自動重載（免無痕）──
-const APP_VER='20260803290000';
+const APP_VER='20260804100000';
 const GT_KEY='gtk_9F3xQ7Lz_pW2rM8kT';  // 後台共用密鑰（階段A：前端帶上；階段B：後台驗證）
 function checkVersion(){try{fetch('ver.txt?_='+Date.now(),{cache:'no-store'}).then(function(r){return r.ok?r.text():null;}).then(function(v){if(!v)return;v=v.trim();if(v&&v!==APP_VER&&location.search.indexOf('v='+v)<0){location.replace(location.pathname+'?v='+encodeURIComponent(v));}}).catch(function(){});}catch(e){}}
 checkVersion();
@@ -1943,18 +1943,29 @@ async function api(body) {
   return r.json();
 }
 // 帳號系統走「同步後台」（直接讀寫帳號管理表）
+// 帶「逾時＋自動重試」的後端送出；用於登入/查詢等唯讀操作（重試安全）。Apps Script 冷啟動慢、偶發 302/404/回傳非JSON，重試一次多半就成功。
+async function _postSync(body,tries){
+  const payload=JSON.stringify(body);tries=tries||3;let lastErr;
+  for(let i=0;i<tries;i++){
+    try{
+      const ctl=(typeof AbortController!=='undefined')?new AbortController():null;
+      const timer=ctl?setTimeout(function(){try{ctl.abort();}catch(_e){}},12000):null;   // 單次逾時 12 秒，避免無限卡住
+      const r=await fetch(SYNC_URL,{method:'POST',body:payload,headers:{'Content-Type':'text/plain'},signal:ctl?ctl.signal:undefined});
+      if(timer)clearTimeout(timer);
+      if(!r.ok)throw new Error('HTTP '+r.status);
+      return await r.json();
+    }catch(e){lastErr=e;if(i<tries-1)await new Promise(function(res){setTimeout(res,600*(i+1));});}   // 退避 0.6s、1.2s 再重試
+  }
+  throw lastErr;
+}
 async function authApi(body){
   if(body&&body.data&&typeof body.data==='object'){body=Object.assign({},body.data,body);}
   body=Object.assign({key:GT_KEY,auth:GT_KEY},body);  // 帶上後台共用密鑰（auth 供後台驗證，不會被覆蓋）
-  const r=await fetch(SYNC_URL,{method:'POST',body:JSON.stringify(body),headers:{'Content-Type':'text/plain'}});
-  return r.json();
+  return _postSync(body);
 }
-// 查詢資料用 GET（營運後台 doGet 才處理 query_*）
+// 查詢資料（唯讀，走 POST 並帶共用密鑰，含逾時重試）
 async function apiGet(type,params){
-  // 查詢改走「同步後台」（原營運後台已併入此支）；POST 並帶共用密鑰
-  const body=Object.assign({type:type,key:GT_KEY,auth:GT_KEY},params||{});
-  const r=await fetch(SYNC_URL,{method:'POST',body:JSON.stringify(body),headers:{'Content-Type':'text/plain'}});
-  return r.json();
+  return _postSync(Object.assign({type:type,key:GT_KEY,auth:GT_KEY},params||{}));
 }
 
 // ── AUTH TABS ──
