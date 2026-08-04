@@ -1923,7 +1923,7 @@ html,body,button,input,select,textarea,
 
 <script>
 // ── 自動更新：開啟時比對版本，有新版就自動重載（免無痕）──
-const APP_VER='20260804100000';
+const APP_VER='20260804110000';
 const GT_KEY='gtk_9F3xQ7Lz_pW2rM8kT';  // 後台共用密鑰（階段A：前端帶上；階段B：後台驗證）
 function checkVersion(){try{fetch('ver.txt?_='+Date.now(),{cache:'no-store'}).then(function(r){return r.ok?r.text():null;}).then(function(v){if(!v)return;v=v.trim();if(v&&v!==APP_VER&&location.search.indexOf('v='+v)<0){location.replace(location.pathname+'?v='+encodeURIComponent(v));}}).catch(function(){});}catch(e){}}
 checkVersion();
@@ -1967,6 +1967,15 @@ async function authApi(body){
 async function apiGet(type,params){
   return _postSync(Object.assign({type:type,key:GT_KEY,auth:GT_KEY},params||{}));
 }
+// 大型唯讀查詢的共用快取（避免同一份資料被多個分頁/函式重複抓，讀取更快）。資料異動時呼叫 invalidateQ 清除。
+var _qCache={};
+function apiGetCached(type,ttl){
+  ttl=ttl||45000;
+  var c=_qCache[type];
+  if(c&&(Date.now()-c.t<ttl))return Promise.resolve(c.d);
+  return apiGet(type).then(function(d){if(d&&(d.status==='ok'||d.status==='success'))_qCache[type]={t:Date.now(),d:d};return d;});
+}
+function invalidateQ(type){if(type)delete _qCache[type];else _qCache={};}
 
 // ── AUTH TABS ──
 function switchAuthTab(tab, btn) {
@@ -2355,8 +2364,8 @@ function renderFounding(){
 // ── 分潤試算：依當月營收＋進貨 Sheet 即時計算 ──
 function loadRevPurForPreview(cb){
   var need=[];
-  if(!(_allPurData&&_allPurData.length)&&typeof apiGet==='function')need.push(apiGet('query_purchase').then(function(res){if(res&&(res.status==='ok'||res.status==='success')&&res.rows){_allPurData=res.rows.slice(1).map(function(r){return {date:r[0],cost:Number(r[6])||0,name:String(r[3]||''),category:String(r[2]||''),qty:Number(r[4])||0,unit:String(r[5]||''),unitCost:Number(r[7])||0,supplier:String(r[8]||'')};});}}));
-  if(!(_allRevData&&_allRevData.length)&&typeof apiGet==='function')need.push(apiGet('query_revenue').then(function(res){if(res&&(res.status==='ok'||res.status==='success')&&res.rows){_allRevData=res.rows.slice(1).map(function(r){return {date:r[0],total:Number(r[7])||0,cardFee:Number(r[8])||0,twqrFee:Number(r[9])||0,deliveryFee:Number(r[10])||0};});}}));
+  if(!(_allPurData&&_allPurData.length)&&typeof apiGet==='function')need.push(apiGetCached('query_purchase').then(function(res){if(res&&(res.status==='ok'||res.status==='success')&&res.rows){_allPurData=res.rows.slice(1).map(function(r){return {date:r[0],cost:Number(r[6])||0,name:String(r[3]||''),category:String(r[2]||''),qty:Number(r[4])||0,unit:String(r[5]||''),unitCost:Number(r[7])||0,supplier:String(r[8]||'')};});}}));
+  if(!(_allRevData&&_allRevData.length)&&typeof apiGet==='function')need.push(apiGetCached('query_revenue').then(function(res){if(res&&(res.status==='ok'||res.status==='success')&&res.rows){_allRevData=res.rows.slice(1).map(function(r){return {date:r[0],total:Number(r[7])||0,cardFee:Number(r[8])||0,twqrFee:Number(r[9])||0,deliveryFee:Number(r[10])||0};});}}));
   if(!need.length){cb();return;}
   Promise.all(need).then(function(){cb();}).catch(function(){cb();});
 }
@@ -2425,7 +2434,7 @@ async function submitRev() {
   if(window._rvEdit){   // 編輯模式：原地更新該列
     const ed=window._rvEdit;
     authApi({type:'revenue_update',row:ed.row,oldDate:ed.oldDate,r:row,by:(CU&&CU.username)||'',role:(CU&&CU.role)||''}).then(function(d){
-      if(d&&(d.status==='success'||d.status==='ok')){toast('✓ 已修改營收','gold');rvCancelEdit();loadReports();}
+      if(d&&(d.status==='success'||d.status==='ok')){invalidateQ('query_revenue');toast('✓ 已修改營收','gold');rvCancelEdit();loadReports();}
       else{toast((d&&d.message)||'修改失敗，請重新整理再試','red');}
     }).catch(function(){toast('連線失敗','red');});
     return;
@@ -2433,7 +2442,7 @@ async function submitRev() {
   // 立即回饋、雲端背景寫入；若失敗自動還原欄位避免資料遺失
   const _rvIds=['rv-cash','rv-card','rv-twqr','rv-fp','rv-ue','rv-off','rv-note'];
   const _rvSaved={};_rvIds.forEach(id=>{_rvSaved[id]=$(id)?$(id).value:'';});
-  toast('✓ 營收已記錄','gold');
+  invalidateQ('query_revenue');toast('✓ 營收已記錄','gold');
   _rvIds.forEach(id=>{if($(id))$(id).value='';});calcRev();
   const _rvRestore=function(){_rvIds.forEach(id=>{if($(id))$(id).value=_rvSaved[id];});calcRev();};
   authApi({type:'revenue',rows:[row]}).then(function(d){if(!(d&&(d.status==='success'||d.status==='ok'))){_rvRestore();toast('⚠️ 營收儲存失敗，已還原資料請重送','red');}}).catch(function(){_rvRestore();toast('⚠️ 營收儲存失敗，已還原資料請確認網路','red');});
@@ -2490,7 +2499,7 @@ async function loadMaterials(force){
     let arr=[];
     if(syncOn()){try{const d=await kv('materials',{});if(d&&d.status==='ok'&&d.data&&d.data.length)arr=d.data;}catch(e){}}
     if(!arr.length){
-      const d2=await apiGet('query_purchase');const ok=d2&&(d2.status==='ok'||d2.status==='success');
+      const d2=await apiGetCached('query_purchase');const ok=d2&&(d2.status==='ok'||d2.status==='success');
       const rows=ok?(d2.rows?d2.rows.slice(1):(d2.data||[])):[];const map={};
       rows.forEach(r=>{const code=r[1]?String(r[1]).trim():'';const name=r[3]?String(r[3]).trim():'';if(!code&&!name)return;map[code||name]={code:code,name:name,cat:r[2]?String(r[2]).trim():'',unit:r[5]?String(r[5]).trim():'',supplier:r[8]?String(r[8]).trim():''};});
       arr=Object.keys(map).map(k=>map[k]);
@@ -2567,7 +2576,7 @@ async function submitPu() {
   if(window._puEdit){   // 編輯模式：原地更新該列
     const ed=window._puEdit;
     authApi({type:'purchase_update',row:ed.row,oldName:ed.oldName,r:row,by:(CU&&CU.username)||'',role:(CU&&CU.role)||''}).then(function(d){
-      if(d&&(d.status==='success'||d.status==='ok')){toast('✓ 已修改進貨','gold');puCancelEdit();loadMaterials(true);renderRecentPurchases();}
+      if(d&&(d.status==='success'||d.status==='ok')){invalidateQ('query_purchase');toast('✓ 已修改進貨','gold');puCancelEdit();loadMaterials(true);renderRecentPurchases();}
       else{toast((d&&d.message)||'修改失敗，請重新整理再試','red');}
     }).catch(function(){toast('連線失敗','red');});
     return;
@@ -2578,7 +2587,7 @@ async function submitPu() {
   toast('✓ 進貨記錄已儲存','gold');
   _puIds.forEach(id=>{if($(id))$(id).value='';});if($('pu-mat'))$('pu-mat').value='';if($('pu-mat-cat'))$('pu-mat-cat').value='';
   const _puRestore=function(){_puIds.forEach(id=>{if($(id))$(id).value=_puSaved[id];});};
-  authApi({type:'purchase',rows:[row]}).then(function(d){if(d&&(d.status==='success'||d.status==='ok')){loadMaterials(true);renderRecentPurchases();}else{_puRestore();toast('⚠️ 進貨儲存失敗，已還原資料請重送','red');}}).catch(function(){_puRestore();toast('⚠️ 進貨儲存失敗，已還原資料請確認網路','red');});
+  authApi({type:'purchase',rows:[row]}).then(function(d){if(d&&(d.status==='success'||d.status==='ok')){invalidateQ('query_purchase');loadMaterials(true);renderRecentPurchases();}else{_puRestore();toast('⚠️ 進貨儲存失敗，已還原資料請重送','red');}}).catch(function(){_puRestore();toast('⚠️ 進貨儲存失敗，已還原資料請確認網路','red');});
 }
 // 進貨記錄：修改既有一筆（帶入表單→submitPu 進入編輯模式）
 const PU_FIELDS=['pu-name','pu-code','pu-cat','pu-qty','pu-cost','pu-supplier','pu-packq'];
@@ -2607,7 +2616,7 @@ let _recentPu=[];
 async function renderRecentPurchases(){
   const box=$('recent-pu');if(!box)return;box.innerHTML='<div class="muted-note">載入中…</div>';
   try{
-    const d=await apiGet('query_purchase');const ok=d&&(d.status==='ok'||d.status==='success');
+    const d=await apiGetCached('query_purchase');const ok=d&&(d.status==='ok'||d.status==='success');
     const rows=(ok&&d.rows)?d.rows:[];_recentPu=rows;
     if(rows.length<=1){box.innerHTML='<div class="game-empty">尚無進貨記錄</div>';return;}
     let html='';
@@ -2632,7 +2641,7 @@ async function delPurchase(k){
   if(!confirm('確定刪除「'+name+'」這筆進貨？（會一併從 Google Sheet 刪除）'))return;
   try{
     const d=await authApi({type:'purchase_delete',row:sheetRow,name:name,by:(CU&&CU.username)||'',role:(CU&&CU.role)||''});
-    if(d&&d.status==='success'){toast('✓ 已刪除','gold');renderRecentPurchases();loadMaterials(true);}
+    if(d&&d.status==='success'){invalidateQ('query_purchase');toast('✓ 已刪除','gold');renderRecentPurchases();loadMaterials(true);}
     else toast((d&&d.message)||'刪除失敗，請重新整理再試','red');
   }catch(e){toast('連線失敗','red');}
 }
@@ -3006,8 +3015,8 @@ async function loadReports() {
   $('report-last-update').textContent='載入中…';
   try{
     const [revRes,purRes]=await Promise.all([
-      apiGet('query_revenue'),
-      apiGet('query_purchase')
+      apiGetCached('query_revenue'),
+      apiGetCached('query_purchase')
     ]);
     const revOk = revRes.status==='ok' || revRes.status==='success';
     const purOk = purRes.status==='ok' || purRes.status==='success';
@@ -3021,8 +3030,9 @@ async function loadReports() {
           ? purRes.rows.slice(1).map(r=>({date:r[0],cost:Number(r[6])||0,name:String(r[3]||''),category:String(r[2]||''),qty:Number(r[4])||0,unit:String(r[5]||''),unitCost:Number(r[7])||0,supplier:String(r[8]||'')}))
           : (purRes.data||[]))
       : [];
-    try{const sres=await authApi({type:'query_sales'});_allSalesData=(sres&&sres.rows)?sres.rows.slice(1).map(r=>({date:normDate(r[0]),best:[r[3],r[4],r[5],r[6],r[7]],worst:[r[8],r[9],r[10],r[11],r[12]]})):[];}catch(e){_allSalesData=[];}
-    try{const fres=await authApi({type:'query_focus'});_allFocusData=(fres&&fres.rows)?fres.rows.slice(1).map(r=>({date:normDate(r[0]),product:String(r[1]||'').trim(),qty:Number(r[2])||0})).filter(x=>x.product):[];}catch(e){_allFocusData=[];}
+    const [sres,fres]=await Promise.all([authApi({type:'query_sales'}).catch(function(){return null;}),authApi({type:'query_focus'}).catch(function(){return null;})]);   // 平行抓，減少等待
+    _allSalesData=(sres&&sres.rows)?sres.rows.slice(1).map(r=>({date:normDate(r[0]),best:[r[3],r[4],r[5],r[6],r[7]],worst:[r[8],r[9],r[10],r[11],r[12]]})):[];
+    _allFocusData=(fres&&fres.rows)?fres.rows.slice(1).map(r=>({date:normDate(r[0]),product:String(r[1]||'').trim(),qty:Number(r[2])||0})).filter(x=>x.product):[];
     renderReports();
     const now=new Date();
     $('report-last-update').textContent='最後更新：'+now.getHours()+':'+String(now.getMinutes()).padStart(2,'0');
@@ -4360,7 +4370,7 @@ function saveChallengeCfg(){const cfg={dailyTargetWeekday:Math.max(0,parseInt($(
 let _costMap={};
 async function loadRecipeCosts(){
   try{
-    const d=await apiGet('query_purchase');const ok=d&&(d.status==='ok'||d.status==='success');
+    const d=await apiGetCached('query_purchase');const ok=d&&(d.status==='ok'||d.status==='success');
     const rows=ok?(d.rows?d.rows.slice(1):(d.data||[])):[];const map={};
     rows.forEach(r=>{const code=r[1]?String(r[1]).trim():'';if(!code)return;const uc=parseFloat(r[7]);const unit=r[5]?String(r[5]).trim():'';const nm=r[3]?String(r[3]).trim():'';if(!isNaN(uc))map[code]={cost:uc,unit:unit,name:nm};});
     _costMap=map;
