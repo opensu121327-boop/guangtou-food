@@ -1923,7 +1923,7 @@ html,body,button,input,select,textarea,
 
 <script>
 // ── 自動更新：開啟時比對版本，有新版就自動重載（免無痕）──
-const APP_VER='20260805130000';
+const APP_VER='20260805140000';
 const GT_KEY='gtk_9F3xQ7Lz_pW2rM8kT';  // 後台共用密鑰（階段A：前端帶上；階段B：後台驗證）
 function checkVersion(){try{fetch('ver.txt?_='+Date.now(),{cache:'no-store'}).then(function(r){return r.ok?r.text():null;}).then(function(v){if(!v)return;v=v.trim();if(v&&v!==APP_VER&&location.search.indexOf('v='+v)<0){location.replace(location.pathname+'?v='+encodeURIComponent(v));}}).catch(function(){});}catch(e){}}
 checkVersion();
@@ -2140,7 +2140,7 @@ function switchTab(name,btn) {
   if(name==='reports')loadReports();
   if(name==='purchase'){loadMaterials().then(fillMatCatSelect);renderRecentPurchases();}
   if(name==='inventory')renderInventory();
-  if(name==='bom'){renderBom();Promise.all([loadMaterials(),loadRecipeCosts()]).then(renderBom);}
+  if(name==='bom'){renderBom();loadBomImgs(renderBom);Promise.all([loadMaterials(),loadRecipeCosts()]).then(renderBom);}
   if(name==='accounts'){loadPending();loadAccounts();}
   if(name==='audit')renderAudit();
   if(name==='settings')renderSettings();
@@ -4508,11 +4508,30 @@ function cropConfirm(){var s=_cropState;if(!s)return;
   if(cb)cb(data);
 }
 function bomPickImg(id){const el=$('bimg-'+id);if(el)el.click();}
-function bomImgUpload(id,el){const f=el.files&&el.files[0];if(!f)return;el.value='';cropImage(f,{aspect:1,max:480,q:0.55},function(url){if(LS.set('rm_bomimg_'+id,url)){toast('✓ 已更新照片','gold');renderBom();}});}
+// 圖片庫：大圖不進 KV（不用 LS.set 的 rm_ 鍵，改存後端「圖片庫」表；本機用非同步鍵/記憶體快取，不會被推回 KV）
+window._bomImgs=window._bomImgs||null;   // {key:url} 記憶體快取
+function bomImgLocalGet(id){
+  var k='rm_bomimg_'+id;
+  if(window._bomImgs&&(k in window._bomImgs))return window._bomImgs[k]||'';
+  try{return localStorage.getItem('imgc_bomimg_'+id)||'';}catch(e){return '';}
+}
+function loadBomImgs(cb){
+  if(!syncOn()){if(cb)cb();return;}
+  apiGet('img_all',{prefix:'rm_bomimg_'}).then(function(d){
+    if(d&&d.status==='ok'&&d.data){window._bomImgs=d.data;try{for(var k in d.data){localStorage.setItem('imgc_'+k.replace('rm_',''),d.data[k]);}}catch(e){}}
+    if(cb)cb();
+  }).catch(function(){if(cb)cb();});
+}
+function bomImgUpload(id,el){const f=el.files&&el.files[0];if(!f)return;el.value='';cropImage(f,{aspect:1,max:480,q:0.55},function(url){
+  if(!window._bomImgs)window._bomImgs={};window._bomImgs['rm_bomimg_'+id]=url;
+  try{localStorage.setItem('imgc_bomimg_'+id,url);}catch(e){}
+  if(syncOn())authApi({type:'img_set',key:'rm_bomimg_'+id,value:url}).catch(function(){});
+  toast('✓ 已更新照片','gold');renderBom();
+});}
 function recipeCard(rc,isSemi){
   const r=recipeCost(rc);const total=r.cost,miss=r.miss;
   const open=!!_bomOpen[rc.id];
-  const img=LS.get('rm_bomimg_'+rc.id,'')||'';
+  const img=bomImgLocalGet(rc.id);
   const rows=(rc.items||[]).map((it,idx)=>{
     const c=itemCost(it);const cm=it.semiId?null:_costMap[it.code];const semi=it.semiId?findRecipe(it.semiId):null;
     const unitInfo=it.semiId?((semi&&parseFloat(semi.yieldQty)>0)?('$'+round2(recipeCost(semi).cost/parseFloat(semi.yieldQty))+'/'+esc(semi.yieldUnit||'')):'半成品'):(cm?('$'+round2(cm.cost)+'/'+esc(cm.unit)):'—');
@@ -4616,7 +4635,10 @@ function biConfirmName(rid,i){
 }
 function biUnit(rid){const v=$('bi-mat-'+rid)&&$('bi-mat-'+rid).value;if(!v)return;const ui=$('bi-unit-'+rid);if(!ui||ui.value)return;if(v.charAt(0)==='m'){const m=_materials[parseInt(v.slice(2))];if(m)ui.value=m.unit||'';}else if(v.charAt(0)==='s'){const s=findRecipe(v.slice(2));if(s)ui.value=s.yieldUnit||'克';}}
 function addRecipe(){const dish=($('bom-dish')&&$('bom-dish').value.trim())||'';if(!dish){toast('請輸入名稱','red');return;}const isSemi=!!($('bom-issemi')&&$('bom-issemi').checked);const rs=LS.get('rm_recipes',[])||[];rs.push({id:'rc'+Date.now(),dish:dish,items:[],isSemi:isSemi,price:null,yieldQty:null,yieldUnit:isSemi?'克':null});LS.set('rm_recipes',rs);if($('bom-dish'))$('bom-dish').value='';if($('bom-issemi'))$('bom-issemi').checked=false;toast('✓ 已建立'+(isSemi?'半成品':'菜品'),'gold');renderBom();}
-function delRecipe(id){const rs=(LS.get('rm_recipes',[])||[]).filter(r=>r.id!==id);LS.set('rm_recipes',rs);LS.set('rm_bomimg_'+id,'');toast('已刪除','red');renderBom();}
+function delRecipe(id){const rs=(LS.get('rm_recipes',[])||[]).filter(r=>r.id!==id);LS.set('rm_recipes',rs);
+  if(window._bomImgs)delete window._bomImgs['rm_bomimg_'+id];try{localStorage.removeItem('imgc_bomimg_'+id);}catch(e){}
+  if(syncOn())authApi({type:'img_set',key:'rm_bomimg_'+id,value:''}).catch(function(){});
+  toast('已刪除','red');renderBom();}
 function addIngredient(rid){const rs=LS.get('rm_recipes',[])||[];const rc=rs.find(r=>r.id===rid);if(!rc)return;const v=$('bi-mat-'+rid)&&$('bi-mat-'+rid).value;const qty=parseFloat($('bi-qty-'+rid)&&$('bi-qty-'+rid).value)||0;let unit=($('bi-unit-'+rid)&&$('bi-unit-'+rid).value.trim())||'';if(!v||!qty){toast('請選物料並填用量','red');return;}rc.items=rc.items||[];if(v.charAt(0)==='s'){const s=findRecipe(v.slice(2));if(!s)return;if(!unit)unit=s.yieldUnit||'克';rc.items.push({semiId:s.id,name:s.dish,qty:qty,unit:unit});}else{const m=_materials[parseInt(v.slice(2))];if(!m)return;if(!unit)unit=m.unit||'克';rc.items.push({code:m.code,name:m.name,qty:qty,unit:unit});}LS.set('rm_recipes',rs);toast('✓ 已加入食材','gold');renderBom();}
 function setPrice(id){const rs=LS.get('rm_recipes',[])||[];const rc=rs.find(r=>r.id===id);if(!rc)return;const v=$('pr-'+id)&&$('pr-'+id).value;rc.price=(v===''||v==null)?null:(parseFloat(v)||0);LS.set('rm_recipes',rs);toast('✓ 已儲存售價','gold');renderBom();}
 function setYield(id){const rs=LS.get('rm_recipes',[])||[];const rc=rs.find(r=>r.id===id);if(!rc)return;const q=$('yq-'+id)&&$('yq-'+id).value;const u=($('yu-'+id)&&$('yu-'+id).value.trim())||'';rc.yieldQty=(q===''||q==null)?null:(parseFloat(q)||0);rc.yieldUnit=u||null;LS.set('rm_recipes',rs);toast('✓ 已儲存產出量','gold');renderBom();}
