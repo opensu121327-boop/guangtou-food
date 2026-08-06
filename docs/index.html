@@ -1923,7 +1923,7 @@ html,body,button,input,select,textarea,
 
 <script>
 // ── 自動更新：開啟時比對版本，有新版就自動重載（免無痕）──
-const APP_VER='20260806100000';
+const APP_VER='20260806110000';
 const GT_KEY='gtk_9F3xQ7Lz_pW2rM8kT';  // 後台共用密鑰（階段A：前端帶上；階段B：後台驗證）
 function checkVersion(){try{fetch('ver.txt?_='+Date.now(),{cache:'no-store'}).then(function(r){return r.ok?r.text():null;}).then(function(v){if(!v)return;v=v.trim();if(v&&v!==APP_VER&&location.search.indexOf('v='+v)<0){location.replace(location.pathname+'?v='+encodeURIComponent(v));}}).catch(function(){});}catch(e){}}
 checkVersion();
@@ -1978,7 +1978,7 @@ function apiGetCached(type,ttl){
   if(c&&(Date.now()-c.t<ttl))return Promise.resolve(c.d);
   return apiGet(type).then(function(d){if(d&&(d.status==='ok'||d.status==='success'))_qCache[type]={t:Date.now(),d:d};return d;});
 }
-function invalidateQ(type){if(type)delete _qCache[type];else _qCache={};}
+function invalidateQ(type){if(type){delete _qCache[type];if(type==='query_purchase')delete _qCache['query_purchase_recent'];}else _qCache={};}
 
 // ── AUTH TABS ──
 function switchAuthTab(tab, btn) {
@@ -2605,7 +2605,7 @@ function editPurchase(k){
   puSetUnit(r[5]);
   if($('pu-cost'))$('pu-cost').value=(r[6]!==''&&r[6]!=null)?r[6]:'';
   if($('pu-supplier'))$('pu-supplier').value=String(r[8]||'');
-  window._puEdit={row:k+1,oldName:String(r[3]||'')};
+  window._puEdit={row:k,oldName:String(r[3]||'')};   // k 即 Sheet 絕對列號
   puEditBar();goTab('purchase');
   var el=$('pu-name');if(el)el.scrollIntoView({behavior:'smooth',block:'center'});
 }
@@ -2615,34 +2615,36 @@ function puEditBar(){
   if(window._puEdit){if(bar){bar.style.display='';bar.innerHTML='✏️ 修改中：'+esc(window._puEdit.oldName)+'　<a href="#" onclick="puCancelEdit();return false" style="color:#800020;text-decoration:underline">取消修改</a>';}if(btn)btn.textContent='✓ 儲存修改';}
   else{if(bar)bar.style.display='none';if(btn)btn.textContent='✓ 新增進貨';}
 }
-let _recentPu=[];
+let _recentPu={};   // 以「Sheet 絕對列號」為鍵，供改/刪定位
 async function renderRecentPurchases(){
   const box=$('recent-pu');if(!box)return;
   const hasList=box.children.length>0&&!box.querySelector('.muted-note')&&!box.querySelector('.game-empty');
-  if(!hasList)box.innerHTML='<div class="muted-note">載入中…</div>';   // 已有清單就不清空，避免送出後閃爍「消失又跳回」
+  if(!hasList)box.innerHTML='<div class="muted-note">載入中…</div>';   // 已有清單就不清空，避免送出後閃爍
   try{
-    const d=await apiGetCached('query_purchase');const ok=d&&(d.status==='ok'||d.status==='success');
-    const rows=(ok&&d.rows)?d.rows:[];_recentPu=rows;
-    if(rows.length<=1){box.innerHTML='<div class="game-empty">尚無進貨記錄</div>';return;}
-    let html='';
+    let d=await apiGetCached('query_purchase_recent');   // 只抓最近幾十筆，快很多
+    let dataRows,base;
+    if(d&&(d.status==='ok'||d.status==='success')&&Array.isArray(d.rows)&&typeof d.base==='number'){dataRows=d.rows;base=d.base;}
+    else{const f=await apiGetCached('query_purchase');const all=(f&&f.rows)?f.rows:[];dataRows=all.slice(1);base=2;}   // 後端未部署新端點 → 退回完整查詢
+    if(!dataRows.length){box.innerHTML='<div class="game-empty">尚無進貨記錄</div>';return;}
     const names=LS.get('rm_names',{})||{};const today=bizDay();
-    // 依進貨日期新到舊排序（保留原始 Sheet 列索引 k 供刪除；同日期則新輸入者在前）
-    // 隱藏「員工」分類（員工薪水／勞健保），避免薪資顯示在進貨紀錄；報表人事成本不受影響
-    const ordered=[];for(let i=1;i<rows.length;i++){if(String(rows[i][2]||'').indexOf('員工')===0)continue;ordered.push(i);}
-    ordered.sort((a,b)=>{const da=normDate(rows[a][0]),db=normDate(rows[b][0]);if(da!==db)return da<db?1:-1;return b-a;});
-    for(const k of ordered.slice(0,15)){const r=rows[k];
+    _recentPu={};const items=[];
+    // 隱藏「員工」分類（薪水）；以絕對列號 sr=base+i 供改/刪
+    for(let i=0;i<dataRows.length;i++){const sr=base+i,r=dataRows[i];if(String(r[2]||'').indexOf('員工')===0)continue;_recentPu[sr]=r;items.push({sr:sr,r:r});}
+    items.sort((a,b)=>{const da=normDate(a.r[0]),db=normDate(b.r[0]);if(da!==db)return da<db?1:-1;return b.sr-a.sr;});
+    let html='';
+    for(const it of items.slice(0,15)){const r=it.r,sr=it.sr;
       const date=normDate(r[0]),name=String(r[3]||''),qty=r[4],unit=String(r[5]||''),cost=r[6],supplier=String(r[8]||''),by=String(r[9]||'');
       const canDel=isMgr()||(!!by&&by===CU.username&&date===today);
       const byName=by?(names[by]||by):'';
       html+=`<div style="background:#f5efe6;border:1px solid rgba(128,0,32,.12);border-radius:12px;padding:10px 12px;margin-bottom:8px;display:flex;align-items:center;gap:10px">
         <div style="flex:1;min-width:0"><div style="font-weight:700;color:#2b1519">${esc(name)}</div><div style="font-size:12px;color:rgba(43,21,25,.55)">${date} ・ ${qty}${esc(unit)} ・ $${cost}${supplier?(' ・ '+esc(supplier)):''}${byName?(' ・ 填表：'+esc(byName)):''}</div></div>
-        ${canDel?`<button class="btn-sm btn-neutral" style="flex-shrink:0" onclick="editPurchase(${k})">改</button> <button class="btn-sm btn-warn" style="flex-shrink:0" onclick="delPurchase(${k})">刪</button>`:''}
+        ${canDel?`<button class="btn-sm btn-neutral" style="flex-shrink:0" onclick="editPurchase(${sr})">改</button> <button class="btn-sm btn-warn" style="flex-shrink:0" onclick="delPurchase(${sr})">刪</button>`:''}
       </div>`;}
     box.innerHTML=html;
   }catch(e){box.innerHTML='<div class="muted-note">載入失敗</div>';}
 }
 async function delPurchase(k){
-  const r=_recentPu[k];if(!r)return;const name=String(r[3]||'');const sheetRow=k+1;
+  const r=_recentPu[k];if(!r)return;const name=String(r[3]||'');const sheetRow=k;   // k 即 Sheet 絕對列號
   if(!confirm('確定刪除「'+name+'」這筆進貨？（會一併從 Google Sheet 刪除）'))return;
   try{
     const d=await authApi({type:'purchase_delete',row:sheetRow,name:name,by:(CU&&CU.username)||'',role:(CU&&CU.role)||''});
