@@ -773,9 +773,6 @@ textarea.form-input{resize:vertical;line-height:1.5;}
 .lb-xp{font-weight:800;color:#ff6a1a;font-size:18px;flex-shrink:0;}
 .lb-xp span{font-size:11px;color:var(--text-3);font-weight:600;}
 /* ===== 員工守則標語 ===== */
-.hb-motto{background:linear-gradient(135deg,#ff9d3d,#ff6a1a);color:#fff;border-radius:20px;padding:22px 20px;margin-bottom:16px;text-align:center;box-shadow:0 10px 24px rgba(255,122,26,.28);}
-.hb-motto-t{font-size:13px;font-weight:800;letter-spacing:.12em;opacity:.95;margin-bottom:8px;}
-.hb-motto-b{font-size:20px;font-weight:800;font-family:'Fredoka','Noto Sans TC';line-height:1.45;}
 
 /* 全域防橫向溢出 */
 html,body{max-width:100%;overflow-x:hidden;}
@@ -814,7 +811,7 @@ img,canvas,table,video{max-width:100%;}
 /* ═══════════════ 🍷 最終覆蓋（放最後才會贏，清除所有橘色）═══════════════ */
 .btn-primary,.btn-action{background:linear-gradient(145deg,#9a1730,#800020)!important;color:#f3e9dc!important;box-shadow:0 8px 18px rgba(128,0,32,.28)!important;border:none!important;}
 .auth-tab-btn.active{background:#f3e9dc!important;color:#800020!important;border:2px solid #800020!important;box-shadow:none!important;}
-.lv-badge,.cc-badge,.dcat.active,.hb-motto{background:linear-gradient(135deg,#9a1730,#800020)!important;color:#f3e9dc!important;box-shadow:0 6px 14px rgba(128,0,32,.28)!important;}
+.lv-badge,.cc-badge,.dcat.active{background:linear-gradient(135deg,#9a1730,#800020)!important;color:#f3e9dc!important;box-shadow:0 6px 14px rgba(128,0,32,.28)!important;}
 .xp-fill,.mini-xp-fill{background:linear-gradient(90deg,#c0405a,#800020)!important;}
 .user-avatar{background:linear-gradient(145deg,#9a1730,#5a0016)!important;color:#f3e9dc!important;}
 #toast.gold{color:#800020!important;border-color:#800020!important;}
@@ -975,7 +972,6 @@ body,html{background:#FFF4E6!important;}
   letter-spacing:.06em;font-weight:700!important;}
 .btn-action:active,.btn-primary:active{transform:scale(.97);}
 /* 兌換等次要金色按鈕也同步古典金 */
-.rw .redeem,.reward-redeem,.redeem-btn{background:linear-gradient(135deg,#C9A96E,#9A7A4A)!important;color:#1A1206!important;}
 /* KPI 大數字：勃根地、有力 */
 .kpi-card{background:#fff!important;border:1px solid var(--line-soft)!important;border-radius:18px!important;}
 .kpi-val,.stat-value{color:#800020!important;font-weight:800!important;}
@@ -1089,21 +1085,6 @@ body,html{background:#FFF4E6!important;}
 /* 每頁標題後面的小字：米白＋淡深色陰影（在米白底仍可辨識） */
 .sec-sub{color:#FBF2E0!important;text-shadow:0 1px 2px rgba(90,40,10,.5)!important;font-weight:600!important;}
 
-/* ============================================================
-   ★ 獎勵商店（購物車商店樣式・含照片）
-   ============================================================ */
-.rw-grid{display:grid!important;grid-template-columns:1fr 1fr;gap:12px;}
-.rw-prod{background:#fff;border:1px solid var(--line-gold);border-radius:18px;overflow:hidden;
-  display:flex;flex-direction:column;box-shadow:var(--shadow-warm-sm);}
-.rw-thumb{aspect-ratio:1/1;background:linear-gradient(160deg,#FFF0DF,#FFE6CC);display:flex;align-items:center;justify-content:center;overflow:hidden;}
-.rw-thumb img{width:100%;height:100%;object-fit:cover;}
-.rw-thumb .rw-noimg{font-size:40px;opacity:.5;}
-.rw-info{padding:10px 12px 12px;display:flex;flex-direction:column;gap:6px;flex:1;}
-.rw-nm{font-weight:700;font-size:13.5px;color:#3A2417;line-height:1.3;}
-.rw-cost{font-family:'Inter';font-weight:800;font-size:14px;color:#800020;}
-.rw-add{margin-top:auto;padding:9px!important;font-size:12.5px!important;border-radius:12px!important;}
-.rw-qbtn{width:28px;height:28px;border-radius:8px;border:1px solid var(--line-gold);background:#fff;color:#800020;font-size:16px;font-weight:800;line-height:1;cursor:pointer;}
-.rw-adminthumb{width:46px;height:46px;border-radius:10px;object-fit:cover;border:1px solid var(--line-gold);flex:none;background:#FFF0DF;}
 
 /* ============================================================
    ★ 登入→進入系統 開場載入動畫（僅此期間顯示）
@@ -1117,11 +1098,6 @@ body,html{background:#FFF4E6!important;}
 @keyframes alxIn{0%{opacity:0}100%{opacity:1}}
 @media(prefers-reduced-motion:reduce){#app-loading #alx-video{animation-duration:.001ms!important;}}
 /* 被鎖定員工的全域警示邊框：固定在所有分頁之上，切頁不消失、不擋操作 */
-/* multiply 必須掛在 #lock-frame 本身：若掛在內層 video，z-index 造成的堆疊環境會讓混合被隔離，白底變成不透明蓋住畫面 */
-#lock-frame{position:fixed;inset:0;z-index:240;pointer-events:none;display:none;mix-blend-mode:multiply;}
-#lock-frame.show{display:block;}
-#lock-frame video{width:100%;height:100%;object-fit:fill;display:block;}
-@media(prefers-reduced-motion:reduce){#lock-frame{opacity:.75;}}
 
 /* ============================================================
    ★ 全站字體改用粉圓體 jf-openhuninn（自帶字檔，swap 不卡載入）
@@ -1720,17 +1696,6 @@ html,body,button,input,select,textarea,
     </div>
 
     <!-- REWARDS TAB -->
-    <div class="tab-panel" id="tab-rewards">
-      <div class="sec-header"><div class="sec-title">獎勵商店</div><div class="divider"></div><div class="sec-sub">用點數兌換獎勵（由主管實際發放）</div></div>
-      <div class="c-card"><div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px"><div class="c-card-title" style="margin:0">🎁 我的 EXP</div><span class="pts-pill" id="rw-balance">0 EXP</span></div></div>
-      <div id="rw-lock"></div>
-      <div id="reward-cart"></div>
-      <div class="c-card"><div class="c-card-title">🛒 獎勵商店</div><div id="reward-list" class="rw-grid"></div></div>
-      <div class="c-card"><div class="c-card-title">🧾 我的兌換紀錄</div><div id="my-redeems"></div></div>
-      <div id="mgr-redeem-wrap"></div>
-      <div id="reward-admin-wrap"></div>
-    </div>
-
     <!-- BOM TAB -->
     <div class="tab-panel" id="tab-bom">
       <div class="sec-header"><div class="sec-title">BOM 成本表</div><div class="divider"></div><div class="sec-sub">食譜食材組成 × 進貨單位成本 = 各品項成本與總成本</div></div>
@@ -1761,13 +1726,6 @@ html,body,button,input,select,textarea,
         <button class="btn-action" onclick="submitHandover()">✓ 送出交接表</button>
       </div>
       <div class="c-card"><div class="c-card-title">📜 交接紀錄</div><div class="muted-note">☁️ 已雲端同步，全店跨手機共用、永久保存於 Google Sheet。</div><div id="ho-list"></div></div>
-    </div>
-
-    <!-- HANDBOOK TAB -->
-    <div class="tab-panel" id="tab-handbook">
-      <div class="sec-header"><div class="sec-title">員工守則</div><div class="divider"></div><div class="sec-sub">公司規定與公告（主管發布、員工查看）</div></div>
-      <div id="hb-view"></div>
-      <div id="hb-admin-wrap"></div>
     </div>
 
     <!-- 霸凌申訴 TAB -->
@@ -1803,16 +1761,6 @@ html,body,button,input,select,textarea,
         <div class="muted-note" style="margin-top:8px">送出後只有老闆看得到；你也可再撥打上方 1955 專線。</div>
       </div>
       <div id="bully-admin-wrap"></div>
-    </div>
-
-    <!-- CHALLENGE TAB -->
-    <div class="tab-panel" id="tab-challenge">
-      <div class="sec-header"><div class="sec-title">共同挑戰</div><div class="divider"></div><div class="sec-sub">全店業績目標達標，當日上班人員一起加分</div></div>
-      <div id="ch-praise"></div>
-      <div id="ch-daily"></div>
-      <div id="ch-monthly"></div>
-      <div id="ch-roster"></div>
-      <div id="ch-admin"></div>
     </div>
 
     <!-- LEADERBOARD TAB -->
@@ -1916,14 +1864,11 @@ html,body,button,input,select,textarea,
   <video id="alx-video" src="loading.mp4" autoplay muted playsinline preload="auto"></video>
 </div>
 
-<!-- 被鎖定員工的全域警示邊框（固定圖層，切任何分頁都顯示；不擋操作）-->
-<div id="lock-frame"><video src="lockframe.mp4" autoplay muted loop playsinline preload="auto"></video></div>
-
 <div id="toast"></div>
 
 <script>
 // ── 自動更新：開啟時比對版本，有新版就自動重載（免無痕）──
-const APP_VER='20260807110000';
+const APP_VER='20260807170000';
 const GT_KEY='gtk_9F3xQ7Lz_pW2rM8kT';  // 後台共用密鑰（階段A：前端帶上；階段B：後台驗證）
 function checkVersion(){try{fetch('ver.txt?_='+Date.now(),{cache:'no-store'}).then(function(r){return r.ok?r.text():null;}).then(function(v){if(!v)return;v=v.trim();if(v&&v!==APP_VER&&location.search.indexOf('v='+v)<0){location.replace(location.pathname+'?v='+encodeURIComponent(v));}}).catch(function(){});}catch(e){}}
 checkVersion();
@@ -2078,7 +2023,7 @@ async function enterApp() {
   hideAppLoading();   // 準備好後淡出（至少顯示 5 秒）
   // 背景把資料抓齊並刷新目前畫面（含照片），慢的雲端不再擋住登入
   if(syncOn())setTimeout(function(){
-    cloudPull(true).then(function(){if(!CU)return;updateGameChip();runLockCheck();if(isTyping())return;var act=document.querySelector('.tab-panel.active');if(act)reRenderTab(act.id.replace('tab-',''));}).catch(function(){});
+    cloudPull(true).then(function(){if(!CU)return;updateGameChip();if(isTyping())return;var act=document.querySelector('.tab-panel.active');if(act)reRenderTab(act.id.replace('tab-',''));}).catch(function(){});
     // 登入後在背景先暖好常用查詢的快取，之後點進進貨/報表就秒開（Apps Script 每次呼叫約2.7秒，先偷偷抓好）
     if(typeof apiGetCached==='function'){apiGetCached('query_purchase_recent').catch(function(){});apiGetCached('query_revenue').catch(function(){});}
     // 不再登入時就抓整包照片(full)，改由輪詢極少數次或需要時再抓，減少後端負擔
@@ -2105,7 +2050,7 @@ function initApp() {
   const labels={BOSS:'老闆',MGR:'店長',EMP:'員工'};
   roleTag.textContent=labels[CU.role]||CU.role;
   roleTag.className='role-tag role-'+CU.role;
-  seedGame();ensureSalesTask();ensurePsaleTask();wireTaskInput();wirePartInput();recordName(CU.username,CU.name);oneTimeUnlock();oneTimePointsReset();updateGameChip();
+  seedGame();ensureSalesTask();ensurePsaleTask();wireTaskInput();wirePartInput();recordName(CU.username,CU.name);oneTimePointsReset();updateGameChip();
 
   // build nav
   // 員工與店長暫時只開放：每日結帳／進貨記錄／BOM成本／交接表（老闆維持全部）。要復原把此白名單移除即可。
@@ -2154,11 +2099,9 @@ function switchTab(name,btn) {
   if(name==='character')renderCharacter();
   if(name==='leaderboard')renderLeaderboard();
   if(name==='handover')renderHandover();
-  if(name==='handbook')renderHandbook();
   if(name==='home')renderHome();
   if(name==='bully')renderBully();
   document.querySelectorAll('.drawer-item').forEach(b=>b.classList.toggle('active',b.dataset.tab===name));
-  updateLockFrame();
 }
 function goTab(id){const b=[...document.querySelectorAll('.nav-btn')].find(x=>x.dataset.tab===id);if(b)b.click();}
 function openDrawer(){const d=$('nav-drawer');if(d)d.classList.add('open');}
@@ -3090,7 +3033,6 @@ async function renderBulletin(){
   wrap.innerHTML='<div class="loading-state"><div class="spin"></div>載入中</div>';
   const mgr=isMgr();
   const names=LS.get('rm_names',{})||{};
-  const roster=LS.get('rm_roster',{})||{};
   const dtasks=(LS.get('rm_tasks',[])||[]).map(normTask).filter(t=>t.cat==='daily');
   const subs=LS.get('rm_submissions',[])||[];
   const items=LS.get('rm_inv_items',[])||[];
@@ -3108,8 +3050,6 @@ async function renderBulletin(){
   const invBy={};(invRows||[]).slice(1).forEach(function(r){var d=normDate(r[0]);(invBy[d]=invBy[d]||{})[String(r[1]||'')]=1;});
   const cards=days.map(function(D){
     const isToday=(D===bizDay());const warn=[];
-    const ros=(roster[D]||[]);const rosNames=ros.map(function(u){return esc(names[u]||u);}).join('、');
-    if(!ros.length)warn.push('未設定上班人員');
     const undoneTasks=dtasks.filter(function(t){return !subs.some(function(s){return s.taskId===t.id&&s.status!=='rejected'&&bizDay(s.ts)===D;});});
     const taskTotal=dtasks.length,taskN=taskTotal-undoneTasks.length;
     if(undoneTasks.length)warn.push('每日任務未完成：'+undoneTasks.map(function(t){return t.title;}).join('、'));
@@ -3135,7 +3075,6 @@ async function renderBulletin(){
     const warnHtml=warn.length?('<div style="background:#fff7ed;border-left:4px solid #f97316;border-radius:8px;padding:8px 10px;margin-top:8px;color:#9a3412;font-size:12.5px;font-weight:600">⚠️ '+warn.map(esc).join('　・　')+'</div>'):'';
     return '<div class="c-card"><div class="c-card-title">'+D+'（週'+bWeekday(D)+'）'+(isToday?' <span style="color:#ff6a1a">・今日</span>':'')+'</div>'
       +finHtml
-      +bLine('🧑‍🍳 上班人員',rosNames||'—')
       +bLine('✅ 每日任務',taskTotal?taskN+'/'+taskTotal:'未設定',(taskTotal>0&&taskN>=taskTotal)?'#15803d':'#b45309')
       +bLine('🧾 盤點',invTxt)
       +bLine('📋 交接表',hoTxt)
@@ -3586,7 +3525,7 @@ function normChar(c){c=c||{};const d=defAvatar();const a=c.avatar||{};
   ['outfit','hair','face','eyes'].forEach(k=>{const arr=P[k]||[];if(!arr.find(p=>p.id===parts[k]))parts[k]=d.parts[k];});
   return {
     xp:c.xp||0, points:c.points||0,
-    lastCheckin:c.lastCheckin||'', tasksDone:c.tasksDone||0, chosen:!!c.chosen, lastHandover:c.lastHandover||'',
+    tasksDone:c.tasksDone||0, chosen:!!c.chosen, lastHandover:c.lastHandover||'',
     lastSuggestAward:c.lastSuggestAward||'', lastPraiseAward:c.lastPraiseAward||'',
     locked:!!c.locked, unlockProg:c.unlockProg||0, lockChkDay:c.lockChkDay||'', unlockReset:c.unlockReset||'', pointsReset:c.pointsReset||'',
     avatar:{bgColor:a.bgColor||d.bgColor,bgImg:a.bgImg||'',skinColor:a.skinColor||d.skinColor,hairColor:a.hairColor||d.hairColor,parts}
@@ -3641,16 +3580,6 @@ function awardXp(username,amt,tasksInc,reason,meta){
   }
   return {before,after,leveledUp:after>before};
 }
-// 一次性全體解鎖（老闆指示）：清除既有鎖定與解鎖進度，並把追溯起點設為今天，避免立刻又被舊日子鎖回去。
-// 每人各自執行一次（記錄在自己的角色資料，不會互相蓋掉）；要再次全體解鎖時把日期字串改新的即可。
-const UNLOCK_RESET_ID='20260724';
-function oneTimeUnlock(){
-  if(!CU)return;
-  const c=getChar();
-  if(c.unlockReset===UNLOCK_RESET_ID)return;
-  c.locked=false;c.unlockProg=0;c.lockChkDay=bizDay();c.unlockReset=UNLOCK_RESET_ID;
-  saveChar(c);
-}
 // 新獎勵制度上線：終身累積點全員歸零。每人登入各重設自己一次；老闆登入時「一次性」把所有角色(含員工)一併歸零。要再次歸零把日期改新的即可。
 const POINTS_RESET_ID='20260803';
 function oneTimePointsReset(){
@@ -3665,36 +3594,7 @@ function oneTimePointsReset(){
     LS.set('rm_points_swept',POINTS_RESET_ID);
   }
 }
-// ── 上班日必做「欠款制」鎖定：登入時追溯過去有排班卻沒完成的日子 → 鎖定（欠50點解鎖）──
-function mustDoneForDay(D){
-  const dtasks=(LS.get('rm_tasks',[])||[]).map(normTask).filter(t=>t.cat==='daily');
-  const subs=LS.get('rm_submissions',[])||[];
-  const taskOK=dtasks.length===0||dtasks.every(t=>subs.some(s=>s.taskId===t.id&&s.status!=='rejected'&&bizDay(s.ts)===D));
-  const items=LS.get('rm_inv_items',[])||[];
-  const cnt={};(_invRows||[]).forEach(r=>{if(normDate(r[0])===D)cnt[String(r[1]||'')]=1;});
-  const invOK=!isInvDay(D)||items.length===0||items.every(it=>cnt[it.id]);  // 非盤點日不要求盤點
-  return taskOK&&invOK;
-}
 function dayShift(D,delta){const p=String(D).split('-');const dt=new Date(+p[0],+p[1]-1,+p[2]);dt.setDate(dt.getDate()+delta);const z=n=>String(n).padStart(2,'0');return dt.getFullYear()+'-'+z(dt.getMonth()+1)+'-'+z(dt.getDate());}
-function evalLockNow(){
-  // 鎖定機制已關閉（改純提醒）：清除任何既有鎖定，且永不上鎖
-  if(!CU)return false;
-  const c=getChar();
-  if(c.locked||c.unlockProg){c.locked=false;c.unlockProg=0;saveChar(c);}
-  return false;
-}
-// 確保盤點歷史載入後再判定鎖定，然後刷新畫面
-function runLockCheck(){
-  function go(){evalLockNow();updateGameChip();const rw=$('tab-rewards');if(rw&&rw.classList.contains('active'))renderRewards();const hm=$('tab-home');if(hm&&hm.classList.contains('active'))renderHome();}
-  if(syncOn())authApi({type:'query_inv'}).then(function(d){if(d&&(d.status==='ok'||d.status==='success')&&d.rows)_invRows=d.rows.slice(1);go();}).catch(go);
-  else go();
-}
-
-// 員工守則預設內容（來自 RESOURSCES 的 SOP）
-const HANDBOOK_SEED=[
-{title:"帶位服務守則",body:"光頭生魚片店主題居酒屋\n服務精神：把所有人當自己人，別讓自己人失望\n【我們的服務靈魂】 來店的客人不只是消費者，更是來到我們家作客的朋友。 夥伴們請隨時保持主動的眼神接觸與真誠的微笑。我們的目標是透過「充滿活力的招呼」與「體貼的細節觀察」，讓每位踏進店裡的客人，都能感受到漁村特有的熱情與居酒屋的放鬆溫度。\n🍽️ 客人進場服務流程（SOP）\n▍第一步：迎賓與人數確認\n當客人步入餐廳，高聲熱情歡迎，並確認用餐人數。\n服務動作：\n親切問候：「您好！請問幾位用餐？/請問是否有訂位？」\n座位調度原則（關鍵）：\n3人（含）以下： 優先安排至一樓用餐，以維持一樓客滿的熱鬧氛圍與人氣。\n4人（含）以上： 再行引導至適合的大桌或二樓空間。\n▍第二步：帶位與菜單介紹\n將客人引導至座位後，遞上實體菜單。\n服務動作：\n遞上菜單本：「這是我們的菜單，我們菜色依照線上菜單為主，我們統一一台手機掃描桌上【某一個】QR碼。」\n當日推薦（主動出擊）：\n同仁需熟記當日現撈、主打或限定料理，主動向客人推薦。\n話術範例：「今天我們特別推薦***跟***，我們目前也有399喝到飽的活動，有喝酒的朋友可以依照人數去做點選」\n▲399喝到飽會讓客人點選，送啤酒請注意看喝酒人數\n▍第三步：告知低消與服務機制\n在客人翻閱菜單前，務必清晰且有禮貌地說明店內基本消費與呼叫服務的方式。\n低消布達：\n話術範例：「我們店內的基本消費為每人 200 元。餐後再結帳」\n服務鈴說明：\n指給客人看桌上的服務鈴位置。\n話術範例：「旁邊有準備服務鈴，期間有任何服務需求，隨時幫我按下服務鈴，我們就會立刻過來協助您！」\n▍第四步：環境與硬體引導\n離開桌邊前，做最後的環境點檢與指引，讓客人感到安心。\n環境指引話術：\n「我們的餐具都在［具體位置］可以自取。」\n▲請順便視線確認餐具、醬油、哇沙比、衛生紙確定足夠(如果視線看不到請引導完後，馬上去確認\n「洗手間的位置則是在［具體位置］。」\n「祝您用餐愉快，有需要隨時按鈴通知我們！」\n▍第五步：客人最後進場時間\n我們最後收客時間是1點整，即便客人12點59分到，還是要熱情迎接\n謹記以下要留意\n1點15分最後加點時間，請逐桌詢問「現在是我們最後加點的時間，請問有需要最後加點嗎？酒水飲料都還可以續點」\n內外場請勿為了收拾方便拒單\n準時2點請跟客人說「不好意思，我們的營業時間到了喔」\n▲特別留意：請勿讓客人有趕他們走的感受\n▲特別留意：只要客人在！我們應該保持專業，請勿把脾氣帶在身上，即便沒有服務他們，但客人還是感受的到我們的情緒！\n▲特別留意：請堅持所有能服務的機會，入座的客人就是朋友，有機會能聊天或關心他們的，都請把握好，他們不只是客人，有可能是未來你們的【人脈】，也許某一天會對各位有幫助\n★【有關係就是沒關係】★"},
-{title:"接聽電話訂位 SOP 與 客滿應對",body:"【光頭生魚片 - 接聽電話訂位 SOP 與 客滿應對】\n🌟 最高指導原則：聲音與活力是我們的武器，請隨時保持開心與開朗的語氣！ 🌟\n【一、標準訂位流程】\n第一階段：專業開場🗣️「您好！這裡是光頭生魚片！」（語氣保持積極、禮貌、開心）\n第二階段：確認訂位細節\n• 詢問時間：「請問您預計哪一天過來用餐？大約是幾點鐘呢？」\n• 詢問人數：「請問一共是幾位大人、幾位小朋友呢？需要幫您預留兒童椅嗎？」\n• 核對狀態：（確認訂位表）「幫您確認過，那個時段還有位置，沒問題。」\n第三階段：紀錄聯絡資訊\n• 紀錄稱呼：「請問訂位人怎麼稱呼？」\n• 紀錄電話：「方便留一下您的聯絡電話嗎？」\n第四階段：最後確認與結尾\n• 覆核資訊：「幫您核對：[日期]、[時間]、一共 [人數] 位，訂位人是 [稱呼]，電話是 [號碼]。」\n• 溫馨提醒：「我們會為您保留位置 10 分鐘，如果行程有變再請撥電話告知，謝謝您，當天見！」\n【二、客滿與特殊狀況應對話術】\n● 情況一：客人想訂的時間已滿 (例如 7 點滿位)\n🗣️「不好意思，目前 晚上7點訂位已滿。因為我們餐廳用餐不限時間，後面時段比較難保證準時入座。會建議您可以考慮 18:00～18:30 或 20:30之後 的時段，座位會比較好安排。」\n● 情況二：客人堅持要滿位時段 (提供候補)\n🗣️「目前7點的座位已經滿了，如果您方便，我可以幫您登記 候補19:30左右。若有客人提早離席，我們會優先幫您安排。」\n● 情況三：客人訂比較晚的時間 (例如 8 點)\n🗣️「可以先幫您登記 晚上8點的訂位，但因為我們用餐不限時，當天可能會需要稍微等候一下座位，這樣可以嗎？」"}
-];
 // 預設食譜（來自「商品配方」）
 const RECIPE_SEED=[
 {dish:'豬肉丼',items:[{code:'ME011',name:'豬肉片-前腿',qty:136,unit:'克'},{code:'VE007',name:'二等米(30公斤)',qty:0.127,unit:'公斤'},{code:'DRY013',name:'廚房用醬油',qty:70,unit:'克'},{code:'DRY014',name:'水',qty:65,unit:'克'},{code:'VE004',name:'洋蔥',qty:73,unit:'克'},{code:'ICE008',name:'調味毛豆(1KG)',qty:20,unit:'克'},{code:'ICE005',name:'野菜園和風蘿蔔(3KG)',qty:25,unit:'克'}]},
@@ -3718,7 +3618,6 @@ function seedGame(){
     {id:'tr2',icon:'🎉',title:'提出一個店面活動建議',xp:40,cat:'rnd',type:'text'},
   ]);
   if(!LS.get('rm_parts',null))LS.set('rm_parts',{});
-  if(!LS.get('rm_handbook',null))LS.set('rm_handbook',HANDBOOK_SEED.map((s,i)=>({id:'hbseed'+i,title:s.title,body:s.body})));
   if(!LS.get('rm_recipes',null))LS.set('rm_recipes',RECIPE_SEED.map((r,i)=>({id:'rcseed'+i,dish:r.dish,items:r.items})));
   if(!LS.get('rm_quiz',null))LS.set('rm_quiz',[
     {id:'q1',q:'外場接到客訴時，第一步應該做什麼？',opts:['先誠懇道歉並傾聽','直接叫店長處理','假裝沒聽到','跟客人爭辯'],ans:0,xp:15},
@@ -3729,17 +3628,6 @@ function seedGame(){
     {id:'q6',q:'冰箱溫度檢查發現異常，正確做法是？',opts:['記錄並立即通報主管','關門當沒看到','自己亂調溫度','忽略'],ans:0,xp:15},
     {id:'q7',q:'顧客點餐後，理想的上菜原則是？',opts:['兼顧速度與品質','越快越好不管品質','不重要','等廚房有空再說'],ans:0,xp:15},
   ]);
-  // 獎勵：版本升級時重置為最新預設（老闆之後可自行增刪）
-  if(!LS.get('rm_rewards',null)||LS.get('rm_seed_v',0)<SEED_VER)LS.set('rm_rewards',[
-    {id:'rw_meal',icon:'🍽️',title:'免費套餐券（家庭套餐）',cost:20,type:'perk'},
-    {id:'rw_gift',icon:'🎁',title:'餐廳限定特製禮盒',cost:40,type:'perk'},
-    {id:'rw_giftcard',icon:'📱',title:'禮物卡 $800',cost:80,type:'perk'},
-    {id:'rw_gear',icon:'👕',title:'工作裝備（工作服/運動鞋）',cost:100,type:'perk'},
-    {id:'rw_cash',icon:'💰',title:'現金獎金 $1,000（直接入帳）',cost:100,type:'perk'},
-    {id:'rw_course',icon:'🎓',title:'進階課程（廚藝/服務培訓）',cost:120,type:'perk'},
-    {id:'rw_dayoff',icon:'🏖️',title:'有薪假 1 天',cost:150,type:'perk'},
-    {id:'rw_annual',icon:'🏆',title:'年度大獎（獎狀＋特別獎金）',cost:200,type:'perk'},
-  ]);
   LS.set('rm_seed_v',SEED_VER);
   if(!LS.get('rm_submissions',null))LS.set('rm_submissions',[]);
   if(!LS.get('rm_redemptions',null))LS.set('rm_redemptions',[]);
@@ -3749,17 +3637,7 @@ function seedGame(){
 function isMgr(){return CU&&(CU.role==='BOSS'||CU.role==='MGR');}
 
 // 頂部角色小徽章
-// 被鎖定時顯示全域警示邊框動畫；解鎖即隱藏並暫停（省電）
-function updateLockFrame(){
-  const el=$('lock-frame');if(!el)return;
-  const on=!!(CU&&ptsLocked());
-  el.classList.toggle('show',on);
-  const v=el.querySelector('video');if(!v)return;
-  if(on){v.muted=true;v.volume=0;try{const p=v.play();if(p&&p.catch)p.catch(function(){});}catch(e){}}
-  else{try{v.pause();}catch(e){}}
-}
 function updateGameChip(){
-  updateLockFrame();
   if(!CU)return;
   const c=getChar();const lv=levelOf(c.xp);
   let chip=$('game-chip');
@@ -3956,20 +3834,6 @@ function mustDoStatus(){
   return {taskN,taskTotal,taskDone:taskTotal===0||taskN>=taskTotal,
           invDay,invN,invTotal,invDone:!invDay||invTotal===0||invN>=invTotal};
 }
-// 獎勵兌換是否被鎖：讀取儲存的欠款狀態（由 evalLockNow 於登入時依過去排班日設定；賺滿50點還清即解鎖）
-function ptsLocked(){return false;}  // 鎖定機制已關閉（改純提醒）
-function rwLockHtml(){
-  if(!ptsLocked())return '';
-  const c=getChar();
-  const prog=c.unlockProg||0;
-  const pct=Math.min(100,Math.round(prog/50*100));
-  const bar=`<div style="margin-top:10px">
-    <div style="display:flex;justify-content:space-between;font-size:12px;color:#b91c1c;font-weight:700;margin-bottom:4px"><span>解鎖進度</span><span>${prog} / 50 點</span></div>
-    <div style="height:12px;background:#f6d5d5;border-radius:999px;overflow:hidden"><div style="height:100%;width:${pct}%;background:linear-gradient(90deg,#ef4444,#b91c1c);border-radius:999px;transition:width .3s"></div></div>
-  </div>`;
-  return `<div class="c-card" style="border:2px solid #fca5a5;background:linear-gradient(180deg,#fef2f2,#ffffff)"><div class="c-card-title" style="color:#b91c1c">🔒 獎勵兌換已鎖定</div><div class="muted-note" style="color:#b91c1c">你有上班日未完成每日任務＋盤點，獎勵兌換已鎖。需再賺滿 50 點解鎖（這 50 點不計入餘額，還差 ${Math.max(0,50-prog)} 點）。</div>${bar}</div>`;
-}
-function applyRwLock(){const el=$('rw-lock');if(el)el.innerHTML=rwLockHtml();}
 function mustDoCardHtml(){
   const s=mustDoStatus();const allDone=s.taskDone&&s.invDone;
   const lockLine='';  // 鎖定機制已關閉，橫幅僅作提醒
@@ -4239,145 +4103,7 @@ function saveRecommend(){const v=($('rec-input')&&$('rec-input').value.trim())||
 function saveRecommendModal(){const v=($('rec-modal-input')&&$('rec-modal-input').value.trim())||'';if(!v){toast('請輸入必推餐點','red');return;}recSave(v);toast('✓ 今日必推已設定','gold');$('rec-modal').classList.remove('show');if($('tab-tasks')&&$('tab-tasks').classList.contains('active'))renderTasks();}
 function maybeForceRec(){if(isMgr()&&!recGet()){const i=$('rec-modal-input');if(i)i.value='';$('rec-modal').classList.add('show');}}
 
-// ── 共同挑戰 ──
-let _chRev=null;
-function chCfg(){const c=LS.get('rm_challenge',{})||{};const legacy=c.dailyTarget||0;return Object.assign({dailyTargetWeekday:legacy,dailyTargetWeekend:legacy,monthlyTarget:0,dailyReward:20,monthlyReward:100},c);}
-function isWeekendBiz(){const w=new Date(bizDay()+'T12:00:00').getDay();return w===5||w===6||w===0;}
-function dailyTargetNow(){const cfg=chCfg();return isWeekendBiz()?cfg.dailyTargetWeekend:cfg.dailyTargetWeekday;}
-function rosterToday(){const r=LS.get('rm_roster',{})||{};return r[bizDay()]||[];}
 function monthKey(){return bizDay().slice(0,7);}
-function chPaid(){const p=LS.get('rm_challenge_paid',{})||{};return {daily:p.daily||{},monthly:p.monthly||{}};}
-function renderChallenge(){renderPraiseMarquee();renderChRoster();renderChAdmin();renderChProgress();fetchChRevenue();}
-async function renderPraiseMarquee(){
-  const box=$('ch-praise');if(!box)return;
-  if(!window._praiseCssDone){window._praiseCssDone=true;const st=document.createElement('style');
-    st.textContent='.praise-marquee{overflow:hidden;width:100%}.praise-track{display:flex;gap:12px;width:max-content;animation:pmarq 34s linear infinite;padding-left:14px}.praise-marquee:active .praise-track{animation-play-state:paused}.praise-item{display:flex;align-items:center;gap:9px;background:#fff7ef;border:1px solid rgba(128,0,32,.22);border-radius:14px;padding:7px 14px 7px 7px;white-space:nowrap;flex-shrink:0}.praise-av{width:42px;height:42px;flex-shrink:0;border-radius:50%;overflow:hidden;background:#ece4d8;display:flex;align-items:center;justify-content:center;font-size:20px}.praise-av .avatar-stage{width:100%;height:100%;position:relative}.praise-txt{color:#2b1519!important;font-size:14px;font-weight:600;overflow:hidden;text-overflow:ellipsis;max-width:260px}.praise-txt b{color:#800020!important}@keyframes pmarq{from{transform:translateX(0)}to{transform:translateX(-50%)}}';
-    document.head.appendChild(st);}
-  let list=[];
-  if(syncOn()){
-    try{
-      const d=await authApi({type:'query_praise'});
-      if(d&&(d.status==='ok'||d.status==='success')&&d.rows&&d.rows.length>1){
-        list=d.rows.slice(1).map(r=>({ts:Number(r[6])||0,to:String(r[3]||''),toName:String(r[4]||''),text:String(r[5]||'')}));
-      }
-    }catch(e){}
-  }
-  const all=list.filter(p=>p.text&&p.to);
-  const names=LS.get('rm_names',{})||{};
-  // 當月第一名（本月被表揚最多）→ 可獲 1000 點
-  const mk=monthKey();const monCnt={},nameOf={};
-  all.forEach(p=>{if((bizDay(p.ts)||'').slice(0,7)===mk)monCnt[p.to]=(monCnt[p.to]||0)+1;nameOf[p.to]=p.toName||names[p.to]||p.to;});
-  let champU='',champN=0;for(const k in monCnt){if(monCnt[k]>champN){champN=monCnt[k];champU=k;}}
-  const marquee=all.sort((a,b)=>b.ts-a.ts).slice(0,15);
-  const sig=champU+'|'+champN+'|'+marquee.map(p=>p.ts).join(',');
-  if(box.getAttribute('data-sig')===sig)return; // 沒變就不重繪，避免跑馬燈重跑
-  box.setAttribute('data-sig',sig);
-  if(!marquee.length){box.innerHTML='';return;}
-  const item=p=>{
-    let av='';try{const cc=normChar(LS.get('rm_char_'+p.to,null));av=renderAvatar(cc.avatar,levelOf(cc.xp),{noBg:true});}catch(e){av='';}
-    const nm=p.toName||names[p.to]||p.to;
-    return `<div class="praise-item"><div class="praise-av">${av||'🙂'}</div><div class="praise-txt"><b>${esc(nm)}</b>　${esc(p.text)}</div></div>`;
-  };
-  const strip=marquee.map(item).join('');
-  const champBanner=champU?`<div style="margin:0 14px 8px;background:linear-gradient(135deg,#e6c977,#b8891f);color:#3a2600;font-weight:800;font-size:13px;border-radius:12px;padding:9px 12px;text-align:center">👑 當月第一名 <b>${esc(nameOf[champU])}</b>（${champN} 次）・ 可獲當月最佳表現獎 <b>+1000 點</b></div>`:'';
-  box.innerHTML=`<div class="c-card" style="padding:10px 0;overflow:hidden">
-    <div style="color:#800020!important;font-weight:800;font-size:14px;padding:0 14px 8px;display:flex;align-items:center;gap:6px">🏅 本店表揚榜</div>
-    ${champBanner}
-    <div class="praise-marquee"><div class="praise-track">${strip}${strip}</div></div>
-  </div>`;
-}
-function renderChProgress(){
-  const cfg=chCfg();const d=$('ch-daily'),m=$('ch-monthly');if(!d||!m)return;
-  if(_chRev)autoPayChallenge(); // 達標自動配發
-  const paid=chPaid();
-  const fmt=v=>v==null?'讀取中…':('$'+Number(v).toLocaleString());
-  const bar=(cur,target)=>{const pct=(target>0&&cur!=null)?Math.min(100,Math.round(cur/target*100)):0;return {pct,done:(target>0&&cur!=null&&cur>=target)};};
-  const tRev=_chRev?_chRev.today:null,mRev=_chRev?_chRev.month:null;
-  const dTarget=dailyTargetNow(),dayType=isWeekendBiz()?'假日':'平日';
-  const db=bar(tRev,dTarget),mb=bar(mRev,cfg.monthlyTarget);
-  const dCan=db.done&&!paid.daily[bizDay()],mCan=mb.done&&!paid.monthly[monthKey()];
-  d.innerHTML=`<div class="c-card"><div class="c-card-title">🎯 今日業績挑戰（${dayType}）${db.done?'<span class="pill done">已達標 🎉</span>':''}</div>
-    <div class="xp-text" style="color:#2b1519!important;font-size:14px;font-weight:600">今日營收 <b style="color:#800020">${fmt(tRev)}</b> ／ ${dayType}目標 <b>${dTarget?('$'+dTarget.toLocaleString()):'未設定'}</b></div>
-    <div class="xp-bar" style="margin:8px 0"><div class="xp-fill" style="width:${db.pct}%"></div></div>
-    ${db.done?(paid.daily[bizDay()]?`<div class="muted-note" style="margin-top:8px;color:#15803d;font-weight:600">✅ 已自動派發 +${cfg.dailyReward} 給今日上班人員（${rosterToday().length}人）</div>`:(rosterToday().length?`<div class="muted-note" style="margin-top:8px;color:#800020;font-weight:600">🎯 達標！點數自動配發中…</div>`:`<div class="muted-note" style="margin-top:8px;color:#b45309;font-weight:600">🎯 已達標！請先設定「今日上班人員」即自動派發 +${cfg.dailyReward}</div>`)):''}
-  </div>`;
-  m.innerHTML=`<div class="c-card"><div class="c-card-title">📅 本月業績挑戰 ${mb.done?'<span class="pill done">已達標 🎉</span>':''}</div>
-    <div class="xp-text" style="color:#2b1519!important;font-size:14px;font-weight:600">本月營收 <b style="color:#800020">${fmt(mRev)}</b> ／ 目標 <b>${cfg.monthlyTarget?('$'+cfg.monthlyTarget.toLocaleString()):'未設定'}</b></div>
-    <div class="xp-bar" style="margin:8px 0"><div class="xp-fill" style="width:${mb.pct}%"></div></div>
-    ${mb.done?(paid.monthly[monthKey()]?`<div class="muted-note" style="margin-top:8px;color:#15803d;font-weight:600">✅ 已自動派發 +${cfg.monthlyReward} 給全體員工</div>`:`<div class="muted-note" style="margin-top:8px;color:#800020;font-weight:600">🎯 達標！點數自動配發中…</div>`):''}
-  </div>`;
-}
-function fetchChRevenue(){
-  apiGet('query_revenue').then(res=>{
-    const ok=res&&(res.status==='ok'||res.status==='success');let rows=[];
-    if(ok){rows=res.rows?res.rows.slice(1).map(r=>({date:normDate(r[0]),total:Number(r[7])||0})):((res.data||[]).map(r=>({date:normDate(r.date),total:Number(r.total)||0})));}
-    const td=bizDay(),mk=monthKey();let today=0,month=0;
-    rows.forEach(r=>{if(r.date===td)today+=r.total;if(r.date&&r.date.slice(0,7)===mk)month+=r.total;});
-    _chRev={today,month};renderChProgress();
-  }).catch(()=>{_chRev={today:null,month:null};renderChProgress();});
-}
-// 達標自動配發（僅老闆裝置觸發，避免多台重複；已派發旗標防重複加分）
-function autoPayChallenge(){
-  if(!CU||CU.role!=='BOSS')return;
-  const cfg=chCfg();const paid=chPaid();let changed=false;
-  const dT=dailyTargetNow();const roster=rosterToday();
-  if(dT>0&&_chRev&&_chRev.today!=null&&_chRev.today>=dT&&!paid.daily[bizDay()]&&roster.length){
-    roster.forEach(u=>awardXp(u,cfg.dailyReward,0,'每日達標'));paid.daily[bizDay()]=true;changed=true;
-    toast('🎉 今日達標！自動派發 +'+cfg.dailyReward+' 給 '+roster.length+' 人','gold');
-  }
-  if(cfg.monthlyTarget>0&&_chRev&&_chRev.month!=null&&_chRev.month>=cfg.monthlyTarget&&!paid.monthly[monthKey()]){
-    const everyone=Object.keys(LS.get('rm_names',{})||{});
-    if(everyone.length){everyone.forEach(u=>awardXp(u,cfg.monthlyReward,0,'每月達標'));paid.monthly[monthKey()]=true;changed=true;
-      toast('🎉 本月達標！自動派發 +'+cfg.monthlyReward+' 給全體 '+everyone.length+' 人','gold');}
-  }
-  if(changed){LS.set('rm_challenge_paid',paid);updateGameChip();}
-}
-function payChallenge(kind){
-  const cfg=chCfg();const paid=chPaid();
-  if(kind==='daily'){
-    const roster=rosterToday();
-    if(!roster.length){toast('請先設定今日上班人員','red');return;}
-    if(paid.daily[bizDay()]){toast('今日已派發','red');return;}
-    const dT=dailyTargetNow();if(!(dT>0&&_chRev&&_chRev.today>=dT)){toast('今日尚未達標','red');return;}
-    roster.forEach(u=>awardXp(u,cfg.dailyReward,0,'每日達標'));paid.daily[bizDay()]=true;LS.set('rm_challenge_paid',paid);
-    toast(`✓ 今日達標！已派發 +${cfg.dailyReward} 給 ${roster.length} 人`,'gold');
-  }else{
-    if(paid.monthly[monthKey()]){toast('本月已派發','red');return;}
-    if(!(cfg.monthlyTarget>0&&_chRev&&_chRev.month>=cfg.monthlyTarget)){toast('本月尚未達標','red');return;}
-    const everyone=Object.keys(LS.get('rm_names',{})||{});
-    if(!everyone.length){toast('尚無員工資料','red');return;}
-    everyone.forEach(u=>awardXp(u,cfg.monthlyReward,0,'每月達標'));paid.monthly[monthKey()]=true;LS.set('rm_challenge_paid',paid);
-    toast(`✓ 本月達標！已派發 +${cfg.monthlyReward} 給全體 ${everyone.length} 人`,'gold');
-  }
-  updateGameChip();renderChProgress();
-}
-function renderChRoster(){
-  const wrap=$('ch-roster');if(!wrap)return;
-  const names=LS.get('rm_names',{})||{};const roster=rosterToday();const us=Object.keys(names);
-  if(isMgr()){
-    wrap.innerHTML=`<div class="c-card"><div class="c-card-title">🧑‍🍳 今日上班人員（${bizDay()}）</div>
-      <div class="muted-note">勾選今天有上班的人；達標時只有他們加分。</div>
-      ${us.length?us.map(u=>`<label style="display:flex;align-items:center;gap:8px;padding:7px 0;border-bottom:1px solid rgba(255,138,61,.1)"><input type="checkbox" ${roster.includes(u)?'checked':''} onchange="toggleRoster('${u}',this.checked)" style="width:18px;height:18px"> ${esc(names[u])}</label>`).join(''):'<div class="muted-note">尚無員工資料（員工在本機登入過後才會出現）</div>'}
-    </div>`;
-  }else{
-    wrap.innerHTML=`<div class="c-card"><div class="c-card-title">🧑‍🍳 今日上班人員</div>${roster.length?('<div class="xp-text">'+roster.map(u=>esc(names[u]||u)).join('、')+'</div>'):'<div class="muted-note">店長尚未設定</div>'}</div>`;
-  }
-}
-function toggleRoster(u,on){const r=LS.get('rm_roster',{})||{};const d=bizDay();const arr=r[d]||[];const i=arr.indexOf(u);if(on&&i<0)arr.push(u);if(!on&&i>=0)arr.splice(i,1);r[d]=arr;LS.set('rm_roster',r);renderChProgress();}
-function renderChAdmin(){
-  const wrap=$('ch-admin');if(!wrap)return;
-  if(CU.role!=='BOSS'){wrap.innerHTML='';return;}
-  if(wrap.querySelector('#ch-dtw'))return; // 已建立就不重繪，避免背景同步洗掉未儲存的輸入
-  const cfg=chCfg();
-  wrap.innerHTML=`<div class="c-card"><div class="c-card-title">🛠️ 目標設定（老闆）</div>
-    <div class="form-row"><div class="form-group"><label class="form-label">平日業績目標($)</label><input class="form-input" id="ch-dtw" type="number" min="0" value="${cfg.dailyTargetWeekday}"></div><div class="form-group"><label class="form-label">假日業績目標($)</label><input class="form-input" id="ch-dte" type="number" min="0" value="${cfg.dailyTargetWeekend}"></div></div>
-    <div class="muted-note">假日＝週五、六、日（其餘為平日）</div>
-    <div class="form-group"><label class="form-label">每日達標獎勵(點)</label><input class="form-input" id="ch-dr" type="number" min="0" value="${cfg.dailyReward}"></div>
-    <div class="form-row"><div class="form-group"><label class="form-label">每月業績目標($)</label><input class="form-input" id="ch-mt" type="number" min="0" value="${cfg.monthlyTarget}"></div><div class="form-group"><label class="form-label">每月達標獎勵(點)</label><input class="form-input" id="ch-mr" type="number" min="0" value="${cfg.monthlyReward}"></div></div>
-    <button class="btn-action" onclick="saveChallengeCfg()">儲存目標</button>
-  </div>`;
-}
-function saveChallengeCfg(){const cfg={dailyTargetWeekday:Math.max(0,parseInt($('ch-dtw').value)||0),dailyTargetWeekend:Math.max(0,parseInt($('ch-dte').value)||0),dailyReward:Math.max(0,parseInt($('ch-dr').value)||0),monthlyTarget:Math.max(0,parseInt($('ch-mt').value)||0),monthlyReward:Math.max(0,parseInt($('ch-mr').value)||0)};LS.set('rm_challenge',cfg);toast('✓ 目標已儲存','gold');renderChallenge();}
 
 // ── BOM 成本表 ──
 let _costMap={};
@@ -4664,35 +4390,6 @@ async function bomWriteSheet(){
   }catch(e){toast('寫入失敗（請先更新同步後台程式）','red');}
 }
 function delIngredient(rid,idx){const rs=LS.get('rm_recipes',[])||[];const rc=rs.find(r=>r.id===rid);if(!rc||!rc.items)return;rc.items.splice(idx,1);LS.set('rm_recipes',rs);renderBom();}
-
-// ── 員工守則 ──
-function renderHandbook(){
-  const view=$('hb-view');if(!view)return;
-  const list=LS.get('rm_handbook',[])||[];
-  const motto=`<div class="hb-motto"><div class="hb-motto-t">🌟 服務精神</div><div class="hb-motto-b">把所有人當自己人，別讓自己人失望</div></div>`;
-  view.innerHTML=motto+(list.length?list.map(s=>`<div class="c-card"><div class="c-card-title">${esc(s.title)}</div><div style="white-space:pre-wrap;font-size:14px;color:var(--text-2);line-height:1.6">${esc(s.body)}</div></div>`).join(''):'<div class="c-card"><div class="game-empty">尚未公布員工守則</div></div>');
-  renderHbAdmin();
-}
-function renderHbAdmin(){
-  const wrap=$('hb-admin-wrap');if(!wrap)return;
-  if(!isMgr()){wrap.innerHTML='';return;}
-  const list=LS.get('rm_handbook',[])||[];
-  wrap.innerHTML=`<div class="c-card"><div class="c-card-title">🛠️ 守則管理（老闆／店長）</div>
-    <div class="muted-note">☁️ 已雲端同步，發布後全員手機都看得到。</div>
-    <div class="form-group"><label class="form-label">標題</label><input class="form-input" id="hb-title" placeholder="例：上班服裝規定"></div>
-    <div class="form-group"><label class="form-label">內容</label><textarea class="form-input" id="hb-body" rows="5" placeholder="輸入守則內容（可多行）"></textarea></div>
-    <button class="btn-action" onclick="addHbSection()">➕ 發布守則</button>
-    <div style="margin-top:14px">${list.map(s=>`<div class="sub-row"><div style="flex:1;min-width:0"><div class="tc-title" style="font-size:14px">${esc(s.title)}</div></div><button class="btn-sm btn-warn" onclick="delHbSection('${s.id}')">刪除</button></div>`).join('')||'<div class="muted-note">目前沒有守則</div>'}</div>
-  </div>`;
-}
-function addHbSection(){
-  const title=($('hb-title')&&$('hb-title').value.trim())||'';
-  const body=($('hb-body')&&$('hb-body').value.trim())||'';
-  if(!title||!body){toast('請填寫標題與內容','red');return;}
-  const list=LS.get('rm_handbook',[])||[];list.push({id:'hb'+Date.now(),title,body});LS.set('rm_handbook',list);
-  toast('✓ 已發布','gold');if($('hb-title'))$('hb-title').value='';if($('hb-body'))$('hb-body').value='';renderHandbook();
-}
-function delHbSection(id){const list=(LS.get('rm_handbook',[])||[]).filter(s=>s.id!==id);LS.set('rm_handbook',list);toast('已刪除','red');renderHandbook();}
 
 // ── 每日食材盤點 ──
 function prevBizDay(){const d=new Date(bizDay()+'T12:00:00');d.setDate(d.getDate()-1);const p=n=>String(n).padStart(2,'0');return d.getFullYear()+'-'+p(d.getMonth()+1)+'-'+p(d.getDate());}
@@ -5166,142 +4863,6 @@ function reviewSub(id,ok){
     toast(`✓ 已通過，給 ${s.userName} +${s.xp} 點`,'gold');
   }else{toast('已退回該任務','red');}
   renderTasks();updateGameChip();
-}
-
-// ── 獎勵商店 ──
-function renderRewards(){
-  const c=getChar();
-  $('rw-balance').textContent=c.points+' 點';
-  applyRwLock();
-  // 背景抓今日盤點紀錄，讓「兌換鎖定」判斷準確；回來後就地更新鎖定提示與購物車
-  if(syncOn())authApi({type:'query_inv'}).then(function(d){
-    if(d&&(d.status==='ok'||d.status==='success')&&d.rows)_invRows=d.rows.slice(1);
-    const rw=$('tab-rewards');if(rw&&rw.classList.contains('active')){applyRwLock();renderRwCart();}
-  }).catch(function(){});
-  const rewards=LS.get('rm_rewards',[]);
-  $('reward-list').innerHTML=rewards.length?rewards.map(r=>{
-    const img=LS.get('rm_rwimg_'+r.id,'')||'';
-    return `<div class="rw-prod">
-      <div class="rw-thumb">${img?`<img src="${img}" alt="">`:`<span class="rw-noimg">🎁</span>`}</div>
-      <div class="rw-info"><div class="rw-nm">${esc(r.title)}</div><div class="rw-cost">${r.cost} EXP</div>
-        <button class="btn-action rw-add" onclick="rwAdd('${r.id}')">加入購物車</button></div>
-    </div>`;
-  }).join(''):'<div class="game-empty" style="grid-column:1/-1">目前沒有可兌換的獎勵</div>';
-  renderRwCart();
-
-  const reds=LS.get('rm_redemptions',[]);
-  const mine=reds.filter(x=>x.user===CU.username).sort((a,b)=>b.ts-a.ts);
-  $('my-redeems').innerHTML=mine.length?mine.map(x=>`
-    <div class="sub-row">
-      <div style="flex:1;min-width:0"><div class="tc-title" style="font-size:14px">${x.title}</div>
-        <div class="xp-text">${fmtTime(x.ts)} ・ -${x.cost} EXP</div></div>
-      <span class="pill ${x.status}">${({pending:'待主管處理',done:'已發放 ✓'})[x.status]}</span>
-    </div>`).join(''):'<div class="game-empty">還沒有兌換紀錄</div>';
-
-  const wrap=$('mgr-redeem-wrap');
-  if(CU.role==='BOSS'){
-    const pend=reds.filter(x=>x.status==='pending').sort((a,b)=>a.ts-b.ts);
-    wrap.innerHTML=`<div class="c-card"><div class="c-card-title">🛡️ 待處理兌換（主管實際執行）</div>${
-      pend.length?pend.map(x=>`
-      <div class="sub-row">
-        <div style="flex:1;min-width:0"><div class="tc-title" style="font-size:14px">${x.title}</div>
-          <div class="xp-text">${x.userName} ・ ${fmtTime(x.ts)} ・ ${x.cost} EXP</div></div>
-        <button class="btn-sm btn-approve" onclick="markRedeemDone('${x.id}')">✓ 已發放</button>
-      </div>`).join(''):'<div class="game-empty">沒有待處理的兌換</div>'
-    }</div>`;
-  }else{wrap.innerHTML='';}
-  renderRewardAdmin();
-}
-// ── 購物車 ──
-function rwAdd(id){window._rwCart=window._rwCart||{};window._rwCart[id]=(window._rwCart[id]||0)+1;toast('🛒 已加入購物車','gold');renderRewards();}
-function rwInc(id){window._rwCart=window._rwCart||{};window._rwCart[id]=(window._rwCart[id]||0)+1;renderRewards();}
-function rwDec(id){window._rwCart=window._rwCart||{};window._rwCart[id]=(window._rwCart[id]||0)-1;if(window._rwCart[id]<=0)delete window._rwCart[id];renderRewards();}
-function renderRwCart(){
-  const el=$('reward-cart');if(!el)return;
-  const cart=window._rwCart||{};const rewards=LS.get('rm_rewards',[]);const c=getChar();
-  const lines=Object.keys(cart).map(id=>{const r=rewards.find(x=>x.id===id);return r?{r,qty:cart[id]}:null;}).filter(Boolean);
-  if(!lines.length){el.innerHTML='';return;}
-  const total=lines.reduce((a,l)=>a+l.r.cost*l.qty,0);const afford=c.points>=total;
-  const locked=ptsLocked();const canCheckout=afford&&!locked;
-  const note=locked
-    ?`<div class="muted-note" style="color:#b91c1c;margin-top:6px">🔒 今日必做尚未完成，兌換已鎖（完成今日必做、或累積滿 50 點即可解鎖）</div>`
-    :(afford?'':'<div class="muted-note" style="color:#c0392b;margin-top:6px">EXP 不足，請先移除部分商品</div>');
-  el.innerHTML=`<div class="c-card"><div class="c-card-title">🛒 購物車</div>
-    ${lines.map(l=>`<div class="sub-row" style="gap:8px"><div style="flex:1;min-width:0"><div class="tc-title" style="font-size:14px">${esc(l.r.title)}</div><div class="xp-text">${l.r.cost} EXP</div></div>
-      <div style="display:flex;align-items:center;gap:10px"><button class="rw-qbtn" onclick="rwDec('${l.r.id}')">−</button><b style="font-family:Inter">${l.qty}</b><button class="rw-qbtn" onclick="rwInc('${l.r.id}')">＋</button></div></div>`).join('')}
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-top:12px;flex-wrap:wrap;gap:8px">
-      <div style="font-size:14px">合計 <b style="color:#800020;font-family:Inter">${total}</b> EXP <span class="muted-note">（餘額 ${c.points}）</span></div>
-      <button class="btn-action" style="padding:10px 22px;${canCheckout?'':'opacity:.45'}" ${canCheckout?'':'disabled'} onclick="rwCheckout()">結帳兌換</button>
-    </div>${note}</div>`;
-}
-function rwCheckout(){
-  if(ptsLocked()){toast('🔒 今日必做尚未完成，獎勵兌換已鎖（完成今日必做、或累積滿 50 點即可解鎖）','red');return;}
-  const cart=window._rwCart||{};const rewards=LS.get('rm_rewards',[]);const c=getChar();
-  const lines=Object.keys(cart).map(id=>{const r=rewards.find(x=>x.id===id);return r?{r,qty:cart[id]}:null;}).filter(Boolean);
-  if(!lines.length){toast('購物車是空的','red');return;}
-  const total=lines.reduce((a,l)=>a+l.r.cost*l.qty,0);
-  if(c.points<total){toast('EXP 不足','red');return;}
-  c.points-=total;
-  if(syncOn()){saveCharLocal(c);charDelta(CU.username,0,-total,0,'兌換獎勵').then(function(ok){if(!ok)saveChar(c);else updateGameChip();});}else saveChar(c);
-  const reds=LS.get('rm_redemptions',[]);
-  lines.forEach(function(l,idx){
-    const entry={id:'rd'+Date.now()+'_'+idx,rewardId:l.r.id,title:l.r.title+(l.qty>1?(' ×'+l.qty):''),cost:l.r.cost*l.qty,qty:l.qty,user:CU.username,userName:CU.name,status:'pending',ts:Date.now()};
-    reds.push(entry);
-    if(syncOn())authApi({type:'redeem_write',row:entry}).catch(function(){});
-  });
-  LS.set('rm_redemptions',reds);window._rwCart={};
-  toast('🛒 兌換成功（共 '+total+' EXP），等待主管發放','gold');
-  renderRewards();updateGameChip();
-}
-function rwImgUpload(id,el){const f=el.files&&el.files[0];if(!f)return;el.value='';cropImage(f,{aspect:1,max:560,q:0.6},function(url){if(LS.set('rm_rwimg_'+id,url)){toast('✓ 已更新獎勵照片','gold');renderRewards();}});}
-
-function renderRewardAdmin(){
-  const wrap=$('reward-admin-wrap');if(!wrap)return;
-  if(CU.role!=='BOSS'){wrap.innerHTML='';return;}
-  const rewards=LS.get('rm_rewards',[]);
-  wrap.innerHTML=`<div class="c-card"><div class="c-card-title">🛠️ 獎勵管理（老闆）</div>
-    <div class="form-group"><label class="form-label">獎勵名稱</label><input class="form-input" id="nr-title" placeholder="例：電影票一張"></div>
-    <div class="form-group"><label class="form-label">所需點數</label><input class="form-input" id="nr-cost" type="number" min="1" value="200"></div>
-    <button class="btn-action" onclick="addReward()">➕ 新增獎勵</button>
-    <div class="muted-note" style="margin-top:6px">新增後，點下方每個獎勵的「照片」即可上傳商品圖。</div>
-    <div style="margin-top:14px">${rewards.map(r=>{const img=LS.get('rm_rwimg_'+r.id,'')||'';return `<div class="sub-row" style="gap:10px">
-      ${img?`<img class="rw-adminthumb" src="${img}">`:`<div class="rw-adminthumb" style="display:flex;align-items:center;justify-content:center;font-size:20px;opacity:.5">🎁</div>`}
-      <div style="flex:1;min-width:0"><div class="tc-title" style="font-size:14px">${esc(r.title)}</div><div class="xp-text">${r.cost} EXP</div></div>
-      <label class="btn-sm btn-neutral" style="cursor:pointer">照片<input type="file" accept="image/*" style="display:none" onchange="rwImgUpload('${r.id}',this)"></label>
-      <button class="btn-sm btn-warn" onclick="delReward('${r.id}')">刪除</button>
-    </div>`;}).join('')||'<div class="muted-note">目前沒有獎勵</div>'}</div>
-  </div>`;
-}
-function addReward(){
-  const title=($('nr-title')&&$('nr-title').value.trim())||'';
-  const cost=Math.max(1,parseInt($('nr-cost')&&$('nr-cost').value)||200);
-  if(!title){toast('請輸入獎勵名稱','red');return;}
-  const rewards=LS.get('rm_rewards',[]);rewards.push({id:'rw'+Date.now(),title,cost,type:'perk'});LS.set('rm_rewards',rewards);
-  toast('✓ 已新增獎勵','gold');renderRewards();
-}
-function delReward(id){const rewards=LS.get('rm_rewards',[]).filter(r=>r.id!==id);LS.set('rm_rewards',rewards);LS.set('rm_rwimg_'+id,'');if(window._rwCart)delete window._rwCart[id];toast('已刪除獎勵','red');renderRewards();}
-function redeem(id){
-  if(ptsLocked()){toast('🔒 今日必做尚未完成，獎勵兌換已鎖（完成今日必做、或累積滿 50 點即可解鎖）','red');return;}
-  const rewards=LS.get('rm_rewards',[]);const r=rewards.find(x=>x.id===id);if(!r)return;
-  const c=getChar();
-  if(c.points<r.cost){toast('EXP 不足','red');return;}
-  c.points-=r.cost;
-  if(syncOn()){saveCharLocal(c);charDelta(CU.username,0,-r.cost,0,'兌換獎勵').then(function(ok){if(!ok)saveChar(c);else updateGameChip();});}else saveChar(c);
-  const reds=LS.get('rm_redemptions',[]);
-  const entry={id:'rd'+Date.now(),rewardId:r.id,title:r.title,cost:r.cost,
-    user:CU.username,userName:CU.name,status:'pending',ts:Date.now()};
-  reds.push(entry);
-  LS.set('rm_redemptions',reds);
-  // 寫入雲端 Sheet（永久紀錄、老闆可查）
-  if(syncOn())authApi({type:'redeem_write',row:entry}).catch(()=>{});
-  toast('🎁 兌換成功，等待主管發放','gold');
-  renderRewards();updateGameChip();
-}
-function markRedeemDone(id){
-  const reds=LS.get('rm_redemptions',[]);const x=reds.find(r=>r.id===id);if(!x)return;
-  x.status='done';x.handledBy=CU.name;LS.set('rm_redemptions',reds);
-  if(syncOn())authApi({type:'redeem_done',id:x.id,handledBy:CU.name}).catch(()=>{});
-  toast('✓ 已標記為發放','gold');renderRewards();
 }
 
 // ── 支出（本機雛型）──
