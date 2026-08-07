@@ -1923,7 +1923,7 @@ html,body,button,input,select,textarea,
 
 <script>
 // ── 自動更新：開啟時比對版本，有新版就自動重載（免無痕）──
-const APP_VER='20260807100000';
+const APP_VER='20260807110000';
 const GT_KEY='gtk_9F3xQ7Lz_pW2rM8kT';  // 後台共用密鑰（階段A：前端帶上；階段B：後台驗證）
 function checkVersion(){try{fetch('ver.txt?_='+Date.now(),{cache:'no-store'}).then(function(r){return r.ok?r.text():null;}).then(function(v){if(!v)return;v=v.trim();if(v&&v!==APP_VER&&location.search.indexOf('v='+v)<0){location.replace(location.pathname+'?v='+encodeURIComponent(v));}}).catch(function(){});}catch(e){}}
 checkVersion();
@@ -2155,7 +2155,6 @@ function switchTab(name,btn) {
   if(name==='leaderboard')renderLeaderboard();
   if(name==='handover')renderHandover();
   if(name==='handbook')renderHandbook();
-  if(name==='challenge')renderChallenge();
   if(name==='home')renderHome();
   if(name==='bully')renderBully();
   document.querySelectorAll('.drawer-item').forEach(b=>b.classList.toggle('active',b.dataset.tab===name));
@@ -3270,7 +3269,7 @@ function mergeLogArr(key,cloudVal){
 function mergeNames(key,cloudVal){try{var loc=JSON.parse(localStorage.getItem(key)||'{}')||{};var cl=JSON.parse(cloudVal||'{}')||{};localStorage.setItem(key,JSON.stringify(Object.assign({},cl,loc)));}catch(e){localStorage.setItem(key,cloudVal);}}
 function cloudPull(light){if(!syncOn())return Promise.resolve();return kv('kv_all',light?{light:1}:{}).then(function(res){if(res&&res.status==='ok'&&res.data){for(var k in res.data){if(k.indexOf('rm_')!==0||res.data[k]==null)continue;if(k==='rm_submissions'||k==='rm_redemptions')mergeLogArr(k,res.data[k]);else if(k==='rm_names')mergeNames(k,res.data[k]);else localStorage.setItem(k,res.data[k]);}}}).catch(function(){});}
 function isTyping(){var a=document.activeElement;if(!a)return false;var t=(a.tagName||'').toUpperCase();return t==='INPUT'||t==='TEXTAREA'||t==='SELECT'||a.isContentEditable===true;}
-function reRenderTab(id){const map={home:renderHome,reports:loadReports,handover:renderHandover,handbook:renderHandbook,tasks:renderTasks,rewards:renderRewards,challenge:renderChallenge,leaderboard:renderLeaderboard,character:renderCharacter,inventory:renderInventory,bully:renderBully};if(map[id]){try{map[id]();}catch(e){}}if(id==='accounts'){try{loadPending();loadAccounts();}catch(e){}}}
+function reRenderTab(id){const map={home:renderHome,reports:loadReports,handover:renderHandover,tasks:renderTasks,leaderboard:renderLeaderboard,character:renderCharacter,inventory:renderInventory,bully:renderBully};if(map[id]){try{map[id]();}catch(e){}}if(id==='accounts'){try{loadPending();loadAccounts();}catch(e){}}}
 // 輪詢：平時走輕量(不抓照片)，每 5 次(約100秒)才連照片一起抓一次
 function startSyncPoll(){if(!syncOn()||window._syncPoll)return;window._syncPoll=setInterval(function(){
   if(window._syncBusy)return;                     // 上一次同步還沒回來就跳過，避免重疊堆疊、打爆後端
@@ -3420,7 +3419,6 @@ const ALL_TABS=[
   {id:'bom',icon:'🧮',label:'BOM成本',roles:['BOSS','MGR']},
   {id:'handover',icon:'📋',label:'交接表',roles:['BOSS','MGR','EMP']},
   {id:'tasks',icon:'✅',label:'任務',roles:['BOSS','MGR','EMP']},
-  {id:'challenge',icon:'🤝',label:'共同挑戰',roles:['BOSS','MGR','EMP']},
   {id:'leaderboard',icon:'🏆',label:'排行榜',roles:['BOSS','MGR','EMP']},
   {id:'character',icon:'🎮',label:'我的角色',roles:['BOSS','MGR','EMP']},
   {id:'bully',icon:'🛡️',label:'霸凌申訴',roles:['BOSS','MGR','EMP']},
