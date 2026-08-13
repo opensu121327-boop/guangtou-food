@@ -324,6 +324,8 @@ select.form-input option{background:#1a1208}
 }
 .btn-action:hover{filter:brightness(1.1)}
 .btn-action:active{transform:scale(0.98)}
+/* 送出處理中：灰態＋不可再點（防重複送出的視覺回饋） */
+.btn-busy{opacity:.5!important;filter:grayscale(.4)!important;cursor:progress!important;pointer-events:none!important;transform:none!important;}
 .btn-sm{
   display:inline-flex;align-items:center;gap:6px;
   padding:8px 16px;border-radius:8px;cursor:pointer;
@@ -1868,11 +1870,16 @@ html,body,button,input,select,textarea,
 
 <script>
 // ── 自動更新：開啟時比對版本，有新版就自動重載（免無痕）──
-const APP_VER='20260807170000';
+const APP_VER='20260813120000';
 const GT_KEY='gtk_9F3xQ7Lz_pW2rM8kT';  // 後台共用密鑰（階段A：前端帶上；階段B：後台驗證）
-function checkVersion(){try{fetch('ver.txt?_='+Date.now(),{cache:'no-store'}).then(function(r){return r.ok?r.text():null;}).then(function(v){if(!v)return;v=v.trim();if(v&&v!==APP_VER&&location.search.indexOf('v='+v)<0){location.replace(location.pathname+'?v='+encodeURIComponent(v));}}).catch(function(){});}catch(e){}}
+// 是否有「打到一半、還沒送出」的資料（結帳/進貨/交接/申訴的輸入框有值）→ 有的話先別強制重載，免得清掉
+function _hasTypedData(){try{var els=document.querySelectorAll('#tab-revenue input,#tab-revenue textarea,#tab-purchase input,#tab-purchase textarea,#tab-handover input,#tab-handover textarea,#tab-bully input,#tab-bully textarea');for(var i=0;i<els.length;i++){var el=els[i];if(el.type==='date'||el.type==='hidden')continue;if((el.value||'').trim())return true;}return false;}catch(e){return false;}}
+// 有新版時先記下來；只有在「沒有正在輸入、也沒有未送出資料」時才真的重載，避免打到一半被清空
+function _applyPendingUpdate(){var v=window._pendingVer;if(!v)return;if(typeof isTyping==='function'&&isTyping())return;if(_hasTypedData())return;location.replace(location.pathname+'?v='+encodeURIComponent(v));}
+function checkVersion(){try{fetch('ver.txt?_='+Date.now(),{cache:'no-store'}).then(function(r){return r.ok?r.text():null;}).then(function(v){if(!v)return;v=v.trim();if(v&&v!==APP_VER&&location.search.indexOf('v='+v)<0){window._pendingVer=v;_applyPendingUpdate();}}).catch(function(){});}catch(e){}}
 checkVersion();
-document.addEventListener('visibilitychange',function(){if(document.visibilityState==='visible')checkVersion();});
+setInterval(_applyPendingUpdate,3000);   // 有待更新版本時，趁使用者閒置（沒在輸入）自動套用
+document.addEventListener('visibilitychange',function(){if(document.visibilityState==='visible')checkVersion();else _applyPendingUpdate();});
 window.addEventListener('pageshow',function(e){if(e.persisted)checkVersion();});
 const GAS = 'https://script.google.com/macros/s/AKfycbwo6t4jqCx9apfSdO86iKuF42wU3GBFTM-gQosKbVJUlOpxLzdwGKoFwKujaht1RXMBBQ/exec';
 let CU = null; // current user
@@ -2023,7 +2030,7 @@ async function enterApp() {
   hideAppLoading();   // 準備好後淡出（至少顯示 5 秒）
   // 背景把資料抓齊並刷新目前畫面（含照片），慢的雲端不再擋住登入
   if(syncOn())setTimeout(function(){
-    cloudPull(true).then(function(){if(!CU)return;updateGameChip();if(isTyping())return;var act=document.querySelector('.tab-panel.active');if(act)reRenderTab(act.id.replace('tab-',''));}).catch(function(){});
+    cloudPull(true).then(function(){if(!CU)return;updateGameChip();if(_busyUI())return;var act=document.querySelector('.tab-panel.active');if(act)reRenderTab(act.id.replace('tab-',''));}).catch(function(){});
     // 登入後在背景先暖好常用查詢的快取，之後點進進貨/報表就秒開（Apps Script 每次呼叫約2.7秒，先偷偷抓好）
     if(typeof apiGetCached==='function'){apiGetCached('query_purchase_recent').catch(function(){});apiGetCached('query_revenue').catch(function(){});}
     // 不再登入時就抓整包照片(full)，改由輪詢極少數次或需要時再抓，減少後端負擔
@@ -3208,6 +3215,8 @@ function mergeLogArr(key,cloudVal){
 function mergeNames(key,cloudVal){try{var loc=JSON.parse(localStorage.getItem(key)||'{}')||{};var cl=JSON.parse(cloudVal||'{}')||{};localStorage.setItem(key,JSON.stringify(Object.assign({},cl,loc)));}catch(e){localStorage.setItem(key,cloudVal);}}
 function cloudPull(light){if(!syncOn())return Promise.resolve();return kv('kv_all',light?{light:1}:{}).then(function(res){if(res&&res.status==='ok'&&res.data){for(var k in res.data){if(k.indexOf('rm_')!==0||res.data[k]==null)continue;if(k==='rm_submissions'||k==='rm_redemptions')mergeLogArr(k,res.data[k]);else if(k==='rm_names')mergeNames(k,res.data[k]);else localStorage.setItem(k,res.data[k]);}}}).catch(function(){});}
 function isTyping(){var a=document.activeElement;if(!a)return false;var t=(a.tagName||'').toUpperCase();return t==='INPUT'||t==='TEXTAREA'||t==='SELECT'||a.isContentEditable===true;}
+// 使用者正在操作中（輸入／彈窗開著／送出鈕處理中）→ 背景同步先別重刷畫面，避免手上的操作被打斷或閃動
+function _busyUI(){return isTyping()||!!document.querySelector('.subform-overlay.show,.btn-busy');}
 function reRenderTab(id){const map={home:renderHome,reports:loadReports,handover:renderHandover,tasks:renderTasks,leaderboard:renderLeaderboard,character:renderCharacter,inventory:renderInventory,bully:renderBully};if(map[id]){try{map[id]();}catch(e){}}if(id==='accounts'){try{loadPending();loadAccounts();}catch(e){}}}
 // 輪詢：平時走輕量(不抓照片)，每 5 次(約100秒)才連照片一起抓一次
 function startSyncPoll(){if(!syncOn()||window._syncPoll)return;window._syncPoll=setInterval(function(){
@@ -3215,17 +3224,22 @@ function startSyncPoll(){if(!syncOn()||window._syncPoll)return;window._syncPoll=
   window._syncCnt=(window._syncCnt||0)+1;
   var full=(window._syncCnt%20===0);               // 幾乎都用輕量(略過大照片)；full 很少(約每15分一次)
   window._syncBusy=true;
-  cloudPull(!full).then(function(){window._syncBusy=false;if(!CU)return;updateGameChip();if(isTyping())return;const act=document.querySelector('.tab-panel.active');if(act)reRenderTab(act.id.replace('tab-',''));}).catch(function(){window._syncBusy=false;});
+  cloudPull(!full).then(function(){window._syncBusy=false;if(!CU)return;updateGameChip();if(_busyUI())return;const act=document.querySelector('.tab-panel.active');if(act)reRenderTab(act.id.replace('tab-',''));}).catch(function(){window._syncBusy=false;});
 },45000);}
 // 立即同步一次（輕量拉雲端＋重繪目前分頁）
-function syncNow(){if(!syncOn())return;cloudPull(true).then(function(){if(!CU)return;updateGameChip();if(isTyping())return;const act=document.querySelector('.tab-panel.active');if(act)reRenderTab(act.id.replace('tab-',''));});}
-// 全域防連點：5 秒內重複點同一個送出鈕，只算一次（避免重複輸入）
-if(!window._clickGuardWired){window._clickGuardWired=true;var _lastAct={};
+function syncNow(){if(!syncOn())return;cloudPull(true).then(function(){if(!CU)return;updateGameChip();if(_busyUI())return;const act=document.querySelector('.tab-panel.active');if(act)reRenderTab(act.id.replace('tab-',''));});}
+// 全域防連點：送出鈕被點下後，短暫鎖住「被點的那一顆」約 1.1 秒並顯示灰態（明確回饋），期間再點無效。
+// 只認「按鈕本身」不認動作字串→不同筆資料可以連續送出；只有手滑連點同一顆才會被擋，避免重複送出。
+if(!window._clickGuardWired){window._clickGuardWired=true;
   document.addEventListener('click',function(e){
     var btn=e.target.closest&&e.target.closest('.btn-action');if(!btn)return;
-    var act=btn.getAttribute('onclick')||btn.id||btn.textContent||'';if(!act)return;
-    var now=Date.now();if(now-(_lastAct[act]||0)<5000){e.stopPropagation();e.preventDefault();return;}
-    _lastAct[act]=now;
+    if(btn.dataset.busy||btn.disabled){e.stopPropagation();e.preventDefault();return;}   // 處理中：擋掉（按鈕已呈灰態，非無聲）
+    // 讓這一次點擊正常送出，隨後把此鈕短暫上鎖
+    setTimeout(function(){
+      if(btn.dataset.busy)return;
+      btn.dataset.busy='1';btn.classList.add('btn-busy');
+      setTimeout(function(){delete btn.dataset.busy;btn.classList.remove('btn-busy');},1100);
+    },0);
   },true);
 }
 // 手機背景會凍結 setInterval：一回到 App（畫面可見/切回分頁）就馬上同步
