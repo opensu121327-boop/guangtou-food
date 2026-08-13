@@ -1876,7 +1876,7 @@ html,body,button,input,select,textarea,
 
 <script>
 // ── 自動更新：開啟時比對版本，有新版就自動重載（免無痕）──
-const APP_VER='20260813160000';
+const APP_VER='20260813180000';
 const GT_KEY='gtk_9F3xQ7Lz_pW2rM8kT';  // 後台共用密鑰（階段A：前端帶上；階段B：後台驗證）
 // 是否有「打到一半、還沒送出」的資料（結帳/進貨/交接/申訴的輸入框有值）→ 有的話先別強制重載，免得清掉
 function _hasTypedData(){try{var els=document.querySelectorAll('#tab-revenue input,#tab-revenue textarea,#tab-purchase input,#tab-purchase textarea,#tab-handover input,#tab-handover textarea,#tab-bully input,#tab-bully textarea');for(var i=0;i<els.length;i++){var el=els[i];if(el.type==='date'||el.type==='hidden')continue;if((el.value||'').trim())return true;}return false;}catch(e){return false;}}
@@ -2527,7 +2527,7 @@ function codePrefix(cat){cat=cat||'';if(cat.indexOf('水產')===0)return'SE';if(
 // ── 🏷️ 物料分類整理（老闆）：把 19 個舊分類精簡成 12 類、修正錯置，寫回「物料總表」──
 const MATCATS=['水產','肉類','蔬菜','冷盤加工','調味料','酒水飲料','漁船補給','包材消耗','水電雜支','設備餐具維修','人事','行銷','金額異動'];
 // 舊分類 → 新分類（合併用；耗材與雜項裡的水電/行銷等錯置品項另用關鍵字修正）
-const MATCAT_CONSOLIDATE={'水產/生食':'水產','水產/海鮮':'水產','水產/加工品':'水產','肉類/雞肉':'肉類','肉類/豬肉':'肉類','肉類/牛肉':'肉類','肉類/羊肉':'肉類','蔬菜':'蔬菜','冷盤/加工品':'冷盤加工','半成品/冷盤':'冷盤加工','調味品/醬包':'調味料','調味品/粉類':'調味料','調味品/乾料':'調味料','酒水飲料':'酒水飲料','員工':'人事','行銷費用':'行銷','金額異動':'金額異動','餐具/廚具/設備維修':'設備餐具維修','耗材與雜項':'包材消耗'};
+const MATCAT_CONSOLIDATE={'水產/生食':'水產','水產/海鮮':'水產','水產/加工品':'水產','肉類/雞肉':'肉類','肉類/豬肉':'肉類','肉類/牛肉':'肉類','肉類/羊肉':'肉類','蔬菜':'蔬菜','冷盤/加工品':'冷盤加工','半成品/冷盤':'冷盤加工','調味品/醬包':'調味料','調味品/粉類':'調味料','調味品/乾料':'調味料','酒水飲料':'酒水飲料','漁船補給用':'漁船補給','漁船補給':'漁船補給','員工':'人事','行銷費用':'行銷','金額異動':'金額異動','餐具/廚具/設備維修':'設備餐具維修','耗材與雜項':'包材消耗'};
 function matcatSuggest(m){var name=String(m.name||''),cur=String(m.cat||''),code=String(m.code||'');
   if(/水費|電費|瓦斯|網路|保險|會計|記帳|除蟲|房租|POS|月租|水電工資/.test(name))return '水電雜支';
   if(/名片|廣告|立牌|壓克力廣告|傳單|文宣|DM/.test(name))return '行銷';
@@ -2572,7 +2572,7 @@ function matcatReset(){_matcatPending={};toast('已清除暫存變更','red');ma
 function saveMatCats(){var updates=[];_materials.forEach(function(m){if(m.code&&_matcatPending.hasOwnProperty(m.code)&&_matcatPending[m.code]!==(m.cat||''))updates.push({code:m.code,cat:_matcatPending[m.code]});});
   if(!updates.length){toast('沒有要儲存的變更','red');return;}
   toast('儲存中…共 '+updates.length+' 筆','gold');
-  authApi({type:'materials_setcat',updates:updates}).then(function(d){
+  authApi({type:'materials_setcat',updates:updates,cats:MATCATS}).then(function(d){
     if(d&&(d.status==='ok'||d.status==='success')){updates.forEach(function(u){var m=_materials.find(function(x){return x.code===u.code;});if(m)m.cat=u.cat;});_matcatPending={};toast('✓ 已儲存 '+(d.updated!=null?d.updated:updates.length)+' 筆到物料總表','gold');loadMaterials(true).then(function(){matcatPaint();});}
     else{toast((d&&d.message)||'儲存失敗（後端可能尚未部署 materials_setcat）','red');}
   }).catch(function(){toast('連線逾時，請確認後端已部署新版再重試','red');});}
