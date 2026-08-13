@@ -1704,6 +1704,12 @@ html,body,button,input,select,textarea,
       <div id="bom-wrap"></div>
     </div>
 
+    <!-- 物料分類整理 TAB（老闆） -->
+    <div class="tab-panel" id="tab-matcat">
+      <div class="sec-header"><div class="sec-title">物料分類</div><div class="divider"></div><div class="sec-sub">把物料分類精簡歸位，寫回物料總表・讓成本結構更清楚</div></div>
+      <div id="matcat-wrap"></div>
+    </div>
+
     <!-- INVENTORY TAB -->
     <div class="tab-panel" id="tab-inventory">
       <div class="sec-header"><div class="sec-title">每日食材盤點</div><div class="divider"></div><div class="sec-sub">輸入數量按確認 → 每項 +3 點（每人每日上限 8 項）・ 只顯示今天與昨天</div></div>
@@ -1870,7 +1876,7 @@ html,body,button,input,select,textarea,
 
 <script>
 // ── 自動更新：開啟時比對版本，有新版就自動重載（免無痕）──
-const APP_VER='20260813140000';
+const APP_VER='20260813160000';
 const GT_KEY='gtk_9F3xQ7Lz_pW2rM8kT';  // 後台共用密鑰（階段A：前端帶上；階段B：後台驗證）
 // 是否有「打到一半、還沒送出」的資料（結帳/進貨/交接/申訴的輸入框有值）→ 有的話先別強制重載，免得清掉
 function _hasTypedData(){try{var els=document.querySelectorAll('#tab-revenue input,#tab-revenue textarea,#tab-purchase input,#tab-purchase textarea,#tab-handover input,#tab-handover textarea,#tab-bully input,#tab-bully textarea');for(var i=0;i<els.length;i++){var el=els[i];if(el.type==='date'||el.type==='hidden')continue;if((el.value||'').trim())return true;}return false;}catch(e){return false;}}
@@ -2096,6 +2102,7 @@ function switchTab(name,btn) {
   if(name==='purchase'){loadMaterials().then(fillMatCatSelect);renderRecentPurchases();}
   if(name==='inventory')renderInventory();
   if(name==='bom'){renderBom();loadBomImgs(renderBom);Promise.all([loadMaterials(),loadRecipeCosts()]).then(renderBom);}
+  if(name==='matcat')renderMatCat();
   if(name==='accounts'){loadPending();loadAccounts();}
   if(name==='audit')renderAudit();
   if(name==='settings')renderSettings();
@@ -2149,7 +2156,8 @@ const ICONS={
   audit:_svg('<circle cx="10.5" cy="10.5" r="6"/><path d="M15 15l5 5"/>'),
   settings:_svg('<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.6 1.6 0 00.3 1.8l.1.1a2 2 0 11-2.8 2.8l-.1-.1a1.6 1.6 0 00-2.7 1.1V21a2 2 0 11-4 0v-.1A1.6 1.6 0 006 19.4l-.1.1a2 2 0 11-2.8-2.8l.1-.1A1.6 1.6 0 003 15a2 2 0 010-4 1.6 1.6 0 001.5-2.6l-.1-.1a2 2 0 112.8-2.8l.1.1A1.6 1.6 0 009 3.6V3a2 2 0 014 0v.1A1.6 1.6 0 0018 4.6l.1-.1a2 2 0 112.8 2.8l-.1.1A1.6 1.6 0 0021 11a2 2 0 010 4z"/>'),
   focuscfg:_svg('<circle cx="12" cy="12" r="8.5"/><circle cx="12" cy="12" r="4.6"/><circle cx="12" cy="12" r="1.1" fill="currentColor"/>'),
-  revthr:_svg('<path d="M4 4v16h16"/><path d="M7 15l3-4 3 2 4-6"/>')
+  revthr:_svg('<path d="M4 4v16h16"/><path d="M7 15l3-4 3 2 4-6"/>'),
+  matcat:_svg('<path d="M4 12l8-8h6v6l-8 8z"/><circle cx="14.5" cy="9.5" r="1.3"/>')
 };
 function tabIcon(id){return ICONS[id]||'';}
 // 🎨 卡片標題 emoji → 線條圖示 自動替換（全 App 分頁內小圖統一風格）
@@ -2514,7 +2522,60 @@ function applyMaterial(i,auto){
   const box=$('pu-suggest');if(box){box.style.color='#15803d';box.style.display='';box.innerHTML='✓ 已自動辨識為「<b>'+esc(m.name)+'</b>」並帶入編號/分類/供應商';setTimeout(function(){if(box){box.style.display='none';box.style.color='';box.innerHTML='';}},4500);}
   toast('✓ 已辨識為 '+m.name,'gold');
 }
-function codePrefix(cat){cat=cat||'';if(cat.indexOf('水產')===0)return'SE';if(cat.indexOf('肉類')===0)return'ME';if(cat.indexOf('蔬菜')===0)return'VE';if(cat.indexOf('酒水')===0)return'DR';if(cat.indexOf('調味')===0)return'DRY';if(cat.indexOf('冷盤')===0)return'ICE';if(cat.indexOf('半成品')===0)return'HALF';if(cat.indexOf('金額異動')===0)return'M-';if(cat.indexOf('調製')===0)return'PRE';return'SUP';}
+function codePrefix(cat){cat=cat||'';if(cat.indexOf('水產')===0)return'SE';if(cat.indexOf('肉類')===0)return'ME';if(cat.indexOf('蔬菜')===0)return'VE';if(cat.indexOf('酒水')===0)return'DR';if(cat.indexOf('調味')===0)return'DRY';if(cat.indexOf('冷盤')===0)return'ICE';if(cat.indexOf('半成品')===0)return'HALF';if(cat.indexOf('漁船')===0)return'FB';if(cat.indexOf('金額異動')===0)return'M-';if(cat.indexOf('調製')===0)return'PRE';return'SUP';}
+
+// ── 🏷️ 物料分類整理（老闆）：把 19 個舊分類精簡成 12 類、修正錯置，寫回「物料總表」──
+const MATCATS=['水產','肉類','蔬菜','冷盤加工','調味料','酒水飲料','漁船補給','包材消耗','水電雜支','設備餐具維修','人事','行銷','金額異動'];
+// 舊分類 → 新分類（合併用；耗材與雜項裡的水電/行銷等錯置品項另用關鍵字修正）
+const MATCAT_CONSOLIDATE={'水產/生食':'水產','水產/海鮮':'水產','水產/加工品':'水產','肉類/雞肉':'肉類','肉類/豬肉':'肉類','肉類/牛肉':'肉類','肉類/羊肉':'肉類','蔬菜':'蔬菜','冷盤/加工品':'冷盤加工','半成品/冷盤':'冷盤加工','調味品/醬包':'調味料','調味品/粉類':'調味料','調味品/乾料':'調味料','酒水飲料':'酒水飲料','員工':'人事','行銷費用':'行銷','金額異動':'金額異動','餐具/廚具/設備維修':'設備餐具維修','耗材與雜項':'包材消耗'};
+function matcatSuggest(m){var name=String(m.name||''),cur=String(m.cat||''),code=String(m.code||'');
+  if(/水費|電費|瓦斯|網路|保險|會計|記帳|除蟲|房租|POS|月租|水電工資/.test(name))return '水電雜支';
+  if(/名片|廣告|立牌|壓克力廣告|傳單|文宣|DM/.test(name))return '行銷';
+  if(MATCAT_CONSOLIDATE[cur])return MATCAT_CONSOLIDATE[cur];
+  if(/^SE/.test(code))return '水產';if(/^ME/.test(code))return '肉類';if(/^VE/.test(code))return '蔬菜';
+  if(/^DRY/.test(code))return '調味料';if(/^DR/.test(code))return '酒水飲料';
+  if(/^(ICE|HALF|PRE)/.test(code))return '冷盤加工';
+  if(/^MARKET/.test(code))return '行銷';if(/^M-/.test(code))return '金額異動';if(/^SUP012/.test(code))return '人事';
+  return '包材消耗';}
+var _matcatPending={};var _matcatSearch='';
+function matcatEff(m){return (m.code&&_matcatPending.hasOwnProperty(m.code))?_matcatPending[m.code]:(m.cat||'');}
+function _matcatPendCount(){var n=0;_materials.forEach(function(m){if(m.code&&_matcatPending.hasOwnProperty(m.code)&&_matcatPending[m.code]!==(m.cat||''))n++;});return n;}
+function matcatFromOpts(){var s={};_materials.forEach(function(m){var c=(m.cat||'(空白)');s[c]=(s[c]||0)+1;});return Object.keys(s).sort().map(function(c){return '<option value="'+esc(c)+'">'+esc(c)+'（'+s[c]+'）</option>';}).join('');}
+function renderMatCat(){var wrap=$('matcat-wrap');if(!wrap)return;
+  if(!CU||CU.role!=='BOSS'){wrap.innerHTML='<div class="muted-note">此頁僅老闆可用</div>';return;}
+  if(!_materials.length){wrap.innerHTML='<div class="loading-state"><div class="spin"></div>載入物料中…</div>';loadMaterials(true).then(function(){renderMatCat();});return;}
+  matcatPaint();}
+function matcatPaint(){var wrap=$('matcat-wrap');if(!wrap)return;
+  var toOpts=MATCATS.map(function(c){return '<option value="'+c+'">'+c+'</option>';}).join('');var nPend=_matcatPendCount();
+  wrap.innerHTML='<div class="c-card"><div class="c-card-title">🏷️ 物料分類整理</div>'
+    +'<div class="muted-note">把物料歸到精簡的 '+MATCATS.length+' 類；改動先暫存，按「儲存到雲端」才寫回物料總表。這只調整成本結構的呈現，不會改到淨利總額。</div>'
+    +'<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px"><button class="btn-sm btn-neutral" onclick="matcatSuggestAll()">✨ 一鍵套用建議分類</button><button class="btn-sm btn-neutral" onclick="matcatReset()">↩︎ 清除暫存</button></div>'
+    +'<div class="form-group" style="margin-top:10px"><label class="form-label">批次：把整個舊分類改成…</label><div style="display:flex;gap:6px;flex-wrap:wrap"><select class="form-input" id="mc-from" style="flex:1;min-width:130px">'+matcatFromOpts()+'</select><span style="align-self:center">→</span><select class="form-input" id="mc-to" style="flex:1;min-width:130px">'+toOpts+'</select><button class="btn-sm btn-neutral" onclick="matcatBatch()">整批改</button></div></div>'
+    +'<input class="form-input" id="mc-search" placeholder="🔍 搜尋品名／編號／分類" value="'+esc(_matcatSearch)+'" oninput="_matcatSearch=this.value;matcatList()" style="margin-top:8px"></div>'
+    +'<div class="c-card"><div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px"><b id="mc-pend" style="color:'+(nPend?'#800020':'#666')+'">待儲存 '+nPend+' 筆</b><button class="btn-action" id="mc-save" onclick="saveMatCats()"'+(nPend?'':' disabled style="opacity:.5"')+'>💾 儲存到雲端</button></div></div>'
+    +'<div id="matcat-list"></div>';
+  matcatList();}
+function matcatList(){var box=$('matcat-list');if(!box)return;var q=_matcatSearch.trim();
+  var list=_materials.filter(function(m){if(!q)return true;return ((m.code||'')+' '+(m.name||'')+' '+matcatEff(m)).indexOf(q)>=0;});
+  list=list.slice().sort(function(a,b){var ia=MATCATS.indexOf(matcatEff(a)),ib=MATCATS.indexOf(matcatEff(b));if(ia<0)ia=99;if(ib<0)ib=99;if(ia!==ib)return ia-ib;return (a.code||'').localeCompare(b.code||'');});
+  var html='',lastCat='__INIT__';
+  list.forEach(function(m){var eff=matcatEff(m);var changed=(m.code&&_matcatPending.hasOwnProperty(m.code)&&_matcatPending[m.code]!==(m.cat||''));
+    if(eff!==lastCat){lastCat=eff;html+='<div style="margin:14px 2px 4px;font-weight:800;color:#800020;font-size:14px">'+esc(eff||'(未分類)')+'</div>';}
+    var sel='<select class="form-input" style="width:148px;padding:8px;flex:none" onchange="matcatSet(\''+esc(m.code||'')+'\',this.value)">'+MATCATS.map(function(c){return '<option value="'+c+'"'+(c===eff?' selected':'')+'>'+c+'</option>';}).join('')+'</select>';
+    html+='<div class="sub-row" style="gap:8px;'+(changed?'background:#fff7e6;border-radius:8px':'')+'"><div style="flex:1;min-width:0"><div class="tc-title" style="font-size:14px">'+esc(m.name||'')+'</div><div class="xp-text">'+esc(m.code||'')+' ・ 原：'+esc(m.cat||'(空白)')+'</div></div>'+sel+'</div>';});
+  box.innerHTML=html||'<div class="game-empty">找不到符合的物料</div>';}
+function matcatAfterChange(){var n=_matcatPendCount();var p=$('mc-pend');if(p){p.textContent='待儲存 '+n+' 筆';p.style.color=n?'#800020':'#666';}var sv=$('mc-save');if(sv){sv.disabled=!n;sv.style.opacity=n?'':'0.5';}matcatList();}
+function matcatSet(code,val){if(!code)return;var m=_materials.find(function(x){return x.code===code;});if(!m)return;if(val===(m.cat||''))delete _matcatPending[code];else _matcatPending[code]=val;matcatAfterChange();}
+function matcatBatch(){var from=$('mc-from')&&$('mc-from').value,to=$('mc-to')&&$('mc-to').value;if(!from||!to)return;var n=0;_materials.forEach(function(m){if(!m.code)return;if((m.cat||'(空白)')===from){if(to!==(m.cat||''))_matcatPending[m.code]=to;else delete _matcatPending[m.code];n++;}});toast('已把「'+from+'」的 '+n+' 項改為「'+to+'」（未儲存）','gold');matcatAfterChange();}
+function matcatSuggestAll(){var n=0;_materials.forEach(function(m){if(!m.code)return;var sug=matcatSuggest(m);if(sug!==(m.cat||'')){_matcatPending[m.code]=sug;n++;}else delete _matcatPending[m.code];});toast('已套用建議分類 '+n+' 項，請檢查後再儲存','gold');matcatAfterChange();}
+function matcatReset(){_matcatPending={};toast('已清除暫存變更','red');matcatAfterChange();}
+function saveMatCats(){var updates=[];_materials.forEach(function(m){if(m.code&&_matcatPending.hasOwnProperty(m.code)&&_matcatPending[m.code]!==(m.cat||''))updates.push({code:m.code,cat:_matcatPending[m.code]});});
+  if(!updates.length){toast('沒有要儲存的變更','red');return;}
+  toast('儲存中…共 '+updates.length+' 筆','gold');
+  authApi({type:'materials_setcat',updates:updates}).then(function(d){
+    if(d&&(d.status==='ok'||d.status==='success')){updates.forEach(function(u){var m=_materials.find(function(x){return x.code===u.code;});if(m)m.cat=u.cat;});_matcatPending={};toast('✓ 已儲存 '+(d.updated!=null?d.updated:updates.length)+' 筆到物料總表','gold');loadMaterials(true).then(function(){matcatPaint();});}
+    else{toast((d&&d.message)||'儲存失敗（後端可能尚未部署 materials_setcat）','red');}
+  }).catch(function(){toast('連線逾時，請確認後端已部署新版再重試','red');});}
 function genCode(){const nm=($('pu-name')&&$('pu-name').value.trim())||'';if(nm){const ex=_materials.find(m=>_matNorm(m.name)===_matNorm(nm)&&m.code);if(ex){if($('pu-code'))$('pu-code').value=ex.code;if($('pu-cat')&&!$('pu-cat').value.trim())$('pu-cat').value=ex.cat||'';toast('此物料已存在，沿用既有編號 '+ex.code,'gold');return;}}let cat=($('pu-cat')&&$('pu-cat').value.trim())||'';if(!cat){const mc=$('pu-mat-cat')?$('pu-mat-cat').value:'';if(mc&&mc!=='__all'&&mc!=='__none'){cat=mc;if($('pu-cat'))$('pu-cat').value=mc;}}if(!cat){toast('請先選分類（上方下拉或分類欄）','red');return;}const p=codePrefix(cat);if(p==='M-'){if($('pu-code'))$('pu-code').value='M-';toast('折讓/異動 編號：M-','gold');return;}let max=0;_materials.forEach(m=>{const c=String(m.code||'');if(c.indexOf(p)===0){const n=parseInt(c.slice(p.length).replace(/[^0-9]/g,''));if(!isNaN(n)&&n>max)max=n;}});const code=p+String(max+1).padStart(3,'0');if($('pu-code'))$('pu-code').value=code;toast('已產生新物料編號 '+code,'gold');}
 
 async function submitPu() {
@@ -2818,10 +2879,10 @@ function renderReports() {
 }
 
 // ════════ report-analysis SKILL 整合 ════════
-const FOOD_KEYS=['肉','水產','蔬菜','半成品','冷盤','調味'];
-function costClass(cat){cat=String(cat||'');if(cat.indexOf('金額異動')===0)return null;for(var i=0;i<FOOD_KEYS.length;i++){if(cat.indexOf(FOOD_KEYS[i])===0)return '食材';}if(cat.indexOf('員工')===0)return '人事';if(cat.indexOf('餐具')===0||cat.indexOf('廚具')===0||cat.indexOf('設備')===0)return '固定';return '耗材';}
+const FOOD_KEYS=['肉','水產','蔬菜','半成品','冷盤','調味','酒水','飲料','漁船'];
+function costClass(cat){cat=String(cat||'');if(cat.indexOf('金額異動')===0)return null;for(var i=0;i<FOOD_KEYS.length;i++){if(cat.indexOf(FOOD_KEYS[i])===0)return '食材';}if(cat.indexOf('員工')===0||cat.indexOf('人事')===0)return '人事';if(cat.indexOf('餐具')===0||cat.indexOf('廚具')===0||cat.indexOf('設備')===0)return '固定';return '耗材';}
 // 主食材＝食材類但排除「調味品」（肉/水產/蔬菜/半成品/冷盤）；用於漲跌分析與營運建議，聚焦主食材
-function isMainFood(cat){cat=String(cat||'');return costClass(cat)==='食材'&&cat.indexOf('調味')!==0;}
+function isMainFood(cat){cat=String(cat||'');return costClass(cat)==='食材'&&cat.indexOf('調味')!==0&&cat.indexOf('酒水')!==0&&cat.indexOf('飲料')!==0&&cat.indexOf('漁船')!==0;}
 // 走勢圖排除的高單價品項（會壓縮圖表比例、看不清其他食材）
 function trendExclude(nm){nm=String(nm||'');return nm==='黑鮪魚'||nm.indexOf('三角')>=0;}
 function prevPeriodRev(from,to){
@@ -3377,6 +3438,7 @@ const ALL_TABS=[
   {id:'inventory',icon:'🧾',label:'每日食材盤點',roles:['BOSS','MGR','EMP']},
   {id:'reports',icon:'📊',label:'數據報表',roles:['BOSS','MGR']},
   {id:'bom',icon:'🧮',label:'BOM成本',roles:['BOSS','MGR']},
+  {id:'matcat',icon:'🏷️',label:'物料分類',roles:['BOSS']},
   {id:'handover',icon:'📋',label:'交接表',roles:['BOSS','MGR','EMP']},
   {id:'tasks',icon:'✅',label:'任務',roles:['BOSS','MGR','EMP']},
   {id:'leaderboard',icon:'🏆',label:'排行榜',roles:['BOSS','MGR','EMP']},
