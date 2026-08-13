@@ -1876,13 +1876,13 @@ html,body,button,input,select,textarea,
 
 <script>
 // ── 自動更新：開啟時比對版本，有新版就自動重載（免無痕）──
-const APP_VER='20260813200000';
+const APP_VER='20260813220000';
 const GT_KEY='gtk_9F3xQ7Lz_pW2rM8kT';  // 後台共用密鑰（階段A：前端帶上；階段B：後台驗證）
 // 是否有「打到一半、還沒送出」的資料（結帳/進貨/交接/申訴的輸入框有值）→ 有的話先別強制重載，免得清掉
 function _hasTypedData(){try{var els=document.querySelectorAll('#tab-revenue input,#tab-revenue textarea,#tab-purchase input,#tab-purchase textarea,#tab-handover input,#tab-handover textarea,#tab-bully input,#tab-bully textarea');for(var i=0;i<els.length;i++){var el=els[i];if(el.type==='date'||el.type==='hidden')continue;if((el.value||'').trim())return true;}return false;}catch(e){return false;}}
 // 有新版時先記下來；只有在「沒有正在輸入、也沒有未送出資料」時才真的重載，避免打到一半被清空
-function _applyPendingUpdate(){var v=window._pendingVer;if(!v)return;if(typeof isTyping==='function'&&isTyping())return;if(_hasTypedData())return;location.replace(location.pathname+'?v='+encodeURIComponent(v));}
-function checkVersion(){try{fetch('ver.txt?_='+Date.now(),{cache:'no-store'}).then(function(r){return r.ok?r.text():null;}).then(function(v){if(!v)return;v=v.trim();if(v&&v!==APP_VER&&location.search.indexOf('v='+v)<0){window._pendingVer=v;_applyPendingUpdate();}}).catch(function(){});}catch(e){}}
+function _applyPendingUpdate(){var v=window._pendingVer;if(!v)return;if(typeof isTyping==='function'&&isTyping())return;var waited=Date.now()-(window._pendingSince||0);if(_hasTypedData()&&waited<45000)return;location.replace(location.pathname+'?v='+encodeURIComponent(v));}
+function checkVersion(){try{fetch('ver.txt?_='+Date.now(),{cache:'no-store'}).then(function(r){return r.ok?r.text():null;}).then(function(v){if(!v)return;v=v.trim();if(v&&v!==APP_VER&&location.search.indexOf('v='+v)<0){if(!window._pendingVer)window._pendingSince=Date.now();window._pendingVer=v;_applyPendingUpdate();}}).catch(function(){});}catch(e){}}
 checkVersion();
 setInterval(_applyPendingUpdate,3000);   // 有待更新版本時，趁使用者閒置（沒在輸入）自動套用
 document.addEventListener('visibilitychange',function(){if(document.visibilityState==='visible')checkVersion();else _applyPendingUpdate();});
@@ -2403,16 +2403,18 @@ async function submitRev() {
     return;
   }
   // 立即回饋、雲端背景寫入；若失敗自動還原欄位避免資料遺失
+  // 送出中：保留表單、鎖住按鈕，確認成功才清空；失敗保留原樣（不清空不回填，不會「跳回來」）
   const _rvIds=['rv-cash','rv-card','rv-twqr','rv-fp','rv-ue','rv-off','rv-note'];
-  const _rvSaved={};_rvIds.forEach(id=>{_rvSaved[id]=$(id)?$(id).value:'';});
-  invalidateQ('query_revenue');toast('✓ 營收已記錄','gold');
-  _rvIds.forEach(id=>{if($(id))$(id).value='';});calcRev();
-  const _rvRestore=function(){_rvIds.forEach(id=>{if($(id))$(id).value=_rvSaved[id];});calcRev();};
-  authApi({type:'revenue',rows:[row]}).then(function(d){if(!(d&&(d.status==='success'||d.status==='ok')))_rvVerifyOrRestore(row,_rvRestore);}).catch(function(){_rvVerifyOrRestore(row,_rvRestore);});
+  const _rvBtn=$('rv-submit');const _rvLbl=_rvBtn?_rvBtn.textContent:'';
+  if(_rvBtn){_rvBtn.disabled=true;_rvBtn.textContent='送出中…';}
+  const _rvEnd=function(){if(_rvBtn){_rvBtn.disabled=false;_rvBtn.textContent=_rvLbl;}};
+  const _rvOk=function(){_rvIds.forEach(id=>{if($(id))$(id).value='';});calcRev();toast('✓ 營收已儲存','gold');invalidateQ('query_revenue');_rvEnd();};
+  const _rvFail=function(msg){toast(msg||'⚠️ 營收未寫入，資料已保留請重送','red');_rvEnd();};
+  authApi({type:'revenue',rows:[row]}).then(function(d){if(d&&(d.status==='success'||d.status==='ok'))_rvOk();else _rvVerifyRevenue(row,_rvOk,_rvFail);}).catch(function(){_rvVerifyRevenue(row,_rvOk,_rvFail);});
 }
 // 結帳同進貨：逾時/回應不明先回雲端核對這筆是否已寫入，避免明明成功卻被還原、害你重打
 function _rvRowExists(rows,row){var d=normDate(row.date),tot=String(row.total),ca=String(row.cash),cd=String(row.card);for(var i=0;i<(rows||[]).length;i++){var r=rows[i];if(!r)continue;if(normDate(r[0])===d&&String(r[7])===tot&&String(r[2])===ca&&String(r[3])===cd)return true;}return false;}
-function _rvVerifyOrRestore(row,restoreFn){invalidateQ('query_revenue');apiGet('query_revenue').then(function(d){var rows=(d&&d.rows)?d.rows.slice(1):[];if(_rvRowExists(rows,row)){toast('✓ 營收已儲存（已跟雲端核對）','gold');}else{restoreFn();toast('⚠️ 營收未寫入，資料已還原請重送','red');}}).catch(function(){restoreFn();toast('⚠️ 網路不穩、儲存結果未確定：請先確認營收清單是否已新增，沒有再重送','red');});}
+function _rvVerifyRevenue(row,okFn,failFn){invalidateQ('query_revenue');apiGet('query_revenue').then(function(d){var rows=(d&&d.rows)?d.rows.slice(1):[];if(_rvRowExists(rows,row))okFn();else failFn('⚠️ 營收未寫入（雲端核對沒有這筆），資料已保留請重送');}).catch(function(){failFn('⚠️ 網路不穩、結果未確定，資料已保留，請先確認營收清單再決定是否重送');});}
 // 每日結帳：修改既有一筆（帶入表單→submitRev 進入編輯模式）
 const RV_FIELDS=['rv-cash','rv-card','rv-twqr','rv-fp','rv-ue','rv-off','rv-note'];
 function editRevenue(rw){
@@ -2610,17 +2612,18 @@ async function submitPu() {
     }).catch(function(){toast('連線失敗','red');});
     return;
   }
-  // 立即回饋、雲端背景寫入；失敗自動還原欄位避免資料遺失
+  // 送出中：保留表單、鎖住按鈕顯示「送出中…」，確認成功才清空欄位；失敗就保留你剛打的內容（不清空、不回填，不會「跳回來」）
   const _puIds=['pu-name','pu-code','pu-cat','pu-qty','pu-cost','pu-supplier','pu-packq'];
-  const _puSaved={};_puIds.forEach(id=>{_puSaved[id]=$(id)?$(id).value:'';});
-  toast('✓ 進貨記錄已儲存','gold');
-  _puIds.forEach(id=>{if($(id))$(id).value='';});if($('pu-mat'))$('pu-mat').value='';if($('pu-mat-cat'))$('pu-mat-cat').value='';
-  const _puRestore=function(){_puIds.forEach(id=>{if($(id))$(id).value=_puSaved[id];});};
-  authApi({type:'purchase',rows:[row]}).then(function(d){if(d&&(d.status==='success'||d.status==='ok')){invalidateQ('query_purchase');loadMaterials(true);renderRecentPurchases();}else{_puVerifyOrRestore(row,_puRestore);}}).catch(function(){_puVerifyOrRestore(row,_puRestore);});
+  const _puBtn=$('pu-submit');const _puLbl=_puBtn?_puBtn.textContent:'';
+  if(_puBtn){_puBtn.disabled=true;_puBtn.textContent='送出中…';}
+  const _puEnd=function(){if(_puBtn){_puBtn.disabled=false;_puBtn.textContent=_puLbl;}};
+  const _puOk=function(){_puIds.forEach(id=>{if($(id))$(id).value='';});if($('pu-mat'))$('pu-mat').value='';if($('pu-mat-cat'))$('pu-mat-cat').value='';toast('✓ 進貨已儲存','gold');invalidateQ('query_purchase');loadMaterials(true);renderRecentPurchases();_puEnd();};
+  const _puFail=function(msg){toast(msg||'⚠️ 進貨未寫入，資料已保留請重送','red');_puEnd();};
+  authApi({type:'purchase',rows:[row]}).then(function(d){if(d&&(d.status==='success'||d.status==='ok'))_puOk();else _puVerifyPurchase(row,_puOk,_puFail);}).catch(function(){_puVerifyPurchase(row,_puOk,_puFail);});
 }
-// 逾時/回應不明時「不要馬上判失敗」：後端很可能已寫入（等鎖+回填較慢）。回雲端核對這筆是否已存在→存在當成功、不存在才還原，杜絕誤判與重複進貨。
+// 逾時/回應不明時「不要馬上判失敗」：後端很可能已寫入（等鎖+回填較慢）。回雲端核對這筆是否已存在→存在當成功清空、不存在保留表單請重送，杜絕誤判與重複進貨。
 function _puRowExists(rows,row){var d=normDate(row['進貨日期']),nm=String(row['物料名稱']||'').trim(),cost=String(row['總成本']),who=String(row['填表人']||'');for(var i=0;i<(rows||[]).length;i++){var r=rows[i];if(!r)continue;if(normDate(r[0])===d&&String(r[3]||'').trim()===nm&&String(r[6])===cost&&String(r[9]||'')===who)return true;}return false;}
-function _puVerifyOrRestore(row,restoreFn){invalidateQ('query_purchase');apiGet('query_purchase_recent').then(function(d){var rows=(d&&Array.isArray(d.rows))?d.rows:((d&&d.rows)?d.rows.slice(1):[]);if(_puRowExists(rows,row)){toast('✓ 進貨已儲存（已跟雲端核對）','gold');loadMaterials(true);renderRecentPurchases();}else{restoreFn();toast('⚠️ 進貨未寫入，資料已還原請重送','red');}}).catch(function(){restoreFn();toast('⚠️ 網路不穩、儲存結果未確定：請先看下方「最近進貨」是否已新增，沒有再重送（避免重複）','red');});}
+function _puVerifyPurchase(row,okFn,failFn){invalidateQ('query_purchase');apiGet('query_purchase_recent').then(function(d){var rows=(d&&Array.isArray(d.rows))?d.rows:((d&&d.rows)?d.rows.slice(1):[]);if(_puRowExists(rows,row))okFn();else failFn('⚠️ 進貨未寫入（雲端核對沒有這筆），資料已保留請重送');}).catch(function(){failFn('⚠️ 網路不穩、結果未確定，資料已保留。請先看下方「最近進貨」是否已新增，沒有再重送（避免重複）');});}
 // 進貨記錄：修改既有一筆（帶入表單→submitPu 進入編輯模式）
 const PU_FIELDS=['pu-name','pu-code','pu-cat','pu-qty','pu-cost','pu-supplier','pu-packq'];
 function puSetUnit(v){var u=$('pu-unit');if(!u)return;v=String(v||'');u.value=v;if(u.value!==v&&v){var op=document.createElement('option');op.text=v;op.value=v;u.add(op);u.value=v;}}
