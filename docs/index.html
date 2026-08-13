@@ -1876,7 +1876,7 @@ html,body,button,input,select,textarea,
 
 <script>
 // ── 自動更新：開啟時比對版本，有新版就自動重載（免無痕）──
-const APP_VER='20260813180000';
+const APP_VER='20260813200000';
 const GT_KEY='gtk_9F3xQ7Lz_pW2rM8kT';  // 後台共用密鑰（階段A：前端帶上；階段B：後台驗證）
 // 是否有「打到一半、還沒送出」的資料（結帳/進貨/交接/申訴的輸入框有值）→ 有的話先別強制重載，免得清掉
 function _hasTypedData(){try{var els=document.querySelectorAll('#tab-revenue input,#tab-revenue textarea,#tab-purchase input,#tab-purchase textarea,#tab-handover input,#tab-handover textarea,#tab-bully input,#tab-bully textarea');for(var i=0;i<els.length;i++){var el=els[i];if(el.type==='date'||el.type==='hidden')continue;if((el.value||'').trim())return true;}return false;}catch(e){return false;}}
@@ -2541,27 +2541,37 @@ var _matcatPending={};var _matcatSearch='';
 function matcatEff(m){return (m.code&&_matcatPending.hasOwnProperty(m.code))?_matcatPending[m.code]:(m.cat||'');}
 function _matcatPendCount(){var n=0;_materials.forEach(function(m){if(m.code&&_matcatPending.hasOwnProperty(m.code)&&_matcatPending[m.code]!==(m.cat||''))n++;});return n;}
 function matcatFromOpts(){var s={};_materials.forEach(function(m){var c=(m.cat||'(空白)');s[c]=(s[c]||0)+1;});return Object.keys(s).sort().map(function(c){return '<option value="'+esc(c)+'">'+esc(c)+'（'+s[c]+'）</option>';}).join('');}
+// 自訂分類（老闆自己新增，存本機並同步雲端 rm_matcats_custom，跨裝置共用）
+function matcatCustom(){return LS.get('rm_matcats_custom',[])||[];}
+// 可選分類清單＝預設12類 ＋ 自訂分類 ＋ 目前資料中已存在的分類（避免漏掉），去重
+function matcatOptions(){var s=MATCATS.slice();matcatCustom().forEach(function(c){if(c&&s.indexOf(c)<0)s.push(c);});_materials.forEach(function(m){var c=matcatEff(m);if(c&&s.indexOf(c)<0)s.push(c);});return s;}
+function matcatAddCustom(){var el=$('mc-new');var v=(el&&el.value.trim())||'';if(!v){toast('請輸入分類名稱','red');return;}if(matcatOptions().indexOf(v)>=0){toast('分類「'+v+'」已存在','red');return;}var cust=matcatCustom();cust.push(v);LS.set('rm_matcats_custom',cust);if(typeof cloudPush==='function')cloudPush('rm_matcats_custom');if(el)el.value='';toast('已新增分類「'+v+'」','gold');matcatPaint();}
+function matcatDelCustom(v){var cust=matcatCustom().filter(function(c){return c!==v;});LS.set('rm_matcats_custom',cust);if(typeof cloudPush==='function')cloudPush('rm_matcats_custom');toast('已移除自訂分類「'+v+'」','red');matcatPaint();}
 function renderMatCat(){var wrap=$('matcat-wrap');if(!wrap)return;
   if(!CU||CU.role!=='BOSS'){wrap.innerHTML='<div class="muted-note">此頁僅老闆可用</div>';return;}
   if(!_materials.length){wrap.innerHTML='<div class="loading-state"><div class="spin"></div>載入物料中…</div>';loadMaterials(true).then(function(){renderMatCat();});return;}
   matcatPaint();}
 function matcatPaint(){var wrap=$('matcat-wrap');if(!wrap)return;
-  var toOpts=MATCATS.map(function(c){return '<option value="'+c+'">'+c+'</option>';}).join('');var nPend=_matcatPendCount();
+  var OPTS=matcatOptions();
+  var toOpts=OPTS.map(function(c){return '<option value="'+esc(c)+'">'+esc(c)+'</option>';}).join('');var nPend=_matcatPendCount();
+  var cust=matcatCustom();
+  var custChips=cust.length?('<div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:8px">'+cust.map(function(c){return '<span class="pts-pill" style="display:inline-flex;align-items:center;gap:6px">'+esc(c)+' <a href="#" onclick="matcatDelCustom(\''+esc(c)+'\');return false" style="color:#800020;text-decoration:none;font-weight:800" title="移除此自訂分類">✕</a></span>';}).join('')+'</div>'):'';
   wrap.innerHTML='<div class="c-card"><div class="c-card-title">🏷️ 物料分類整理</div>'
-    +'<div class="muted-note">把物料歸到精簡的 '+MATCATS.length+' 類；改動先暫存，按「儲存到雲端」才寫回物料總表。這只調整成本結構的呈現，不會改到淨利總額。</div>'
+    +'<div class="muted-note">把物料歸到精簡的分類；改動先暫存，按「儲存到雲端」才寫回物料總表。這只調整成本結構的呈現，不會改到淨利總額。</div>'
     +'<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px"><button class="btn-sm btn-neutral" onclick="matcatSuggestAll()">✨ 一鍵套用建議分類</button><button class="btn-sm btn-neutral" onclick="matcatReset()">↩︎ 清除暫存</button></div>'
+    +'<div class="form-group" style="margin-top:10px"><label class="form-label">➕ 自訂新增分類</label><div style="display:flex;gap:6px;flex-wrap:wrap"><input class="form-input" id="mc-new" placeholder="例：海鮮加工" style="flex:1;min-width:130px"><button class="btn-sm btn-neutral" onclick="matcatAddCustom()">新增分類</button></div><div class="muted-note">新增後會出現在下方每個品項的下拉，並同步雲端。自訂分類預設算「雜項/耗材」成本；若要算食材成本，名稱請用「水產／肉類／蔬菜／冷盤／調味／酒水／漁船」開頭。</div>'+custChips+'</div>'
     +'<div class="form-group" style="margin-top:10px"><label class="form-label">批次：把整個舊分類改成…</label><div style="display:flex;gap:6px;flex-wrap:wrap"><select class="form-input" id="mc-from" style="flex:1;min-width:130px">'+matcatFromOpts()+'</select><span style="align-self:center">→</span><select class="form-input" id="mc-to" style="flex:1;min-width:130px">'+toOpts+'</select><button class="btn-sm btn-neutral" onclick="matcatBatch()">整批改</button></div></div>'
     +'<input class="form-input" id="mc-search" placeholder="🔍 搜尋品名／編號／分類" value="'+esc(_matcatSearch)+'" oninput="_matcatSearch=this.value;matcatList()" style="margin-top:8px"></div>'
     +'<div class="c-card"><div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px"><b id="mc-pend" style="color:'+(nPend?'#800020':'#666')+'">待儲存 '+nPend+' 筆</b><button class="btn-action" id="mc-save" onclick="saveMatCats()"'+(nPend?'':' disabled style="opacity:.5"')+'>💾 儲存到雲端</button></div></div>'
     +'<div id="matcat-list"></div>';
   matcatList();}
-function matcatList(){var box=$('matcat-list');if(!box)return;var q=_matcatSearch.trim();
+function matcatList(){var box=$('matcat-list');if(!box)return;var q=_matcatSearch.trim();var OPTS=matcatOptions();
   var list=_materials.filter(function(m){if(!q)return true;return ((m.code||'')+' '+(m.name||'')+' '+matcatEff(m)).indexOf(q)>=0;});
-  list=list.slice().sort(function(a,b){var ia=MATCATS.indexOf(matcatEff(a)),ib=MATCATS.indexOf(matcatEff(b));if(ia<0)ia=99;if(ib<0)ib=99;if(ia!==ib)return ia-ib;return (a.code||'').localeCompare(b.code||'');});
+  list=list.slice().sort(function(a,b){var ia=OPTS.indexOf(matcatEff(a)),ib=OPTS.indexOf(matcatEff(b));if(ia<0)ia=999;if(ib<0)ib=999;if(ia!==ib)return ia-ib;return (a.code||'').localeCompare(b.code||'');});
   var html='',lastCat='__INIT__';
   list.forEach(function(m){var eff=matcatEff(m);var changed=(m.code&&_matcatPending.hasOwnProperty(m.code)&&_matcatPending[m.code]!==(m.cat||''));
     if(eff!==lastCat){lastCat=eff;html+='<div style="margin:14px 2px 4px;font-weight:800;color:#800020;font-size:14px">'+esc(eff||'(未分類)')+'</div>';}
-    var sel='<select class="form-input" style="width:148px;padding:8px;flex:none" onchange="matcatSet(\''+esc(m.code||'')+'\',this.value)">'+MATCATS.map(function(c){return '<option value="'+c+'"'+(c===eff?' selected':'')+'>'+c+'</option>';}).join('')+'</select>';
+    var sel='<select class="form-input" style="width:148px;padding:8px;flex:none" onchange="matcatSet(\''+esc(m.code||'')+'\',this.value)">'+OPTS.map(function(c){return '<option value="'+esc(c)+'"'+(c===eff?' selected':'')+'>'+esc(c)+'</option>';}).join('')+'</select>';
     html+='<div class="sub-row" style="gap:8px;'+(changed?'background:#fff7e6;border-radius:8px':'')+'"><div style="flex:1;min-width:0"><div class="tc-title" style="font-size:14px">'+esc(m.name||'')+'</div><div class="xp-text">'+esc(m.code||'')+' ・ 原：'+esc(m.cat||'(空白)')+'</div></div>'+sel+'</div>';});
   box.innerHTML=html||'<div class="game-empty">找不到符合的物料</div>';}
 function matcatAfterChange(){var n=_matcatPendCount();var p=$('mc-pend');if(p){p.textContent='待儲存 '+n+' 筆';p.style.color=n?'#800020':'#666';}var sv=$('mc-save');if(sv){sv.disabled=!n;sv.style.opacity=n?'':'0.5';}matcatList();}
@@ -2572,7 +2582,7 @@ function matcatReset(){_matcatPending={};toast('已清除暫存變更','red');ma
 function saveMatCats(){var updates=[];_materials.forEach(function(m){if(m.code&&_matcatPending.hasOwnProperty(m.code)&&_matcatPending[m.code]!==(m.cat||''))updates.push({code:m.code,cat:_matcatPending[m.code]});});
   if(!updates.length){toast('沒有要儲存的變更','red');return;}
   toast('儲存中…共 '+updates.length+' 筆','gold');
-  authApi({type:'materials_setcat',updates:updates,cats:MATCATS}).then(function(d){
+  authApi({type:'materials_setcat',updates:updates,cats:matcatOptions()}).then(function(d){
     if(d&&(d.status==='ok'||d.status==='success')){updates.forEach(function(u){var m=_materials.find(function(x){return x.code===u.code;});if(m)m.cat=u.cat;});_matcatPending={};toast('✓ 已儲存 '+(d.updated!=null?d.updated:updates.length)+' 筆到物料總表','gold');loadMaterials(true).then(function(){matcatPaint();});}
     else{toast((d&&d.message)||'儲存失敗（後端可能尚未部署 materials_setcat）','red');}
   }).catch(function(){toast('連線逾時，請確認後端已部署新版再重試','red');});}
