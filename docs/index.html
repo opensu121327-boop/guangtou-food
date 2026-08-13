@@ -1870,7 +1870,7 @@ html,body,button,input,select,textarea,
 
 <script>
 // ── 自動更新：開啟時比對版本，有新版就自動重載（免無痕）──
-const APP_VER='20260813120000';
+const APP_VER='20260813140000';
 const GT_KEY='gtk_9F3xQ7Lz_pW2rM8kT';  // 後台共用密鑰（階段A：前端帶上；階段B：後台驗證）
 // 是否有「打到一半、還沒送出」的資料（結帳/進貨/交接/申訴的輸入框有值）→ 有的話先別強制重載，免得清掉
 function _hasTypedData(){try{var els=document.querySelectorAll('#tab-revenue input,#tab-revenue textarea,#tab-purchase input,#tab-purchase textarea,#tab-handover input,#tab-handover textarea,#tab-bully input,#tab-bully textarea');for(var i=0;i<els.length;i++){var el=els[i];if(el.type==='date'||el.type==='hidden')continue;if((el.value||'').trim())return true;}return false;}catch(e){return false;}}
@@ -1896,12 +1896,12 @@ async function api(body) {
 }
 // 帳號系統走「同步後台」（直接讀寫帳號管理表）
 // 帶「逾時＋自動重試」的後端送出；用於登入/查詢等唯讀操作（重試安全）。Apps Script 冷啟動慢、偶發 302/404/回傳非JSON，重試一次多半就成功。
-async function _postSync(body,tries){
-  const payload=JSON.stringify(body);tries=tries||3;let lastErr;
+async function _postSync(body,tries,timeoutMs){
+  const payload=JSON.stringify(body);tries=tries||3;timeoutMs=timeoutMs||12000;let lastErr;
   for(let i=0;i<tries;i++){
     try{
       const ctl=(typeof AbortController!=='undefined')?new AbortController():null;
-      const timer=ctl?setTimeout(function(){try{ctl.abort();}catch(_e){}},12000):null;   // 單次逾時 12 秒，避免無限卡住
+      const timer=ctl?setTimeout(function(){try{ctl.abort();}catch(_e){}},timeoutMs):null;   // 單次逾時（寫入類給較長時間，避免慢寫被前端誤判失敗）
       const r=await fetch(SYNC_URL,{method:'POST',body:payload,headers:{'Content-Type':'text/plain'},signal:ctl?ctl.signal:undefined});
       if(timer)clearTimeout(timer);
       if(!r.ok)throw new Error('HTTP '+r.status);
@@ -1916,7 +1916,8 @@ async function authApi(body){
   // 只有「唯讀查詢/登入清單」才自動重試；寫入類(進貨/結帳/交接/帳號異動…)一律單次，避免逾時重試造成重複送出
   var t=String(body.type||'');
   var retrySafe=(t==='auth_login'||t==='auth_list_users'||t.indexOf('query_')===0);
-  return _postSync(body,retrySafe?3:1);
+  // 寫入類（進貨/結帳/交接…）給 22 秒逾時：後端要等鎖(最多20s)＋寫表＋回填物料總表，12 秒常常還沒回就被誤判失敗
+  return _postSync(body,retrySafe?3:1,retrySafe?12000:22000);
 }
 // 查詢資料（唯讀，走 POST 並帶共用密鑰，含逾時重試）
 async function apiGet(type,params){
@@ -2399,8 +2400,11 @@ async function submitRev() {
   invalidateQ('query_revenue');toast('✓ 營收已記錄','gold');
   _rvIds.forEach(id=>{if($(id))$(id).value='';});calcRev();
   const _rvRestore=function(){_rvIds.forEach(id=>{if($(id))$(id).value=_rvSaved[id];});calcRev();};
-  authApi({type:'revenue',rows:[row]}).then(function(d){if(!(d&&(d.status==='success'||d.status==='ok'))){_rvRestore();toast('⚠️ 營收儲存失敗，已還原資料請重送','red');}}).catch(function(){_rvRestore();toast('⚠️ 營收儲存失敗，已還原資料請確認網路','red');});
+  authApi({type:'revenue',rows:[row]}).then(function(d){if(!(d&&(d.status==='success'||d.status==='ok')))_rvVerifyOrRestore(row,_rvRestore);}).catch(function(){_rvVerifyOrRestore(row,_rvRestore);});
 }
+// 結帳同進貨：逾時/回應不明先回雲端核對這筆是否已寫入，避免明明成功卻被還原、害你重打
+function _rvRowExists(rows,row){var d=normDate(row.date),tot=String(row.total),ca=String(row.cash),cd=String(row.card);for(var i=0;i<(rows||[]).length;i++){var r=rows[i];if(!r)continue;if(normDate(r[0])===d&&String(r[7])===tot&&String(r[2])===ca&&String(r[3])===cd)return true;}return false;}
+function _rvVerifyOrRestore(row,restoreFn){invalidateQ('query_revenue');apiGet('query_revenue').then(function(d){var rows=(d&&d.rows)?d.rows.slice(1):[];if(_rvRowExists(rows,row)){toast('✓ 營收已儲存（已跟雲端核對）','gold');}else{restoreFn();toast('⚠️ 營收未寫入，資料已還原請重送','red');}}).catch(function(){restoreFn();toast('⚠️ 網路不穩、儲存結果未確定：請先確認營收清單是否已新增，沒有再重送','red');});}
 // 每日結帳：修改既有一筆（帶入表單→submitRev 進入編輯模式）
 const RV_FIELDS=['rv-cash','rv-card','rv-twqr','rv-fp','rv-ue','rv-off','rv-note'];
 function editRevenue(rw){
@@ -2541,8 +2545,11 @@ async function submitPu() {
   toast('✓ 進貨記錄已儲存','gold');
   _puIds.forEach(id=>{if($(id))$(id).value='';});if($('pu-mat'))$('pu-mat').value='';if($('pu-mat-cat'))$('pu-mat-cat').value='';
   const _puRestore=function(){_puIds.forEach(id=>{if($(id))$(id).value=_puSaved[id];});};
-  authApi({type:'purchase',rows:[row]}).then(function(d){if(d&&(d.status==='success'||d.status==='ok')){invalidateQ('query_purchase');loadMaterials(true);renderRecentPurchases();}else{_puRestore();toast('⚠️ 進貨儲存失敗，已還原資料請重送','red');}}).catch(function(){_puRestore();toast('⚠️ 進貨儲存失敗，已還原資料請確認網路','red');});
+  authApi({type:'purchase',rows:[row]}).then(function(d){if(d&&(d.status==='success'||d.status==='ok')){invalidateQ('query_purchase');loadMaterials(true);renderRecentPurchases();}else{_puVerifyOrRestore(row,_puRestore);}}).catch(function(){_puVerifyOrRestore(row,_puRestore);});
 }
+// 逾時/回應不明時「不要馬上判失敗」：後端很可能已寫入（等鎖+回填較慢）。回雲端核對這筆是否已存在→存在當成功、不存在才還原，杜絕誤判與重複進貨。
+function _puRowExists(rows,row){var d=normDate(row['進貨日期']),nm=String(row['物料名稱']||'').trim(),cost=String(row['總成本']),who=String(row['填表人']||'');for(var i=0;i<(rows||[]).length;i++){var r=rows[i];if(!r)continue;if(normDate(r[0])===d&&String(r[3]||'').trim()===nm&&String(r[6])===cost&&String(r[9]||'')===who)return true;}return false;}
+function _puVerifyOrRestore(row,restoreFn){invalidateQ('query_purchase');apiGet('query_purchase_recent').then(function(d){var rows=(d&&Array.isArray(d.rows))?d.rows:((d&&d.rows)?d.rows.slice(1):[]);if(_puRowExists(rows,row)){toast('✓ 進貨已儲存（已跟雲端核對）','gold');loadMaterials(true);renderRecentPurchases();}else{restoreFn();toast('⚠️ 進貨未寫入，資料已還原請重送','red');}}).catch(function(){restoreFn();toast('⚠️ 網路不穩、儲存結果未確定：請先看下方「最近進貨」是否已新增，沒有再重送（避免重複）','red');});}
 // 進貨記錄：修改既有一筆（帶入表單→submitPu 進入編輯模式）
 const PU_FIELDS=['pu-name','pu-code','pu-cat','pu-qty','pu-cost','pu-supplier','pu-packq'];
 function puSetUnit(v){var u=$('pu-unit');if(!u)return;v=String(v||'');u.value=v;if(u.value!==v&&v){var op=document.createElement('option');op.text=v;op.value=v;u.add(op);u.value=v;}}
