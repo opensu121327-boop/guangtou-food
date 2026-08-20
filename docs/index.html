@@ -1876,7 +1876,7 @@ html,body,button,input,select,textarea,
 
 <script>
 // ── 自動更新：開啟時比對版本，有新版就自動重載（免無痕）──
-const APP_VER='20260820120000';
+const APP_VER='20260820140000';
 const GT_KEY='gtk_9F3xQ7Lz_pW2rM8kT';  // 後台共用密鑰（階段A：前端帶上；階段B：後台驗證）
 // 是否有「打到一半、還沒送出」的資料（結帳/進貨/交接/申訴的輸入框有值）→ 有的話先別強制重載，免得清掉
 function _hasTypedData(){try{var els=document.querySelectorAll('#tab-revenue input,#tab-revenue textarea,#tab-purchase input,#tab-purchase textarea,#tab-handover input,#tab-handover textarea,#tab-bully input,#tab-bully textarea');for(var i=0;i<els.length;i++){var el=els[i];if(el.type==='date'||el.type==='hidden')continue;if((el.value||'').trim())return true;}return false;}catch(e){return false;}}
@@ -3959,32 +3959,8 @@ function renderHome(){
       <div class="home-name">${CU.name}</div>
       <div class="xp-text" style="color:#2b1519!important;font-weight:700">🎁 成長點 ${(c.points||0).toLocaleString()}</div>
     </div>`;
-  const board=`<div style="width:100%;max-width:640px;margin:16px auto 0">
-    <div class="c-card"><div class="c-card-title">📋 同事互相叮嚀表</div><div class="muted-note" style="margin-bottom:6px">同事寫給你的提醒／建議（每天統一公布前一天的）</div><div id="board-inbox"><div class="muted-note">載入中…</div></div></div>
-    <div class="c-card"><div class="c-card-title">✍️ 我給同事建議</div>
-      <div class="form-group"><label class="form-label">選擇同事</label><select class="form-input" id="board-to"><option value="">— 選擇同事 —</option></select></div>
-      <div class="form-group"><label class="form-label">建議內容</label><textarea class="form-input" id="board-text" rows="3" placeholder="寫下你想提醒或建議這位同事的話…"></textarea></div>
-      <button class="btn-action" onclick="submitBoardMsg()">送出給同事</button>
-      <div class="muted-note" style="margin-top:8px">📌 寫給一位同事並送出，可 +5 點（每天一次）。</div>
-    </div>
-    <div class="c-card"><div class="c-card-title">🏅 我要表揚同事</div>
-      <div class="form-group"><label class="form-label">選擇同事</label><select class="form-input" id="praise-to"><option value="">— 選擇同事 —</option></select></div>
-      <div class="form-group"><label class="form-label">表揚內容</label><textarea class="form-input" id="praise-text" rows="3" placeholder="寫下這位同事值得被表揚的地方…"></textarea></div>
-      <button class="btn-action" onclick="submitPraise()">送出表揚</button>
-      <div class="muted-note" style="margin-top:8px">表揚會以匿名跑馬燈顯示在「共同挑戰」頂部。📌 寫給一位同事並送出，可 +5 點（每天一次）。</div>
-    </div>
-  </div>`;
-  const todo=`<div style="width:100%;max-width:640px;margin:16px auto 0">${mustDoCardHtml()}</div>`;
   stage.className='home-stage stack';
-  stage.innerHTML=center+todo+board;
-  fillBoardColleagues();
-  renderBoardInbox();
-  // 背景抓今日盤點紀錄，讓「食材盤點」完成狀態正確；回來後若仍在首頁就地更新橫幅
-  if(syncOn())authApi({type:'query_inv'}).then(function(d){
-    if(d&&(d.status==='ok'||d.status==='success')&&d.rows)_invRows=d.rows.slice(1);
-    const card=$('mustdo-card'),home=$('tab-home');
-    if(card&&home&&home.classList.contains('active')){const tmp=document.createElement('div');tmp.innerHTML=mustDoCardHtml();card.replaceWith(tmp.firstChild);}
-  }).catch(function(){});
+  stage.innerHTML=center;   // 首頁只留角色卡；今日必做／同事叮嚀／表揚卡片已移除
 }
 function fillBoardColleagues(){
   const names=LS.get('rm_names',{})||{};
