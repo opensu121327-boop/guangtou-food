@@ -1876,7 +1876,7 @@ html,body,button,input,select,textarea,
 
 <script>
 // ── 自動更新：開啟時比對版本，有新版就自動重載（免無痕）──
-const APP_VER='20260813220000';
+const APP_VER='20260820120000';
 const GT_KEY='gtk_9F3xQ7Lz_pW2rM8kT';  // 後台共用密鑰（階段A：前端帶上；階段B：後台驗證）
 // 是否有「打到一半、還沒送出」的資料（結帳/進貨/交接/申訴的輸入框有值）→ 有的話先別強制重載，免得清掉
 function _hasTypedData(){try{var els=document.querySelectorAll('#tab-revenue input,#tab-revenue textarea,#tab-purchase input,#tab-purchase textarea,#tab-handover input,#tab-handover textarea,#tab-bully input,#tab-bully textarea');for(var i=0;i<els.length;i++){var el=els[i];if(el.type==='date'||el.type==='hidden')continue;if((el.value||'').trim())return true;}return false;}catch(e){return false;}}
@@ -2033,7 +2033,6 @@ async function enterApp() {
   $('app').classList.add('visible');
   startSyncPoll();
   if(!getChar().chosen) showCharCreate();
-  else maybeForceRec();
   hideAppLoading();   // 準備好後淡出（至少顯示 5 秒）
   // 背景把資料抓齊並刷新目前畫面（含照片），慢的雲端不再擋住登入
   if(syncOn())setTimeout(function(){
@@ -4118,7 +4117,6 @@ function confirmCharCreate(){
   $('char-create').classList.remove('show');
   refreshAvatars();goTab('home');renderHome();
   toast('🎉 角色建立完成，歡迎加入！','gold');
-  maybeForceRec();
 }
 
 // ── 任務中心 ──
