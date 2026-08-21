@@ -1492,17 +1492,6 @@ html,body,button,input,select,textarea,
       </div>
     </div>
 
-    <!-- BULLETIN TAB（佈告欄・每日營運看板） -->
-    <div class="tab-panel" id="tab-bulletin">
-      <div class="sec-header">
-        <div class="sec-title">佈告欄</div>
-        <div class="divider"></div>
-        <div class="sec-sub">最近 1 週每日營運總覽</div>
-        <button class="refresh-btn" onclick="renderBulletin()" style="margin-left:auto">↻ 重新載入</button>
-      </div>
-      <div id="bulletin-wrap"><div class="loading-state"><div class="spin"></div>載入中</div></div>
-    </div>
-
     <!-- AUDIT TAB（老闆稽核） -->
     <div class="tab-panel" id="tab-audit">
       <div class="sec-header">
@@ -1710,12 +1699,6 @@ html,body,button,input,select,textarea,
       <div id="matcat-wrap"></div>
     </div>
 
-    <!-- INVENTORY TAB -->
-    <div class="tab-panel" id="tab-inventory">
-      <div class="sec-header"><div class="sec-title">每日食材盤點</div><div class="divider"></div><div class="sec-sub">輸入數量按確認 → 每項 +3 點（每人每日上限 8 項）・ 只顯示今天與昨天</div></div>
-      <div id="inv-wrap"></div>
-    </div>
-
     <!-- HANDOVER TAB -->
     <div class="tab-panel" id="tab-handover">
       <div class="sec-header"><div class="sec-title">交接表</div><div class="divider"></div><div class="sec-sub">交班填寫、接班查看（完成 +25 XP／每日一次）</div></div>
@@ -1876,7 +1859,7 @@ html,body,button,input,select,textarea,
 
 <script>
 // ── 自動更新：開啟時比對版本，有新版就自動重載（免無痕）──
-const APP_VER='20260820160000';
+const APP_VER='20260821120000';
 const GT_KEY='gtk_9F3xQ7Lz_pW2rM8kT';  // 後台共用密鑰（階段A：前端帶上；階段B：後台驗證）
 // 是否有「打到一半、還沒送出」的資料（結帳/進貨/交接/申訴的輸入框有值）→ 有的話先別強制重載，免得清掉
 function _hasTypedData(){try{var els=document.querySelectorAll('#tab-revenue input,#tab-revenue textarea,#tab-purchase input,#tab-purchase textarea,#tab-handover input,#tab-handover textarea,#tab-bully input,#tab-bully textarea');for(var i=0;i<els.length;i++){var el=els[i];if(el.type==='date'||el.type==='hidden')continue;if((el.value||'').trim())return true;}return false;}catch(e){return false;}}
@@ -2099,7 +2082,6 @@ function switchTab(name,btn) {
   btn.classList.add('active');
   if(name==='reports')loadReports();
   if(name==='purchase'){loadMaterials().then(fillMatCatSelect);renderRecentPurchases();}
-  if(name==='inventory')renderInventory();
   if(name==='bom'){renderBom();loadBomImgs(renderBom);Promise.all([loadMaterials(),loadRecipeCosts()]).then(renderBom);}
   if(name==='matcat')renderMatCat();
   if(name==='accounts'){loadPending();loadAccounts();}
@@ -2107,7 +2089,6 @@ function switchTab(name,btn) {
   if(name==='settings')renderSettings();
   if(name==='focuscfg')renderFocusCfg();
   if(name==='revthr')renderRevThreshold();
-  if(name==='bulletin')renderBulletin();
   if(name==='expense')renderExpenseList();
   if(name==='tasks')renderTasks();
   if(name==='character')renderCharacter();
@@ -2139,7 +2120,6 @@ const ICONS={
   home:_svg('<path d="M3 10.6L12 4l9 6.6"/><path d="M5.5 9.6V20h13V9.6"/><path d="M9.8 20v-4.6h4.4V20"/>'),
   revenue:_svg('<path d="M6.5 3h11v18l-1.9-1.2-1.9 1.2-1.9-1.2-1.9 1.2L7.4 19.8 6.5 21z"/><path d="M9.5 8h5M9.5 11.5h5M9.5 15h3"/>'),
   purchase:_svg('<path d="M3 7l9-4 9 4-9 4-9-4z"/><path d="M3 7v10l9 4 9-4V7"/><path d="M12 11v10"/>'),
-  inventory:_svg('<rect x="5" y="4" width="14" height="17" rx="2"/><path d="M9 3.4h6v2.4H9z"/><path d="M8.4 10.6l1.2 1.2 2.2-2.4M8.4 15.6l1.2 1.2 2.2-2.4"/><path d="M14 11h2.6M14 16h2.6"/>'),
   reports:_svg('<path d="M4 20h16"/><rect x="6" y="12" width="2.6" height="6" rx=".6"/><rect x="10.7" y="8" width="2.6" height="10" rx=".6"/><rect x="15.4" y="14" width="2.6" height="4" rx=".6"/>'),
   bom:_svg('<path d="M3.5 11.5h17"/><path d="M5 11.5a7 7 0 0014 0"/><path d="M9 4.3c-.6 1.4.6 2 0 3.3M13 4.3c-.6 1.4.6 2 0 3.3"/>'),
   handover:_svg('<rect x="6" y="4" width="12" height="17" rx="2"/><path d="M9 3.4h6v2.4H9z"/><path d="M9 11h6M9 15h4"/>'),
@@ -2151,7 +2131,6 @@ const ICONS={
   character:_svg('<circle cx="12" cy="8" r="4"/><path d="M4.5 20a7.5 7.5 0 0115 0"/>'),
   accounts:_svg('<circle cx="9" cy="9" r="3.2"/><path d="M3.5 19a5.5 5.5 0 0111 0"/><path d="M16 6.2a3.2 3.2 0 010 5.6M15.5 19a5.5 5.5 0 015.5-5.5"/>'),
   bully:_svg('<path d="M12 3l7 2.6v5.2c0 4.4-3 7.6-7 9.2-4-1.6-7-4.8-7-9.2V5.6z"/><path d="M12 8.5v4M12 15.2v.1"/>'),
-  bulletin:_svg('<path d="M4 10v4l4 .6 3 4h2V5.4l-3 4L4 10z"/><path d="M16 9a4 4 0 010 6"/>'),
   audit:_svg('<circle cx="10.5" cy="10.5" r="6"/><path d="M15 15l5 5"/>'),
   settings:_svg('<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.6 1.6 0 00.3 1.8l.1.1a2 2 0 11-2.8 2.8l-.1-.1a1.6 1.6 0 00-2.7 1.1V21a2 2 0 11-4 0v-.1A1.6 1.6 0 006 19.4l-.1.1a2 2 0 11-2.8-2.8l.1-.1A1.6 1.6 0 003 15a2 2 0 010-4 1.6 1.6 0 001.5-2.6l-.1-.1a2 2 0 112.8-2.8l.1.1A1.6 1.6 0 009 3.6V3a2 2 0 014 0v.1A1.6 1.6 0 0018 4.6l.1-.1a2 2 0 112.8 2.8l-.1.1A1.6 1.6 0 0021 11a2 2 0 010 4z"/>'),
   focuscfg:_svg('<circle cx="12" cy="12" r="8.5"/><circle cx="12" cy="12" r="4.6"/><circle cx="12" cy="12" r="1.1" fill="currentColor"/>'),
@@ -3297,7 +3276,7 @@ function cloudPull(light){if(!syncOn())return Promise.resolve();return kv('kv_al
 function isTyping(){var a=document.activeElement;if(!a)return false;var t=(a.tagName||'').toUpperCase();return t==='INPUT'||t==='TEXTAREA'||t==='SELECT'||a.isContentEditable===true;}
 // 使用者正在操作中（輸入／彈窗開著／送出鈕處理中）→ 背景同步先別重刷畫面，避免手上的操作被打斷或閃動
 function _busyUI(){return isTyping()||!!document.querySelector('.subform-overlay.show,.btn-busy');}
-function reRenderTab(id){const map={home:renderHome,reports:loadReports,handover:renderHandover,tasks:renderTasks,leaderboard:renderLeaderboard,character:renderCharacter,inventory:renderInventory,bully:renderBully};if(map[id]){try{map[id]();}catch(e){}}if(id==='accounts'){try{loadPending();loadAccounts();}catch(e){}}}
+function reRenderTab(id){const map={home:renderHome,reports:loadReports,handover:renderHandover,tasks:renderTasks,leaderboard:renderLeaderboard,character:renderCharacter,bully:renderBully};if(map[id]){try{map[id]();}catch(e){}}if(id==='accounts'){try{loadPending();loadAccounts();}catch(e){}}}
 // 輪詢：平時走輕量(不抓照片)，每 5 次(約100秒)才連照片一起抓一次
 function startSyncPoll(){if(!syncOn()||window._syncPoll)return;window._syncPoll=setInterval(function(){
   if(window._syncBusy)return;                     // 上一次同步還沒回來就跳過，避免重疊堆疊、打爆後端
@@ -3444,10 +3423,8 @@ function defAvatar(){const P=getParts();const first=cat=>{const a=P[cat]||[];con
 // 全部分頁（首頁置頂，員工登入第一眼）
 const ALL_TABS=[
   {id:'home',icon:'🏠',label:'首頁',roles:['BOSS','MGR','EMP']},
-  {id:'bulletin',icon:'📋',label:'佈告欄',roles:['BOSS','MGR','EMP']},
   {id:'revenue',icon:'💳',label:'每日結帳',roles:['BOSS','MGR','EMP']},
   {id:'purchase',icon:'📦',label:'進貨記錄',roles:['BOSS','MGR','EMP']},
-  {id:'inventory',icon:'🧾',label:'每日食材盤點',roles:['BOSS','MGR','EMP']},
   {id:'reports',icon:'📊',label:'數據報表',roles:['BOSS','MGR']},
   {id:'bom',icon:'🧮',label:'BOM成本',roles:['BOSS','MGR']},
   {id:'matcat',icon:'🏷️',label:'物料分類',roles:['BOSS']},
