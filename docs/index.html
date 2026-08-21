@@ -1859,7 +1859,7 @@ html,body,button,input,select,textarea,
 
 <script>
 // ── 自動更新：開啟時比對版本，有新版就自動重載（免無痕）──
-const APP_VER='20260821120000';
+const APP_VER='20260821140000';
 const GT_KEY='gtk_9F3xQ7Lz_pW2rM8kT';  // 後台共用密鑰（階段A：前端帶上；階段B：後台驗證）
 // 是否有「打到一半、還沒送出」的資料（結帳/進貨/交接/申訴的輸入框有值）→ 有的話先別強制重載，免得清掉
 function _hasTypedData(){try{var els=document.querySelectorAll('#tab-revenue input,#tab-revenue textarea,#tab-purchase input,#tab-purchase textarea,#tab-handover input,#tab-handover textarea,#tab-bully input,#tab-bully textarea');for(var i=0;i<els.length;i++){var el=els[i];if(el.type==='date'||el.type==='hidden')continue;if((el.value||'').trim())return true;}return false;}catch(e){return false;}}
@@ -3091,64 +3091,6 @@ async function approveUser(username) {
   }catch(e){toast('連線失敗','red');}
 }
 
-// ── 佈告欄：最近1週每日營運總覽（財務只給老闆/店長；資料由現有查詢彙整）──
-function bWeekday(D){try{var p=String(D).split('-');return ['日','一','二','三','四','五','六'][new Date(+p[0],+p[1]-1,+p[2]).getDay()];}catch(e){return '';}}
-function bLine(label,val,col){return '<div style="display:flex;justify-content:space-between;gap:12px;padding:6px 0;border-bottom:1px solid rgba(30,32,34,.06);font-size:13.5px"><span style="color:var(--text-2);flex:none">'+label+'</span><b style="text-align:right;min-width:0;word-break:break-word'+(col?';color:'+col:'')+'">'+val+'</b></div>';}
-async function renderBulletin(){
-  const wrap=$('bulletin-wrap');if(!wrap)return;
-  wrap.innerHTML='<div class="loading-state"><div class="spin"></div>載入中</div>';
-  const mgr=isMgr();
-  const names=LS.get('rm_names',{})||{};
-  const dtasks=(LS.get('rm_tasks',[])||[]).map(normTask).filter(t=>t.cat==='daily');
-  const subs=LS.get('rm_submissions',[])||[];
-  const items=LS.get('rm_inv_items',[])||[];
-  const days=[];{let d=bizDay();for(let i=0;i<7;i++){days.push(d);d=dayShift(d,-1);}}   // 1 週
-  let revRows=[],purRows=[],hoRows=[],saRows=[],invRows=[];
-  function q(type){return authApi({type:type}).then(function(d){return (d&&d.rows)?d.rows:[];}).catch(function(){return [];});}
-  const jobs=[];
-  if(mgr){jobs.push(q('query_revenue').then(function(r){revRows=r;}));jobs.push(q('query_purchase').then(function(r){purRows=r;}));}
-  jobs.push(q('query_handover').then(function(r){hoRows=r;}));
-  jobs.push(q('query_sales').then(function(r){saRows=r;}));
-  jobs.push(q('query_inv').then(function(r){invRows=r;}));
-  await Promise.all(jobs);
-  function grp(rows,dc){var m={};(rows||[]).slice(1).forEach(function(r){var d=normDate(r[dc]);(m[d]=m[d]||[]).push(r);});return m;}
-  const revBy=grp(revRows,0),purBy=grp(purRows,0),hoBy=grp(hoRows,1),saBy=grp(saRows,0);
-  const invBy={};(invRows||[]).slice(1).forEach(function(r){var d=normDate(r[0]);(invBy[d]=invBy[d]||{})[String(r[1]||'')]=1;});
-  const cards=days.map(function(D){
-    const isToday=(D===bizDay());const warn=[];
-    const undoneTasks=dtasks.filter(function(t){return !subs.some(function(s){return s.taskId===t.id&&s.status!=='rejected'&&bizDay(s.ts)===D;});});
-    const taskTotal=dtasks.length,taskN=taskTotal-undoneTasks.length;
-    if(undoneTasks.length)warn.push('每日任務未完成：'+undoneTasks.map(function(t){return t.title;}).join('、'));
-    let invTxt;
-    if(isInvDay(D)){const cnt=invBy[D]||{};const doneN=items.filter(function(it){return cnt[it.id];}).length;invTxt=doneN+'/'+items.length+' 項';if(items.length>0&&doneN<items.length)warn.push('盤點未完成');}
-    else invTxt='非盤點日';
-    const ho=(hoBy[D]||[]);const hoTxt=ho.length?('有（'+ho.map(function(r){return esc(names[String(r[8]||'')]||String(r[2]||''));}).join('、')+'）'):'無';
-    if(!ho.length&&!isToday)warn.push('無交接表');
-    const sa=(saBy[D]||[])[0];let saTxt='';
-    if(sa){const best=[sa[3],sa[4],sa[5],sa[6],sa[7]].filter(function(x){return x&&String(x).trim();}).map(esc);const worst=[sa[8],sa[9],sa[10],sa[11],sa[12]].filter(function(x){return x&&String(x).trim();}).map(esc);saTxt=(best.length?'👍 '+best.join('、'):'')+(worst.length?'　👎 '+worst.join('、'):'');}
-    let finHtml='';
-    if(mgr){
-      const rev=(revBy[D]||[]);const revTotal=rev.reduce(function(a,r){return a+(Number(r[7])||0);},0);
-      const fee=rev.reduce(function(a,r){return a+(Number(r[8])||0)+(Number(r[9])||0)+(Number(r[10])||0);},0);
-      const pur=(purBy[D]||[]).filter(function(r){return String(r[2]||'').indexOf('員工')!==0;});
-      const purTotal=pur.reduce(function(a,r){return a+(Number(r[6])||0);},0);
-      const gross=Math.round(revTotal-fee-purTotal);
-      if(revTotal===0&&!isToday)warn.push('無營業額紀錄');
-      finHtml=bLine('💰 營業額','$'+Math.round(revTotal).toLocaleString(),'#1e2022')
-        +bLine('📦 進貨成本','$'+Math.round(purTotal).toLocaleString()+'（'+pur.length+'筆）')
-        +bLine('毛利（營收−手續費−進貨）','$'+gross.toLocaleString(),gross>=0?'#15803d':'#b91c1c');
-    }
-    const warnHtml=warn.length?('<div style="background:#f0f5f9;border-left:4px solid #52616b;border-radius:8px;padding:8px 10px;margin-top:8px;color:#52616b;font-size:12.5px;font-weight:600">⚠️ '+warn.map(esc).join('　・　')+'</div>'):'';
-    return '<div class="c-card"><div class="c-card-title">'+D+'（週'+bWeekday(D)+'）'+(isToday?' <span style="color:#52616b">・今日</span>':'')+'</div>'
-      +finHtml
-      +bLine('✅ 每日任務',taskTotal?taskN+'/'+taskTotal:'未設定',(taskTotal>0&&taskN>=taskTotal)?'#15803d':'#52616b')
-      +bLine('🧾 盤點',invTxt)
-      +bLine('📋 交接表',hoTxt)
-      +(saTxt?bLine('🏆 賣最好/最差',saTxt):'')
-      +warnHtml+'</div>';
-  });
-  wrap.innerHTML=cards.join('')||'<div class="game-empty">尚無資料</div>';
-}
 // ── 老闆稽核：點數異動 / 財務變更紀錄 ──
 function fmtLogTime(v){try{var d=new Date(v);if(isNaN(d))return String(v||'').substring(0,16);var p=function(n){return String(n).padStart(2,'0');};return (d.getMonth()+1)+'/'+d.getDate()+' '+p(d.getHours())+':'+p(d.getMinutes());}catch(e){return String(v||'');}}
 function renderAudit(){
@@ -3890,42 +3832,6 @@ function wirePartInput(){
 }
 
 // ── 首頁（角色置中 + 漂浮按鈕）──
-// ── 今日必做（每次上班必完成：每日任務＋食材盤點，全店當日清單做完為準）──
-// 盤點日：每週一、每週五（0=日 1=一 … 5=五）
-function isInvDay(D){const p=String(D||bizDay()).split('-');const w=new Date(+p[0],+p[1]-1,+p[2]).getDay();return w===1||w===5;}
-function mustDoStatus(){
-  const dtasks=(LS.get('rm_tasks',[])||[]).map(normTask).filter(t=>t.cat==='daily');
-  const taskTotal=dtasks.length;
-  const taskN=dtasks.filter(t=>!!dailyClaim(t.id)).length;
-  const today=bizDay();const invDay=isInvDay(today);
-  const items=LS.get('rm_inv_items',[])||[];
-  const invTotal=invDay?items.length:0;
-  const counted={};
-  (_invRows||[]).forEach(r=>{if(normDate(r[0])===today)counted[String(r[1]||'')]=1;});
-  const invN=invDay?items.filter(it=>counted[it.id]).length:0;
-  return {taskN,taskTotal,taskDone:taskTotal===0||taskN>=taskTotal,
-          invDay,invN,invTotal,invDone:!invDay||invTotal===0||invN>=invTotal};
-}
-function mustDoCardHtml(){
-  const s=mustDoStatus();const allDone=s.taskDone&&s.invDone;
-  const lockLine='';  // 鎖定機制已關閉，橫幅僅作提醒
-  const row=(icon,label,done,n,total,tab)=>{
-    const right=total===0?'<span style="color:#52616b;font-size:13px">尚未設定</span>'
-      :done?'<span style="color:#15803d;font-weight:800">✅ 完成</span>'
-      :`<span style="color:#b91c1c;font-weight:800">${n}/${total} 待完成</span>`;
-    const btn=(total>0&&!done)?`<button class="btn-action" style="padding:7px 14px;flex-shrink:0" onclick="goTab('${tab}')">前往</button>`:'';
-    return `<div class="sub-row" style="gap:10px;align-items:center"><div style="flex:1;min-width:0"><div class="tc-title" style="font-size:14px">${icon} ${label}</div></div><div style="display:flex;align-items:center;gap:10px">${right}${btn}</div></div>`;
-  };
-  const head=allDone
-    ?'<div class="c-card-title" style="color:#15803d">✅ 今日必做已完成，辛苦了！</div>'
-    :'<div class="c-card-title" style="color:#b91c1c">🔴 今日上班必做（尚未完成）</div><div class="muted-note" style="margin-bottom:6px">每次上班都要完成下列項目，全部完成才算今日達標</div>';
-  const style=allDone?'border:2px solid #86efac;background:linear-gradient(180deg,#f0f5f9,#ffffff)'
-    :'border:2px solid #c9d6df;background:linear-gradient(180deg,#f0f5f9,#ffffff)';
-  const invRow=s.invDay
-    ?row('🧾','食材盤點（今日盤點日）',s.invDone,s.invN,s.invTotal,'inventory')
-    :`<div class="sub-row" style="gap:10px;align-items:center"><div style="flex:1;min-width:0"><div class="tc-title" style="font-size:14px">🧾 食材盤點</div></div><span style="color:#52616b;font-size:13px">今日不需盤點（週一・週五）</span></div>`;
-  return `<div class="c-card" id="mustdo-card" style="${style}">${head}${lockLine}${row('✅','每日任務',s.taskDone,s.taskN,s.taskTotal,'tasks')}${invRow}</div>`;
-}
 function renderHome(){
   const stage=$('home-stage');if(!stage||!CU)return;
   const c=getChar();const lv=levelOf(c.xp);
@@ -4438,100 +4344,6 @@ async function bomWriteSheet(){
 }
 function delIngredient(rid,idx){const rs=LS.get('rm_recipes',[])||[];const rc=rs.find(r=>r.id===rid);if(!rc||!rc.items)return;rc.items.splice(idx,1);LS.set('rm_recipes',rs);renderBom();}
 
-// ── 每日食材盤點 ──
-function prevBizDay(){const d=new Date(bizDay()+'T12:00:00');d.setDate(d.getDate()-1);const p=n=>String(n).padStart(2,'0');return d.getFullYear()+'-'+p(d.getMonth()+1)+'-'+p(d.getDate());}
-let _invRows=[];
-let _invEditing=null;
-function editInv(id){_invEditing=id;renderInvUI(LS.get('rm_inv_items',[])||[],_invRows);}
-function cancelInvEdit(){_invEditing=null;renderInvUI(LS.get('rm_inv_items',[])||[],_invRows);}
-async function saveInvEdit(id){
-  const items=LS.get('rm_inv_items',[])||[];const it=items.find(x=>x.id===id);if(!it)return;
-  const el=$('inv-e-'+id);const qty=el&&el.value.trim();
-  if(qty===''||qty==null){toast('請輸入數量','red');return;}
-  // 本機快取即時更新今日該項（只改數量與時間，保留原盤點人）
-  const key=bizDay()+'|'+id;
-  (_invRows||[]).forEach(function(rr){if(String(rr[8]||'')===key){rr[3]=qty;rr[6]=new Date().toISOString();}});
-  _invEditing=null;toast('✓ 已修正數量','gold');renderInvUI(items,_invRows);
-  // 雲端更新（背景，不加分）
-  const entry={date:bizDay(),itemId:id,itemName:it.name,qty:qty,user:CU.username,userName:CU.name,ts:Date.now()};
-  if(syncOn())authApi({type:'inv_write',row:entry,update:1}).then(function(d){if(!(d&&(d.status==='success'||d.status==='ok'))){toast('雲端更新失敗，請重試','red');}}).catch(function(){toast('雲端更新失敗，請確認網路','red');});
-}
-async function renderInventory(){
-  const wrap=$('inv-wrap');if(!wrap)return;
-  const items=LS.get('rm_inv_items',[])||[];
-  renderInvUI(items,_invRows); // 先用本機/快取立即畫出，免等網路
-  if(syncOn()){try{const d=await authApi({type:'query_inv'});if(d&&(d.status==='ok'||d.status==='success')&&d.rows){_invRows=d.rows.slice(1);renderInvUI(items,_invRows);}}catch(e){}}
-}
-function renderInvUI(items,rows){
-  const wrap=$('inv-wrap');if(!wrap)return;
-  const today=bizDay(),yday=prevBizDay();
-  const map={};rows.forEach(r=>{const dy=normDate(r[0]);const iid=String(r[1]||'');if(!map[dy])map[dy]={};map[dy][iid]={qty:r[3],name:String(r[2]||''),userName:String(r[5]||''),user:String(r[4]||'')};});
-  const tMap=map[today]||{},yMap=map[yday]||{};
-  let html='';
-  // 今日盤點
-  const invDayNow=isInvDay(today);
-  html+=`<div class="c-card"><div class="c-card-title">📋 今日盤點（${today}）</div>`;
-  html+=invDayNow
-    ?`<div class="muted-note" style="color:#15803d;font-weight:700;margin-bottom:6px">📅 今日是盤點日（每週一・週五），每項 +3 點</div>`
-    :`<div class="muted-note" style="color:#52616b;font-weight:700;margin-bottom:6px">📅 今日非盤點日 ・ 盤點日為每週一・週五。仍可記錄數量，但不加分</div>`;
-  if(!items.length){html+='<div class="game-empty">尚無盤點食材，請老闆/店長在下方新增</div>';}
-  else{
-    html+=items.map(it=>{
-      const done=tMap[it.id];
-      if(done){
-        if(_invEditing===it.id)return `<div class="sub-row" style="gap:8px"><div style="flex:1;min-width:0"><div class="tc-title" style="font-size:14px">${esc(it.name)}</div><div class="xp-text">修正數量</div></div><input class="form-input" id="inv-e-${it.id}" type="number" min="0" value="${esc(String(done.qty))}" style="width:80px;padding:8px;text-align:center"><button class="btn-action" style="padding:8px 12px;flex-shrink:0" onclick="saveInvEdit('${it.id}')">儲存</button><button class="btn-sm btn-neutral" style="padding:8px 10px;flex-shrink:0" onclick="cancelInvEdit()">取消</button></div>`;
-        const canEdit=isMgr()||done.user===CU.username;
-        return `<div class="sub-row"><div style="flex:1;min-width:0"><div class="tc-title" style="font-size:14px">${esc(it.name)}</div><div class="xp-text" style="color:#15803d!important">✅ 數量 ${esc(String(done.qty))} ・ ${esc(done.userName)}</div></div>${canEdit?`<button class="btn-sm btn-neutral" style="padding:6px 12px;flex-shrink:0" onclick="editInv('${it.id}')">修正</button>`:''}</div>`;
-      }
-      return `<div class="sub-row" style="gap:8px"><div style="flex:1;min-width:0"><div class="tc-title" style="font-size:14px">${esc(it.name)}</div></div><input class="form-input" id="inv-q-${it.id}" type="number" min="0" placeholder="數量" style="width:88px;padding:8px;text-align:center"><button class="btn-action" style="padding:8px 14px;flex-shrink:0" onclick="confirmInv('${it.id}')">確認</button></div>`;
-    }).join('');
-    const doneN=items.filter(it=>tMap[it.id]).length;
-    html+=`<div class="muted-note" style="margin-top:8px">已完成 ${doneN}/${items.length} 項 ・ ${invDayNow?'每項 +3 點（每人每日給分上限 8 項，可分工盤點）':'今日非盤點日，記錄不加分'}</div>`;
-  }
-  html+=`</div>`;
-  // 昨日盤點（唯讀）
-  html+=`<div class="c-card"><div class="c-card-title">🕐 昨日盤點（${yday}）</div>`;
-  const yKeys=Object.keys(yMap);
-  if(!yKeys.length){html+='<div class="game-empty">昨天沒有盤點紀錄</div>';}
-  else{html+=yKeys.map(iid=>{const dd=yMap[iid];return `<div class="sub-row"><div style="flex:1;min-width:0"><div class="tc-title" style="font-size:14px">${esc(dd.name)}</div><div class="xp-text">${esc(dd.userName)}</div></div><div style="font-weight:800;color:#1e2022">${esc(String(dd.qty))}</div></div>`;}).join('');}
-  html+=`</div>`;
-  // 食材管理（老闆/店長）
-  if(isMgr()){
-    html+=`<div class="c-card"><div class="c-card-title">🛠️ 盤點食材管理（老闆/店長）</div>
-      <div class="form-row"><div class="form-group"><input class="form-input" id="inv-new" placeholder="新增盤點食材名稱，例：牛五花"></div><div class="form-group" style="display:flex;align-items:flex-end"><button class="btn-action" style="padding:10px 14px" onclick="addInvItem()">➕ 新增</button></div></div>
-      <div style="margin-top:10px">${items.length?items.map(it=>`<div class="sub-row"><div style="flex:1">${esc(it.name)}</div><button class="btn-sm btn-warn" onclick="delInvItem('${it.id}')">刪除</button></div>`).join(''):'<div class="muted-note">尚無食材</div>'}</div>
-    </div>`;
-  }
-  wrap.innerHTML=html;
-}
-function addInvItem(){
-  const v=($('inv-new')&&$('inv-new').value.trim())||'';if(!v){toast('請輸入食材名稱','red');return;}
-  const items=LS.get('rm_inv_items',[])||[];items.push({id:'iv'+Date.now(),name:v});LS.set('rm_inv_items',items);
-  toast('✓ 已新增盤點食材','gold');renderInventory();
-}
-function delInvItem(id){const items=(LS.get('rm_inv_items',[])||[]).filter(x=>x.id!==id);LS.set('rm_inv_items',items);toast('已刪除','red');renderInventory();}
-async function confirmInv(itemId){
-  const items=LS.get('rm_inv_items',[])||[];const it=items.find(x=>x.id===itemId);if(!it)return;
-  const el=$('inv-q-'+itemId);const qty=(el&&el.value.trim())||'';
-  if(qty===''){toast('請先輸入數量','red');return;}
-  const entry={date:bizDay(),itemId:itemId,itemName:it.name,qty:qty,user:CU.username,userName:CU.name,ts:Date.now()};
-  // 今天此人已盤點幾項（每人每日給分上限 8 項）
-  const myToday=(_invRows||[]).filter(function(rr){return normDate(rr[0])===bizDay()&&String(rr[4]||'')===CU.username;}).length;
-  const invDay=isInvDay();                       // 只有週一/週五盤點才給分
-  const willAward=invDay&&myToday<8;
-  // 立即回饋：先塞進本機快取讓畫面馬上顯示已盤點，雲端背景寫入
-  _invRows.push([entry.date,itemId,it.name,qty,CU.username,CU.name,'',entry.ts,entry.date+'|'+itemId]);
-  if(willAward){
-    const r=awardXp(CU.username,3,0,'食材盤點');updateGameChip();
-    toast('✓ 已盤點「'+it.name+'」+3 點（今日 '+(myToday+1)+'/8）','gold');
-  }else if(!invDay){
-    toast('✓ 已記錄「'+it.name+'」・今日非盤點日（週一/週五盤點才加分）','gold');
-  }else{
-    toast('✓ 已盤點「'+it.name+'」・今日已達 8 項給分上限，本項不加分','gold');
-  }
-  renderInvUI(items,_invRows);
-  if(syncOn())authApi({type:'inv_write',row:entry}).then(function(d){if(d&&d.status==='exists'){toast('這項剛才已被 '+(d.by||'他人')+' 盤點','red');}else if(!(d&&(d.status==='success'||d.status==='ok'))){toast('雲端儲存失敗，請重開再送','red');}}).catch(function(){toast('雲端儲存失敗，請確認網路','red');});
-}
 
 // ── 霸凌申訴（保密：不存本機 rm_、不同步到其他人手機；僅老闆可查）──
 async function renderBully(){
