@@ -1804,9 +1804,6 @@ html,body,button,input,select,textarea,
         </div>
         <div id="dress-options"></div>
       </div>
-      <div class="c-card" id="growth-tree"></div>
-      <div class="c-card" id="char-extra"></div>
-      <div id="char-badges"></div>
       <input type="file" id="skin-file-input" accept="image/*" style="display:none">
       <div id="skin-admin-wrap"></div>
     </div>
@@ -1902,7 +1899,7 @@ html,body,button,input,select,textarea,
 
 <script>
 // ── 自動更新：開啟時比對版本，有新版就自動重載（免無痕）──
-const APP_VER='20260822120000';
+const APP_VER='20260822140000';
 const GT_KEY='gtk_9F3xQ7Lz_pW2rM8kT';  // 後台共用密鑰（階段A：前端帶上；階段B：後台驗證）
 // 是否有「打到一半、還沒送出」的資料（結帳/進貨/交接/申訴的輸入框有值）→ 有的話先別強制重載，免得清掉
 function _hasTypedData(){try{var els=document.querySelectorAll('#tab-revenue input,#tab-revenue textarea,#tab-purchase input,#tab-purchase textarea,#tab-handover input,#tab-handover textarea,#tab-bully input,#tab-bully textarea');for(var i=0;i<els.length;i++){var el=els[i];if(el.type==='date'||el.type==='hidden')continue;if((el.value||'').trim())return true;}return false;}catch(e){return false;}}
@@ -3795,13 +3792,9 @@ function saveAwardParams(){
   if(typeof renderRevThreshold==='function'){/* 門檻係數/週數變更後可按門檻頁重算 */}
 }
 function renderCharacter(){
-  const c=getChar();const lv=levelOf(c.xp);
-  if($('growth-tree'))$('growth-tree').innerHTML=growthTreeHTML(c);
   paintScene('dress-scene');
   if($('dcat-row'))$('dcat-row').innerHTML=dressTabs(_dressCat);
   if($('dress-options'))$('dress-options').innerHTML=dressOptions(_dressCat);
-  if($('char-extra'))$('char-extra').innerHTML=charExtraHTML(c,lv);
-  renderBadges();
   if($('skin-admin-wrap'))$('skin-admin-wrap').innerHTML='';
 }
 // 🏅 成就徽章（呼應 skill：綠/藍/金/主廚 徽章＋任務/點數/人氣成就）
