@@ -1260,12 +1260,15 @@ html,body,button,input,select,textarea,
         <div class="c-card-title">📅 基本資訊</div>
         <div class="form-row">
           <div class="form-group">
-            <label class="form-label">日期</label>
+            <label class="form-label">日期 <span style="color:#e05e5e">＊必填</span></label>
             <input class="form-input" id="rv-date" type="date">
           </div>
           <div class="form-group">
-            <label class="form-label">備註</label>
-            <input class="form-input" id="rv-note" type="text" placeholder="例：假日、特殊活動">
+            <label class="form-label">備註 <span style="color:#e05e5e">＊必填</span></label>
+            <div style="display:flex;gap:6px">
+              <select class="form-input" id="rv-note" style="flex:1;min-width:0"></select>
+              <button type="button" class="btn-sm btn-neutral" onclick="rvAddNoteOption()" style="flex:0 0 auto;padding:0 14px;white-space:nowrap">＋ 新增</button>
+            </div>
           </div>
         </div>
       </div>
@@ -1885,11 +1888,21 @@ html,body,button,input,select,textarea,
   <video id="alx-video" src="loading.mp4" autoplay muted playsinline preload="auto"></video>
 </div>
 
+<!-- 缺欄位提醒卡片 -->
+<div id="missing-modal" class="subform-overlay" onclick="if(event.target===this)this.classList.remove('show')">
+  <div class="subform-card" style="max-width:340px;text-align:center">
+    <div class="subform-title" style="text-align:center">⚠️ 還有欄位沒填</div>
+    <div class="muted-note" style="margin:-4px 0 6px">請補齊下列項目再送出：</div>
+    <div id="missing-list" style="line-height:2;font-weight:700;color:#111111"></div>
+    <button class="btn-action" style="width:100%;justify-content:center;margin-top:14px" onclick="$('missing-modal').classList.remove('show')">我知道了</button>
+  </div>
+</div>
+
 <div id="toast"></div>
 
 <script>
 // ── 自動更新：開啟時比對版本，有新版就自動重載（免無痕）──
-const APP_VER='20260822100000';
+const APP_VER='20260822120000';
 const GT_KEY='gtk_9F3xQ7Lz_pW2rM8kT';  // 後台共用密鑰（階段A：前端帶上；階段B：後台驗證）
 // 是否有「打到一半、還沒送出」的資料（結帳/進貨/交接/申訴的輸入框有值）→ 有的話先別強制重載，免得清掉
 function _hasTypedData(){try{var els=document.querySelectorAll('#tab-revenue input,#tab-revenue textarea,#tab-purchase input,#tab-purchase textarea,#tab-handover input,#tab-handover textarea,#tab-bully input,#tab-bully textarea');for(var i=0;i<els.length;i++){var el=els[i];if(el.type==='date'||el.type==='hidden')continue;if((el.value||'').trim())return true;}return false;}catch(e){return false;}}
@@ -2077,7 +2090,7 @@ function initApp() {
   const labels={BOSS:'老闆',MGR:'店長',EMP:'員工'};
   roleTag.textContent=labels[CU.role]||CU.role;
   roleTag.className='role-tag role-'+CU.role;
-  seedGame();ensureSalesTask();ensurePsaleTask();wireTaskInput();wirePartInput();recordName(CU.username,CU.name);oneTimePointsReset();updateGameChip();
+  seedGame();ensureSalesTask();ensurePsaleTask();wireTaskInput();wirePartInput();recordName(CU.username,CU.name);oneTimePointsReset();updateGameChip();fillRvNoteSelect();
 
   // build nav
   // 員工與店長暫時只開放：每日結帳／進貨記錄／BOM成本／交接表（老闆維持全部）。要復原把此白名單移除即可。
@@ -2111,6 +2124,7 @@ function switchTab(name,btn) {
   document.querySelectorAll('.nav-btn').forEach(b=>b.classList.remove('active'));
   $('tab-'+name).classList.add('active');
   btn.classList.add('active');
+  if(name==='revenue')fillRvNoteSelect();
   if(name==='reports')loadReports();
   if(name==='purchase'){loadMaterials().then(fillMatCatSelect);renderRecentPurchases();}
   if(name==='bom'){renderBom();loadBomImgs(renderBom);Promise.all([loadMaterials(),loadRecipeCosts()]).then(renderBom);}
@@ -2392,10 +2406,19 @@ function calcRev() {
   $('t-dfee').textContent='$'+dFee.toLocaleString();
 }
 
+// 每日結帳「備註」下拉選項（可新增，存 rm_rv_notes 並同步雲端）
+const RV_NOTE_SEED=['平日','假日','特殊活動','促銷活動','天氣影響','包場/訂席'];
+function rvNoteOptions(){var a=LS.get('rm_rv_notes',null);if(!Array.isArray(a)||!a.length){a=RV_NOTE_SEED.slice();LS.set('rm_rv_notes',a);}return a;}
+function fillRvNoteSelect(){var sel=$('rv-note');if(!sel||sel.tagName!=='SELECT')return;var cur=sel.value;var opts=rvNoteOptions();sel.innerHTML='<option value="">— 請選擇 —</option>'+opts.map(function(o){return '<option value="'+esc(o)+'">'+esc(o)+'</option>';}).join('');if(cur&&opts.indexOf(cur)>=0)sel.value=cur;}
+function rvAddNoteOption(){var v=(prompt('新增備註選項：')||'').trim();if(!v)return;var a=rvNoteOptions();if(a.indexOf(v)<0){a.push(v);LS.set('rm_rv_notes',a);if(typeof cloudPush==='function')cloudPush('rm_rv_notes');}fillRvNoteSelect();var sel=$('rv-note');if(sel)sel.value=v;toast('已新增選項「'+v+'」','gold');}
+// 缺欄位提醒卡片：列出還沒填的必填項
+function showMissingCard(items){var el=$('missing-list');if(el)el.innerHTML=items.map(function(x){return '・'+esc(x);}).join('<br>');var m=$('missing-modal');if(m)m.classList.add('show');}
 async function submitRev() {
   const v=n=>parseFloat($(n)?.value||0)||0;
   const date=$('rv-date').value;
-  if(!date){toast('請選擇日期','red');return}
+  const note=($('rv-note')&&$('rv-note').value)||'';
+  var _miss=[];if(!date)_miss.push('日期');if(!note)_miss.push('備註');
+  if(_miss.length){showMissingCard(_miss);return;}
   const cash=v('rv-cash'),card=v('rv-card'),twqr=v('rv-twqr'),fp=v('rv-fp'),ue=v('rv-ue'),off=v('rv-off');
   const total=cash+card+twqr+fp+ue+off;
   const _fr=feeRates();
@@ -2430,7 +2453,7 @@ function editRevenue(rw){
   const rec=(_allRevData||[]).find(function(x){return x._row===rw;});
   if(!rec){toast('找不到資料，請重新整理','red');return;}
   if($('rv-date'))$('rv-date').value=normDate(rec.date);
-  if($('rv-note'))$('rv-note').value=rec.note||'';
+  if($('rv-note')){var _rn=String(rec.note||'');if(_rn&&rvNoteOptions().indexOf(_rn)<0){var _a=rvNoteOptions();_a.push(_rn);LS.set('rm_rv_notes',_a);}fillRvNoteSelect();$('rv-note').value=_rn;}
   if($('rv-cash'))$('rv-cash').value=rec.cash||'';
   if($('rv-card'))$('rv-card').value=rec.card||'';
   if($('rv-twqr'))$('rv-twqr').value=rec.twqr||'';
