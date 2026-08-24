@@ -1919,7 +1919,7 @@ html,body,button,input,select,textarea,
 
 <script>
 // ── 自動更新：開啟時比對版本，有新版就自動重載（免無痕）──
-const APP_VER='20260823160000';
+const APP_VER='20260823180000';
 const GT_KEY='gtk_9F3xQ7Lz_pW2rM8kT';  // 後台共用密鑰（階段A：前端帶上；階段B：後台驗證）
 // 是否有「打到一半、還沒送出」的資料（結帳/進貨/交接/申訴的輸入框有值）→ 有的話先別強制重載，免得清掉
 function _hasTypedData(){try{var els=document.querySelectorAll('#tab-revenue input,#tab-revenue textarea,#tab-purchase input,#tab-purchase textarea,#tab-handover input,#tab-handover textarea,#tab-bully input,#tab-bully textarea');for(var i=0;i<els.length;i++){var el=els[i];if(el.type==='date'||el.type==='hidden')continue;if((el.value||'').trim())return true;}return false;}catch(e){return false;}}
@@ -3082,76 +3082,71 @@ function startInvSession(){
   setInvSession(sess).then(function(){toast('已開始期末盤點','gold');renderEndInv();}).catch(function(){toast('開始失敗,請重試','red');});
 }
 
-// ── 盤點主畫面 ──
+// ── 盤點主畫面（全程離線草稿 rm_inv_draft；最後一次批次上傳）──
+function invDraftAll(){return LS.get('rm_inv_draft',{})||{};}
+function invDraft(sid){var a=invDraftAll();if(!a[sid])a[sid]={};return a[sid];}
+function invSaveDraft(sid,d){var a=invDraftAll();a[sid]=d;LS.set('rm_inv_draft',a);}
+function invDNum(v){return parseFloat(v)||0;}
+function invItemQty(e){return invDNum(e&&e.store)+invDNum(e&&e.wh);}
+function invItemDone(e){return !!(e&&(e.none||(e.store!==''&&e.store!=null)||(e.wh!==''&&e.wh!=null)));}
+function invItemAmt(it,e){var price=(e&&e.price!=null)?e.price:it.price;return Math.round(invItemQty(e)*invDNum(price));}
+function invDraftTotals(sid,items){var d=invDraft(sid);var total=0,done=0,zone={};items.forEach(function(it){var c=it.code||it.name;var e=d[c];if(invItemDone(e)){done++;var a=invItemAmt(it,e);total+=a;zone[it.zone]=(zone[it.zone]||0)+a;}});return {total:total,done:done,tot:items.length,zone:zone};}
 function invPaintCount(sess,rows,last){var wrap=$('endinv-wrap');if(!wrap)return;
-  var items=invItems();var map=invWrittenMap(rows,sess.sessionId);
-  // 初始化本機編輯狀態（保留使用者尚未寫入的暫值不動）
-  items.forEach(function(it){var c=it.code||it.name;if(!_invLocal[c])_invLocal[c]={};var w=map[c];
-    if(_invLocal[c].price==null)_invLocal[c].price=(w&&w.price)||it.price;});
-  var lastMap=(last&&last.byCode)||{};
-  var joinBanner=(sess.startedBy!==CU.username)?'<div class="c-card" style="background:#e3f7ea;border-color:#86efac"><b>🟢 '+esc(sess.startedByName||sess.startedBy)+'</b> 正在盤點中,你可以認領下方儲位一起盤。</div>':'';
-  var top='<div class="c-card" id="inv-top" style="position:sticky;top:0;z-index:5">'+invTopHtml(sess,items,map)+'</div>';
-  var zones='';
-  INV_ZONES.forEach(function(z,zi){zones+=invZoneHtml(z,zi,items,sess,map,lastMap);});
-  var endBtn=invCanEnd()?'<button class="btn-action" style="width:100%;margin-top:14px;background:#b45309!important" onclick="endInvSession()">⏹ 結束盤點</button>':'<div class="muted-note" style="margin-top:12px">（結束盤點由店長以上執行）</div>';
-  wrap.innerHTML=joinBanner+top+zones+endBtn;
+  var items=invItems();var d=invDraft(sess.sessionId);
+  items.forEach(function(it){var c=it.code||it.name;if(!d[c])d[c]={};if(d[c].price==null)d[c].price=it.price;});invSaveDraft(sess.sessionId,d);
+  window._invLastSummary=last;
+  var joinBanner=(sess.startedBy!==CU.username)?'<div class="c-card" style="background:#e3f7ea;border-color:#86efac"><b>🟢 '+esc(sess.startedByName||sess.startedBy)+'</b> 正在盤點中,你可認領儲位一起盤（各自離線盤,最後各自上傳）。</div>':'';
+  var top='<div class="c-card" id="inv-top" style="position:sticky;top:0;z-index:5">'+invTopHtml(sess,items)+'</div>';
+  var offline='<div class="muted-note" style="margin:-4px 2px 8px;color:#06c167">✓ 離線作業中：填數不需等待,全部盤完再按下方一次上傳。資料已存在手機,關掉 App 也不會不見。</div>';
+  var zones='';INV_ZONES.forEach(function(z,zi){zones+=invZoneHtml(z,zi,items,sess,last);});
+  var upBtn='<button class="btn-action" style="width:100%;margin-top:14px" onclick="invUploadMine()">💾 完成並上傳我的盤點</button>';
+  var endBtn=invCanEnd()?'<button class="btn-action" style="width:100%;margin-top:8px;background:#b45309!important" onclick="endInvSession()">⏹ 結束盤點並結算</button>':'<div class="muted-note" style="margin-top:8px">（結算由店長以上執行）</div>';
+  wrap.innerHTML=joinBanner+top+offline+zones+upBtn+endBtn;
   invStartPoll();
 }
-function invTopHtml(sess,items,map){
-  var total=invSessTotal(map);var done=Object.keys(map).length;var tot=items.length;
+function invTopHtml(sess,items){var t=invDraftTotals(sess.sessionId,items);
   var mins=Math.max(0,Math.round((Date.now()-new Date(sess.startedAt).getTime())/60000));
   return '<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">'
-    +'<div><div class="muted-note">目前累計</div><div style="font-size:24px;font-weight:800">$'+Math.round(total).toLocaleString()+'</div></div>'
-    +'<div style="text-align:center"><div class="muted-note">已完成</div><div style="font-size:18px;font-weight:700">'+done+' / '+tot+'</div></div>'
+    +'<div><div class="muted-note">目前累計</div><div style="font-size:24px;font-weight:800">$'+Math.round(t.total).toLocaleString()+'</div></div>'
+    +'<div style="text-align:center"><div class="muted-note">已完成</div><div style="font-size:18px;font-weight:700">'+t.done+' / '+t.tot+'</div></div>'
     +'<div style="text-align:right"><div class="muted-note">經過</div><div style="font-size:18px;font-weight:700">'+mins+' 分</div></div></div>';
 }
-function invZoneHtml(zone,zi,items,sess,map,lastMap){
-  var zitems=items.filter(function(it){return it.zone===zone;});
-  var cnt=invZoneCount(items,map,zone);
-  var claimer=sess.zoneClaims?sess.zoneClaims[zone]:null;
-  var mine=claimer===CU.username;
+function invZoneHtml(zone,zi,items,sess,last){
+  var zitems=items.filter(function(it){return it.zone===zone;});var d=invDraft(sess.sessionId);
+  var done=0;zitems.forEach(function(it){if(invItemDone(d[it.code||it.name]))done++;});
+  var claimer=sess.zoneClaims?sess.zoneClaims[zone]:null;var mine=claimer===CU.username;
   var claimerName=claimer?(LS.get('rm_names',{})[claimer]||claimer):'';
-  var head='<div class="c-card-title" style="display:flex;justify-content:space-between;align-items:center">'
-    +'<span>'+['①','②','③','④'][zi]+' '+esc(zone)+' <span style="color:var(--text-3);font-weight:400">'+cnt.done+'/'+cnt.tot+'</span></span>';
-  var ctrl='';
-  if(!claimer)ctrl='<button class="btn-sm btn-neutral" onclick="invClaimZone(\''+esc(zone)+'\')">認領</button>';
-  else if(mine)ctrl='<button class="btn-sm btn-neutral" onclick="invReleaseZone(\''+esc(zone)+'\')">放棄</button>';
-  else ctrl='<span class="pill" style="background:#eee;color:#666">🔒 '+esc(claimerName)+' 盤點中</span>';
-  head+=ctrl+'</div>';
-  var body='';
-  if(mine){zitems.forEach(function(it){body+=invItemRowHtml(it,map,lastMap);});}
-  else if(claimer&&!mine){body='<div class="muted-note">由 '+esc(claimerName)+' 負責,進度 '+cnt.done+'/'+cnt.tot+'</div>';}
-  else{body='<div class="muted-note">尚未認領。按右上「認領」開始盤這一區。</div>';}
+  var head='<div class="c-card-title" style="display:flex;justify-content:space-between;align-items:center"><span>'+['①','②','③','④'][zi]+' '+esc(zone)+' <span style="color:var(--text-3);font-weight:400">'+done+'/'+zitems.length+'</span></span>';
+  if(!claimer)head+='<button class="btn-sm btn-neutral" onclick="invClaimZone(\''+esc(zone)+'\')">認領</button>';
+  else if(mine)head+='<button class="btn-sm btn-neutral" onclick="invReleaseZone(\''+esc(zone)+'\')">放棄</button>';
+  else head+='<span class="pill" style="background:#eee;color:#666">🔒 '+esc(claimerName)+'</span>';
+  head+='</div>';
+  var lastMap=(last&&last.byCode)||{};var body='';
+  if(mine||!claimer){zitems.forEach(function(it){body+=invItemRowHtml(it,sess.sessionId,lastMap);});}
+  else body='<div class="muted-note">由 '+esc(claimerName)+' 負責</div>';
   return '<div class="c-card">'+head+'<div>'+body+'</div></div>';
 }
-function invItemRowHtml(it,map,lastMap){
-  var c=it.code||it.name;var w=map[c];var loc=_invLocal[c]||{};
-  var qty=(loc.qty!=null?loc.qty:(w?w.qty:''));
-  var price=(loc.price!=null?loc.price:(w?w.price:it.price));
-  var amt=(parseFloat(qty)||0)*(parseFloat(price)||0);
-  var lastQ=lastMap[c]?lastMap[c].qty:null;
-  var lastTxt=(lastQ!=null)?('上次 '+lastQ):'首次盤點';
+function invItemRowHtml(it,sid,lastMap){
+  var c=it.code||it.name;var e=invDraft(sid)[c]||{};
+  var price=(e.price!=null?e.price:it.price);var amt=invItemAmt(it,e);
+  var lastQ=lastMap[c]?lastMap[c].qty:null;var lastTxt=(lastQ!=null)?('上次 '+lastQ):'首次盤點';
   var mm=it.mismatch?(' <span title="物料總表登記為'+esc(it.mismatch.master)+'，盤點以'+esc(it.unit)+'計'+(it.mismatch.note?('（'+esc(it.mismatch.note)+'）'):'')+'" style="cursor:help">ⓘ</span>'):'';
   var uncoded=it.uncoded?(' <span class="pill" style="background:#fff7ed;color:#b45309">未建檔</span>'):'';
-  var warn=invAnomaly(qty,lastQ)?('<div class="muted-note" style="color:#b45309;background:#fff7ed;padding:6px 8px;border-radius:8px;margin-top:4px">⚠️ 上次盤 '+lastQ+'，這次 '+(qty===''?'—':qty)+'，差很多。確認是不是看錯單位或算錯？<div style="margin-top:4px;display:flex;gap:6px;flex-wrap:wrap"><a href="#" onclick="invQuickNote(\''+esc(c)+'\',\'已用完\');return false">已用完</a>・<a href="#" onclick="invQuickNote(\''+esc(c)+'\',\'本月大量進貨\');return false">本月大量進貨</a>・<a href="#" onclick="invQuickNote(\''+esc(c)+'\',\'單位不同\');return false">單位不同</a></div></div>'):'';
-  var saved=w?'<span id="inv-st-'+esc(c)+'" style="color:#06c167;font-size:12px">✓</span>':'<span id="inv-st-'+esc(c)+'"></span>';
-  var priceRow=invCanPrice()
-    ?'<label class="muted-note">單價 <input class="form-input" style="width:90px;display:inline-block;padding:6px" type="number" value="'+price+'" onchange="invPriceChange(\''+esc(c)+'\',this.value)"></label>'
-    :'<span class="muted-note">單價 '+price+'（唯讀）</span>';
-  return '<div class="sub-row" id="inv-row-'+esc(c)+'" style="flex-direction:column;align-items:stretch;gap:6px;padding:10px 0;border-bottom:1px solid #f0f0f0">'
-    +'<div style="display:flex;align-items:center;gap:8px">'
+  var warn=invAnomaly(invItemQty(e),lastQ,e)?('<div class="muted-note" style="color:#b45309;background:#fff7ed;padding:6px 8px;border-radius:8px;margin-top:4px">⚠️ 上次盤 '+lastQ+'，這次 '+(invItemDone(e)?invItemQty(e):'—')+'，差很多。確認單位或算錯？<div style="margin-top:4px"><a href="#" onclick="invQuickNote(\''+esc(c)+'\',\'已用完\');return false">已用完</a>・<a href="#" onclick="invQuickNote(\''+esc(c)+'\',\'大量進貨\');return false">大量進貨</a>・<a href="#" onclick="invQuickNote(\''+esc(c)+'\',\'單位不同\');return false">單位不同</a></div></div>'):'';
+  var priceRow=invCanPrice()?'<label class="muted-note">單價 <input class="form-input" style="width:84px;display:inline-block;padding:6px" type="number" value="'+price+'" onchange="invPriceChange(\''+esc(c)+'\',this.value)"></label>':'<span class="muted-note">單價 '+price+'（唯讀）</span>';
+  return '<div class="sub-row" style="flex-direction:column;align-items:stretch;gap:6px;padding:10px 0;border-bottom:1px solid #f0f0f0">'
+    +'<div style="display:flex;align-items:center;gap:6px">'
     +'<div style="flex:1;min-width:0"><div class="tc-title" style="font-size:14px">'+esc(it.name)+mm+uncoded+'</div><div class="xp-text">'+esc(it.unit)+' ・ '+lastTxt+'</div></div>'
-    +'<input class="form-input" id="inv-q-'+esc(c)+'" type="number" inputmode="decimal" step="0.1" min="0" placeholder="數量" value="'+(qty===''?'':qty)+'" style="width:86px;text-align:center;padding:8px" onchange="invQtyChange(\''+esc(c)+'\',this.value)">'
-    +'<div style="width:74px;text-align:right"><div class="xp-text">金額</div><b id="inv-amt-'+esc(c)+'">$'+Math.round(amt).toLocaleString()+'</b></div>'+saved+'</div>'
+    +'<div style="text-align:center"><div class="xp-text" style="font-size:10px">店</div><input class="form-input" id="inv-q-'+esc(c)+'" type="number" inputmode="decimal" step="0.1" min="0" placeholder="0" value="'+(e.store!=null?e.store:'')+'" style="width:64px;text-align:center;padding:8px" onchange="invStoreChange(\''+esc(c)+'\',this.value)"></div>'
+    +'<div style="text-align:center"><div class="xp-text" style="font-size:10px">外倉</div><input class="form-input" id="inv-w-'+esc(c)+'" type="number" inputmode="decimal" step="0.1" min="0" placeholder="—" value="'+(e.wh!=null?e.wh:'')+'" style="width:58px;text-align:center;padding:8px" onchange="invWhChange(\''+esc(c)+'\',this.value)"></div>'
+    +'<div style="width:66px;text-align:right"><div class="xp-text">金額</div><b id="inv-amt-'+esc(c)+'">$'+Math.round(amt).toLocaleString()+'</b></div></div>'
     +'<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap">'
-    +'<label class="muted-note" style="cursor:pointer"><input type="checkbox" '+(loc.none||(w&&w.note==='無此品項')?'checked':'')+' onchange="invToggleNone(\''+esc(c)+'\',this.checked)"> 本月無此品項</label>'
-    +priceRow
-    +(it.uncoded?'<button class="btn-sm btn-neutral" onclick="invCreateUncoded(\''+esc(c)+'\')">＋建檔到物料總表</button>':'')
-    +'</div>'
-    +'<input class="form-input" id="inv-note-'+esc(c)+'" placeholder="備註（選填）" value="'+esc(loc.note||(w?w.note:'')||'')+'" onchange="invNoteSet(\''+esc(c)+'\',this.value)" style="padding:6px">'
+    +'<label class="muted-note" style="cursor:pointer"><input type="checkbox" '+(e.none?'checked':'')+' onchange="invToggleNone(\''+esc(c)+'\',this.checked)"> 無此品項</label>'
+    +priceRow+(it.uncoded?'<button class="btn-sm btn-neutral" onclick="invCreateUncoded(\''+esc(c)+'\')">＋建檔</button>':'')+'</div>'
+    +'<input class="form-input" id="inv-note-'+esc(c)+'" placeholder="備註（選填）" value="'+esc(e.note||'')+'" onchange="invNoteSet(\''+esc(c)+'\',this.value)" style="padding:6px">'
     +warn+'</div>';
 }
-function invAnomaly(qty,lastQ){if(lastQ==null||qty===''||qty==null)return false;var q=parseFloat(qty)||0,l=parseFloat(lastQ)||0;if(l===0)return q>0;return Math.abs(q-l)/l>0.5;}
+function invAnomaly(qty,lastQ,e){if(lastQ==null||!invItemDone(e))return false;var q=invDNum(qty),l=invDNum(lastQ);if(l===0)return q>0;return Math.abs(q-l)/l>0.5;}
 
 // ── 認領/放棄（讀→查→寫，寫後再確認避免雙認領）──
 function invClaimZone(zone){getInvSession().then(function(s){if(!s||s.status!=='open')return;
@@ -3159,28 +3154,29 @@ function invClaimZone(zone){getInvSession().then(function(s){if(!s||s.status!=='
   s.zoneClaims[zone]=CU.username;setInvSession(s).then(function(){setTimeout(function(){getInvSession().then(function(s2){if(s2&&s2.zoneClaims[zone]!==CU.username){toast('剛好被別人搶先認領了','red');}renderEndInv();});},400);});});}
 function invReleaseZone(zone){getInvSession().then(function(s){if(!s)return;if(s.zoneClaims[zone]===CU.username){s.zoneClaims[zone]=null;setInvSession(s).then(renderEndInv);}});}
 
-// ── 填數量/單價/備註/無此品項（onchange 觸發，立即寫入）──
-function invLocalOf(c){return _invLocal[c]||(_invLocal[c]={});}
+// ── 填數（只存本機草稿,不連網）──
 function invItemOf(c){return invItems().find(function(x){return (x.code||x.name)===c;});}
-function invRecalc(c){var it=invItemOf(c);var loc=invLocalOf(c);var amt=(parseFloat(loc.qty)||0)*(parseFloat(loc.price!=null?loc.price:(it?it.price:0))||0);var el=$('inv-amt-'+c);if(el)el.textContent='$'+Math.round(amt).toLocaleString();var t=$('inv-top');if(t&&_invSess)t.innerHTML=invTopHtml(_invSess,invItems(),invWrittenMap(_invRows2,_invSess.sessionId));}
-function invQtyChange(c,v){invLocalOf(c).qty=v;invRecalc(c);invPersist(c);}
-function invPriceChange(c,v){invLocalOf(c).price=parseFloat(v)||0;invRecalc(c);if(invLocalOf(c).qty!=null&&invLocalOf(c).qty!=='')invPersist(c);}
-function invNoteSet(c,v){invLocalOf(c).note=v;invPersist(c);}
-function invQuickNote(c,v){invLocalOf(c).note=v;var el=$('inv-note-'+c);if(el)el.value=v;invPersist(c);}
-function invToggleNone(c,on){var loc=invLocalOf(c);loc.none=on;if(on){loc.qty=0;loc.note=loc.note||'無此品項';var q=$('inv-q-'+c);if(q)q.value=0;var n=$('inv-note-'+c);if(n)n.value=loc.note;}invRecalc(c);invPersist(c);}
-function invPersist(c){if(!_invSess)return;var it=invItemOf(c);if(!it)return;var loc=invLocalOf(c);
-  if(loc.qty==null||loc.qty==='')return;
-  var price=(loc.price!=null?loc.price:it.price);var qty=parseFloat(loc.qty)||0;var amt=Math.round(qty*(parseFloat(price)||0));
-  var date=invSessDate(_invSess.sessionId);var code=it.code||('NC-'+invNormName(it.name));
-  var entry={date:date,matCode:code,name:it.name,qty:qty,unit:it.unit,price:parseFloat(price)||0,amount:amt,zone:it.zone,sessionId:_invSess.sessionId,type:'期末盤點',user:CU.username,userName:CU.name,ts:Date.now(),note:loc.note||'',key:date+'|'+_invSess.sessionId+'|'+code};
-  var st=$('inv-st-'+c);if(st)st.innerHTML='<span style="color:#999">…</span>';
-  writeInvLine(entry).then(function(ok){var s=$('inv-st-'+c);if(!s)return;
-    if(ok){s.innerHTML='<span style="color:#06c167">✓</span>';}
-    else{s.innerHTML='<a href="#" style="color:#dc2626" onclick="invPersist(\''+esc(c)+'\');return false">✗重試</a>';}
-    // 更新本機 rows 快取（讓累計即時）
-    invFetchRows().then(function(rr){var t=$('inv-top');if(t&&_invSess)t.innerHTML=invTopHtml(_invSess,invItems(),invWrittenMap(rr,_invSess.sessionId));});
-  });
-}
+function invDItem(c){var d=invDraft(_invSess.sessionId);if(!d[c])d[c]={};return d[c];}
+function invDSave(){invSaveDraft(_invSess.sessionId,invDraft(_invSess.sessionId));}
+function invRecalcRow(c){var it=invItemOf(c);var el=$('inv-amt-'+c);if(el)el.textContent='$'+Math.round(invItemAmt(it,invDItem(c))).toLocaleString();var t=$('inv-top');if(t&&_invSess)t.innerHTML=invTopHtml(_invSess,invItems());}
+function invStoreChange(c,v){var e=invDItem(c);e.store=v;if(v!==''&&e.none)e.none=false;invDSave();invRecalcRow(c);}
+function invWhChange(c,v){invDItem(c).wh=v;invDSave();invRecalcRow(c);}
+function invPriceChange(c,v){invDItem(c).price=parseFloat(v)||0;invDSave();invRecalcRow(c);}
+function invNoteSet(c,v){invDItem(c).note=v;invDSave();}
+function invQuickNote(c,v){invDItem(c).note=v;invDSave();var el=$('inv-note-'+c);if(el)el.value=v;}
+function invToggleNone(c,on){var e=invDItem(c);e.none=on;if(on){e.store='0';e.wh='';e.note=e.note||'無此品項';var q=$('inv-q-'+c);if(q)q.value=0;var w=$('inv-w-'+c);if(w)w.value='';var n=$('inv-note-'+c);if(n)n.value=e.note;}invDSave();invRecalcRow(c);}
+// 由草稿組出要上傳的列（數量＝店＋外倉;備註記分佈）
+function invBuildRows(sid){var d=invDraft(sid);var date=invSessDate(sid);var out=[];
+  invItems().forEach(function(it){var c=it.code||it.name;var e=d[c];if(!invItemDone(e))return;
+    var code=it.code||('NC-'+invNormName(it.name));var qty=invItemQty(e);var price=invDNum(e.price!=null?e.price:it.price);var amt=Math.round(qty*price);
+    var bd=[];if(e.store!==''&&e.store!=null)bd.push('店'+invDNum(e.store));if(invDNum(e.wh))bd.push('倉'+invDNum(e.wh));
+    var note=((bd.length>1)?('['+bd.join('｜')+'] '):'')+(e.note||'');
+    out.push({date:date,matCode:code,name:it.name,qty:qty,unit:it.unit,price:price,amount:amt,zone:it.zone,sessionId:sid,type:'期末盤點',user:CU.username,userName:CU.name,ts:Date.now(),note:note,key:date+'|'+sid+'|'+code});});
+  return out;}
+// 批次上傳（一次呼叫;失敗資料仍在本機可再按）
+function invUploadMine(){if(!_invSess)return Promise.resolve(false);var rows=invBuildRows(_invSess.sessionId);if(!rows.length){toast('尚未填任何品項','red');return Promise.resolve(false);}
+  toast('上傳中…共 '+rows.length+' 項','gold');
+  return authApi({type:'inv_write2_batch',rows:rows}).then(function(d){if(d&&(d.status==='success'||d.status==='ok')){toast('✓ 已上傳 '+(d.written||rows.length)+' 項','gold');return true;}toast('上傳失敗,資料仍在本機,可再按上傳','red');return false;}).catch(function(){toast('連線失敗,資料仍在本機,稍後再按上傳','red');return false;});}
 
 // ── 三角仔建檔 ──
 function invCreateUncoded(c){var it=invItemOf(c);if(!it)return;
@@ -3195,34 +3191,30 @@ function invCreateUncoded(c){var it=invItemOf(c);if(!it)return;
   });
 }
 
-// ── 輪詢（15秒）──
+// ── 輪詢（15秒）：離線盤點,只更新累計/時間與他人認領狀態,不抓每項 ──
 function invStartPoll(){invStopPoll();_invPoll=setInterval(function(){
   var p=document.querySelector('.tab-panel.active');if(!p||p.id!=='tab-endinv'){invStopPoll();return;}
-  Promise.all([getInvSession(),invFetchRows()]).then(function(a){var s=a[0],rows=a[1];_invRows2=rows;
-    if(!s||s.status!=='open'){renderEndInv();return;}
-    var map=invWrittenMap(rows,s.sessionId);
-    var sig=JSON.stringify(s.zoneClaims)+'|'+Object.keys(map).length;
-    var t=$('inv-top');if(t)t.innerHTML=invTopHtml(s,invItems(),map);   // 累計/時間即時更新
-    if(sig!==_invSig&&!isTyping()){_invSig=sig;_invSess=s;invPaintCount(s,rows,window._invLastSummary||null);}   // 認領或他人進度變動→重繪(未打字時)
+  var t=$('inv-top');if(t&&_invSess)t.innerHTML=invTopHtml(_invSess,invItems());   // 本機累計/經過時間
+  getInvSession().then(function(s){if(!s||s.status!=='open'){renderEndInv();return;}
+    var sig=JSON.stringify(s.zoneClaims);if(sig!==_invSig&&!isTyping()){_invSig=sig;_invSess=s;invPaintCount(s,null,window._invLastSummary||null);}
   });
 },15000);}
 
-// ── 結束場次 ──
-function endInvSession(){if(!invCanEnd()){toast('僅店長以上可結束','red');return;}
+// ── 結束並結算：先批次上傳自己的草稿,再彙整全場次(含他人已上傳)──
+function endInvSession(){if(!invCanEnd()){toast('僅店長以上可結算','red');return;}
   getInvSession().then(function(sess){if(!sess)return;
-    invFetchRows().then(function(rows){
-      var items=invItems();var map=invWrittenMap(rows,sess.sessionId);
-      var undone=[];INV_ZONES.forEach(function(z){var c=invZoneCount(items,map,z);if(c.done<c.tot)undone.push(z+'('+c.done+'/'+c.tot+')');});
-      if(!confirm('確定結束盤點？'+(undone.length?('\n\n還有未完成：'+undone.join('、')):'\n\n全部已完成 ✓')))return;
-      kvGetJSON('inv_session_last').then(function(prev){
-        var total=invSessTotal(map);var zone={};var byCode={};var anomalies=[];var prevBy=(prev&&prev.byCode)||{};
-        for(var k in map){var o=map[k];zone[o.zone]=(zone[o.zone]||0)+(o.amount||0);byCode[k]={qty:o.qty,unit:o.unit,amount:o.amount,name:o.name,zone:o.zone};
-          var lq=prevBy[k]?prevBy[k].qty:null;if(invAnomaly(o.qty,lq))anomalies.push({name:o.name,qty:o.qty,last:lq});}
-        var summary={sessionId:sess.sessionId,date:invSessDate(sess.sessionId),month:sess.month,closedAt:new Date().toISOString(),total:total,zone:zone,byCode:byCode,anomalies:anomalies,prevTotal:(prev?prev.total:null)};
-        kvSetJSON('inv_session_last',summary).then(function(){
-          kvGetJSON('inv_session_hist').then(function(hist){hist=Array.isArray(hist)?hist:[];hist=hist.filter(function(x){return x.sessionId!==summary.sessionId;});hist.push({sessionId:summary.sessionId,month:summary.month,date:summary.date,total:summary.total});kvSetJSON('inv_session_hist',hist).then(function(){
-            sess.status='closed';setInvSession(sess).then(function(){toast('盤點完成！期末存貨 $'+Math.round(total).toLocaleString(),'gold');renderEndInv();});
-          });});
+    var items=invItems();var td=invDraftTotals(sess.sessionId,items);
+    if(!confirm('結束盤點並結算？\n會先上傳你的盤點,再彙整全部場次資料(含其他人已上傳的)。\n\n你目前已填 '+td.done+'/'+td.tot+' 項。'))return;
+    invUploadMine().then(function(){
+      invFetchRows().then(function(rows){var map=invWrittenMap(rows,sess.sessionId);
+        kvGetJSON('inv_session_last').then(function(prev){
+          var total=invSessTotal(map);var zone={};var byCode={};var anomalies=[];var prevBy=(prev&&prev.byCode)||{};
+          for(var k in map){var o=map[k];zone[o.zone]=(zone[o.zone]||0)+(o.amount||0);byCode[k]={qty:o.qty,unit:o.unit,amount:o.amount,name:o.name,zone:o.zone};
+            var lq=prevBy[k]?prevBy[k].qty:null;if(o.qty!=null&&lq!=null&&((lq===0&&o.qty>0)||(lq>0&&Math.abs(o.qty-lq)/lq>0.5)))anomalies.push({name:o.name,qty:o.qty,last:lq});}
+          var summary={sessionId:sess.sessionId,date:invSessDate(sess.sessionId),month:sess.month,closedAt:new Date().toISOString(),total:total,zone:zone,byCode:byCode,anomalies:anomalies,prevTotal:(prev?prev.total:null)};
+          kvSetJSON('inv_session_last',summary).then(function(){kvGetJSON('inv_session_hist').then(function(hist){hist=Array.isArray(hist)?hist:[];hist=hist.filter(function(x){return x.sessionId!==summary.sessionId;});hist.push({sessionId:summary.sessionId,month:summary.month,date:summary.date,total:summary.total});kvSetJSON('inv_session_hist',hist).then(function(){
+            sess.status='closed';setInvSession(sess).then(function(){var a=invDraftAll();delete a[sess.sessionId];LS.set('rm_inv_draft',a);toast('盤點完成！期末存貨 $'+Math.round(total).toLocaleString(),'gold');renderEndInv();});
+          });});});
         });
       });
     });
