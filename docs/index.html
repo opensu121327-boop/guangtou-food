@@ -1899,7 +1899,7 @@ html,body,button,input,select,textarea,
 
 <script>
 // ── 自動更新：開啟時比對版本，有新版就自動重載（免無痕）──
-const APP_VER='20260822180000';
+const APP_VER='20260822200000';
 const GT_KEY='gtk_9F3xQ7Lz_pW2rM8kT';  // 後台共用密鑰（階段A：前端帶上；階段B：後台驗證）
 // 是否有「打到一半、還沒送出」的資料（結帳/進貨/交接/申訴的輸入框有值）→ 有的話先別強制重載，免得清掉
 function _hasTypedData(){try{var els=document.querySelectorAll('#tab-revenue input,#tab-revenue textarea,#tab-purchase input,#tab-purchase textarea,#tab-handover input,#tab-handover textarea,#tab-bully input,#tab-bully textarea');for(var i=0;i<els.length;i++){var el=els[i];if(el.type==='date'||el.type==='hidden')continue;if((el.value||'').trim())return true;}return false;}catch(e){return false;}}
@@ -2135,7 +2135,7 @@ function switchTab(name,btn) {
   if(name==='expense')renderExpenseList();
   if(name==='tasks')renderTasks();
   if(name==='character')renderCharacter();
-  if(name==='leaderboard')renderLeaderboard();
+  if(name==='leaderboard'){renderLeaderboard();refreshActiveUsers();}
   if(name==='handover')renderHandover();
   if(name==='home')renderHome();
   if(name==='bully')renderBully();
@@ -3499,8 +3499,8 @@ function updateScenes(){paintScene('dress-scene');paintScene('cc-scene');}
 function recordName(u,name){if(!u||!name)return;const m=LS.get('rm_names',{})||{};if(m[u]!==name){m[u]=name;LS.set('rm_names',m);}}
 // 在職名單：以「帳號管理」Sheet(auth_list_users)為準。從 Sheet 刪掉帳號→不在清單→前台過濾掉(代表離職)。null=尚未載入時不過濾。
 function activeUserSet(){var a=LS.get('rm_active_users',null);return (Array.isArray(a)&&a.length)?new Set(a):null;}
-async function refreshActiveUsers(){try{var d=await authApi({type:'auth_list_users',data:{requestedBy:CU&&CU.username}});if(d&&(d.status==='success'||d.status==='ok')&&Array.isArray(d.users)){var set=[];var nm=LS.get('rm_names',{})||{};var changed=false;d.users.forEach(function(u){var un=String(u.username||'').trim();if(!un)return;set.push(un);var nn=String(u.name||'').trim();if(nn&&nm[un]!==nn){nm[un]=nn;changed=true;}});LS.set('rm_active_users',set);if(changed)LS.set('rm_names',nm);/* 從帳號管理 Sheet 姓名欄帶入本名，排行榜顯示本名而非帳號 */var lb=$('tab-leaderboard');if(lb&&lb.classList.contains('active'))renderLeaderboard();}}catch(e){}}
-function leaderboard(){const out=[];const names=LS.get('rm_names',{})||{};const actSet=activeUserSet();for(let i=0;i<localStorage.length;i++){const k=localStorage.key(i);if(k&&k.indexOf('rm_char_')===0){const u=k.slice(8);if(u.indexOf('demo_')===0||u.indexOf('__')===0)continue;if(actSet&&!actSet.has(u))continue;const c=normChar(LS.get(k,null));out.push({u,name:names[u]||u,xp:c.xp,points:c.points,lv:levelOf(c.xp),tasksDone:c.tasksDone,avatar:c.avatar});}}out.sort((a,b)=>b.points-a.points||b.xp-a.xp);return out;}
+async function refreshActiveUsers(){try{var d=await authApi({type:'auth_list_users',data:{requestedBy:CU&&CU.username}});if(d&&(d.status==='success'||d.status==='ok')&&Array.isArray(d.users)){var set=[];var nm=LS.get('rm_names',{})||{};var acct={};var changed=false;d.users.forEach(function(u){var un=String(u.username||'').trim();if(!un)return;set.push(un);var nn=String(u.name||'').trim();if(nn){acct[un]=nn;if(nm[un]!==nn){nm[un]=nn;changed=true;}}});LS.set('rm_active_users',set);LS.set('rm_acct_names',acct);/* 權威姓名表(帳號→本名)，排行榜優先用它顯示本名 */if(changed)LS.set('rm_names',nm);var lb=$('tab-leaderboard');if(lb&&lb.classList.contains('active'))renderLeaderboard();}}catch(e){}}
+function leaderboard(){const out=[];const names=LS.get('rm_names',{})||{};const acct=LS.get('rm_acct_names',{})||{};const actSet=activeUserSet();for(let i=0;i<localStorage.length;i++){const k=localStorage.key(i);if(k&&k.indexOf('rm_char_')===0){const u=k.slice(8);if(u.indexOf('demo_')===0||u.indexOf('__')===0)continue;if(actSet&&!actSet.has(u))continue;const c=normChar(LS.get(k,null));out.push({u,name:acct[u]||names[u]||u,xp:c.xp,points:c.points,lv:levelOf(c.xp),tasksDone:c.tasksDone,avatar:c.avatar});}}out.sort((a,b)=>b.points-a.points||b.xp-a.xp);return out;}
 function renderLeaderboard(){
   renderPraiseChampion();
   const wrap=$('lb-list');if(!wrap)return;
