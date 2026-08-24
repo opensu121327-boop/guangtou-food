@@ -1431,6 +1431,12 @@ html,body,button,input,select,textarea,
       <!-- 已精簡掉的 KPI 元素保留為隱藏，供 loadReports 沿用不報錯（預估實收/進貨成本的數字在下方「進階分析」的成本結構仍看得到）-->
       <div style="display:none"><span id="kl-cost"></span><span id="kv-cost"></span><span id="kn-cost"></span><span id="kl-netrev"></span><span id="kv-netrev"></span><span id="kn-netrev"></span></div>
 
+      <!-- 今日營收對比：昨日 ＋ 同星期別中位數基準 -->
+      <div id="today-compare" class="c-card" style="margin:0 0 14px 0;display:none">
+        <div class="c-card-title">📅 今日營收對比</div>
+        <div id="today-compare-body" style="display:flex;gap:10px;flex-wrap:wrap"></div>
+      </div>
+
       <!-- Charts row -->
       <div class="charts-row">
         <div class="c-card" style="margin-bottom:0">
@@ -1926,7 +1932,7 @@ html,body,button,input,select,textarea,
 
 <script>
 // ── 自動更新：開啟時比對版本，有新版就自動重載（免無痕）──
-const APP_VER='20260824120000';
+const APP_VER='20260824140000';
 const GT_KEY='gtk_9F3xQ7Lz_pW2rM8kT';  // 後台共用密鑰（階段A：前端帶上；階段B：後台驗證）
 // 是否有「打到一半、還沒送出」的資料（結帳/進貨/交接/申訴的輸入框有值）→ 有的話先別強制重載，免得清掉
 function _hasTypedData(){try{var els=document.querySelectorAll('#tab-revenue input,#tab-revenue textarea,#tab-purchase input,#tab-purchase textarea,#tab-handover input,#tab-handover textarea,#tab-bully input,#tab-bully textarea');for(var i=0;i<els.length;i++){var el=els[i];if(el.type==='date'||el.type==='hidden')continue;if((el.value||'').trim())return true;}return false;}catch(e){return false;}}
@@ -2901,6 +2907,34 @@ function an_laborPick(actual,est){
   return {used:used, isEst:(used!==actual)};
 }
 
+// ── 星期別基準（中位數）＋今日對比 ──
+function an_median(arr){if(!arr||!arr.length)return 0;var a=arr.slice().sort(function(x,y){return x-y;});var m=Math.floor(a.length/2);return a.length%2?a[m]:(a[m-1]+a[m])/2;}
+// 某星期別(0=日..6=六)各日「當日總營業額」，排除補給日與已標異常日
+function an_weekdayTotals(wd){
+  var map={};
+  (_allRevData||[]).forEach(function(r){
+    var d=normDate(r.date); if(!d) return;
+    var t=Number(r.total)||0; if(t<=0) return;
+    if(new Date(d).getDay()!==wd) return;
+    if(String(r.note||'').indexOf('補給')>=0) return;   // 補給日不列入常態基準
+    if(String(r.reason||'').trim()) return;             // 已標異常日(U欄)不列入
+    map[d]=(map[d]||0)+t;                                // 同日多筆合併
+  });
+  return Object.keys(map).map(function(k){return map[k];});
+}
+// 對比小卡：base 基準值、cur 今日值 → 顯示 base 與今日相對漲跌
+function an_cmpChip(label,base,cur,sub){
+  var pct = base>0 ? Math.round((cur-base)/base*100) : null;
+  var up = pct!=null && pct>=0;
+  var col = pct==null?'var(--text-3)':(up?'#06c167':'#dc2626');
+  var arrow = pct==null?'—':((up?'▲':'▼')+Math.abs(pct)+'%');
+  return '<div style="flex:1;min-width:120px;background:var(--surface-2);border:1px solid var(--line-soft);border-radius:10px;padding:10px 12px">'
+    +'<div style="font-size:11px;color:var(--text-3)">'+label+'</div>'
+    +'<div style="font-size:15px;font-weight:800;color:var(--text)">$'+Math.round(base||0).toLocaleString()+'</div>'
+    +'<div style="font-size:12px;font-weight:700;color:'+col+'">今日 '+arrow+(sub?' ・'+sub:'')+'</div>'
+    +'</div>';
+}
+
 function renderReports() {
   const revRows = filterByRange(_allRevData);
   const purRows = filterByRange(_allPurData);
@@ -2934,6 +2968,23 @@ function renderReports() {
   if ($('kl-today')) $('kl-today').textContent = '今日營收';
   $('kv-today').textContent = todayRev.toLocaleString();
   $('kn-today').textContent = todayRows.length + ' 筆';
+  // 今日對比：昨日營收 ＋ 同星期別中位數基準
+  try{
+    const _cmp=$('today-compare'), _cbody=$('today-compare-body');
+    if(_cmp && _cbody){
+      if(todayRev>0){
+        const _yd=new Date(_bd); _yd.setDate(_yd.getDate()-1); const _ydStr=normDate(_yd);
+        const _yestRev=_allRevData.filter(r=>normDate(r.date)===_ydStr).reduce((a,r)=>a+(r.total||0),0);
+        const _wd=new Date(_bd).getDay(); const _wdName=['日','一','二','三','四','五','六'][_wd];
+        const _wdArr=an_weekdayTotals(_wd); const _wdMed=an_median(_wdArr);
+        let html='';
+        if(_yestRev>0) html+=an_cmpChip('昨日營收', _yestRev, todayRev);
+        if(_wdMed>0)  html+=an_cmpChip('週'+_wdName+'中位數', _wdMed, todayRev, _wdArr.length+'週樣本');
+        _cbody.innerHTML=html;
+        _cmp.style.display = html ? '' : 'none';
+      } else { _cmp.style.display='none'; }
+    }
+  }catch(e){}
   // Card 2 = 選取區段總營收（標題隨區段變動）
   if ($('kl-month')) $('kl-month').textContent = rangeLabel + '總營收';
   $('kv-month').textContent = totalRev.toLocaleString();
@@ -3516,7 +3567,7 @@ async function loadReports() {
     const purOk = purRes.status==='ok' || purRes.status==='success';
     _allRevData = revOk
       ? (revRes.rows
-          ? revRes.rows.slice(1).map((r,i)=>({date:r[0],note:String(r[1]||''),cash:Number(r[2])||0,card:Number(r[3])||0,twqr:Number(r[4])||0,foodpanda:Number(r[5])||0,ubereats:Number(r[6])||0,total:Number(r[7])||0,cardFee:Number(r[8])||0,twqrFee:Number(r[9])||0,deliveryFee:Number(r[10])||0,off:Number(r[12])||0,filler:String(r[19]||''),_row:i+2}))
+          ? revRes.rows.slice(1).map((r,i)=>({date:r[0],note:String(r[1]||''),cash:Number(r[2])||0,card:Number(r[3])||0,twqr:Number(r[4])||0,foodpanda:Number(r[5])||0,ubereats:Number(r[6])||0,total:Number(r[7])||0,cardFee:Number(r[8])||0,twqrFee:Number(r[9])||0,deliveryFee:Number(r[10])||0,off:Number(r[12])||0,filler:String(r[19]||''),reason:String(r[20]||''),annotator:String(r[21]||''),_row:i+2}))
           : (revRes.data||[]))
       : [];
     _allPurData = purOk
