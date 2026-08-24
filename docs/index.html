@@ -1919,7 +1919,7 @@ html,body,button,input,select,textarea,
 
 <script>
 // ── 自動更新：開啟時比對版本，有新版就自動重載（免無痕）──
-const APP_VER='20260823180000';
+const APP_VER='20260824120000';
 const GT_KEY='gtk_9F3xQ7Lz_pW2rM8kT';  // 後台共用密鑰（階段A：前端帶上；階段B：後台驗證）
 // 是否有「打到一半、還沒送出」的資料（結帳/進貨/交接/申訴的輸入框有值）→ 有的話先別強制重載，免得清掉
 function _hasTypedData(){try{var els=document.querySelectorAll('#tab-revenue input,#tab-revenue textarea,#tab-purchase input,#tab-purchase textarea,#tab-handover input,#tab-handover textarea,#tab-bully input,#tab-bully textarea');for(var i=0;i<els.length;i++){var el=els[i];if(el.type==='date'||el.type==='hidden')continue;if((el.value||'').trim())return true;}return false;}catch(e){return false;}}
@@ -2837,6 +2837,40 @@ function filterByRange(rows) {
 // ── 創辦成本攤提：金額改由「制度設定」的創辦成本攤提（月）提供；報表不再有輸入卡，但仍按區段天數計入淨利 ──
 function rangeDays(){try{const b=getDateBounds();const d=Math.round((new Date(b.to)-new Date(b.from))/86400000)+1;return d>0?d:1;}catch(e){return 1;}}
 function periodAmort(){if(!(CU&&CU.role==='BOSS'))return 0;return foundingDaily()*rangeDays();}   // 創辦成本攤提＝每日攤提(前期金額÷年份÷365)×區段天數
+
+// ── 排班表推估人事（數據報表用；排班表第8欄=預估薪資）──
+let _an_sched = null;   // [{date:'YYYY-MM-DD', name, salary}]
+function an_setSched(rows){
+  _an_sched = (rows&&rows.length ? rows.slice(1) : []).map(function(r){return {date:normDate(r[0]), name:String(r[1]||''), salary:Number(r[8])||0};}).filter(function(x){return x.date;});
+}
+// 固定人員（不在排班表、每月固定，如掃地）；制度設定可編輯 rm_fixed_staff
+function an_fixedStaff(){var v=LS.get('rm_fixed_staff',null);return Array.isArray(v)?v:[{name:'掃地',monthly:9000}];}
+function an_fixedMonthly(){return an_fixedStaff().reduce(function(a,x){return a+(Number(x.monthly)||0);},0);}
+// 固定人員按區段跨月天數比例分攤（每月 monthly × 該月落在區段內天數 / 該月總天數）
+function an_fixedProrate(fromStr,toStr){
+  var per=an_fixedMonthly(); if(!per||!fromStr||!toStr) return 0;
+  var total=0, y=+fromStr.slice(0,4), m=+fromStr.slice(5,7), endY=+toStr.slice(0,4), endM=+toStr.slice(5,7), guard=0;
+  while((y<endY||(y===endY&&m<=endM)) && guard++<120){
+    var mk=y+'-'+String(m).padStart(2,'0'), dim=new Date(y,m,0).getDate();
+    var mStart=mk+'-01', mEnd=mk+'-'+String(dim).padStart(2,'0');
+    var ovStart=(fromStr>mStart)?fromStr:mStart, ovEnd=(toStr<mEnd)?toStr:mEnd;
+    if(ovStart<=ovEnd){var days=Math.round((new Date(ovEnd)-new Date(ovStart))/86400000)+1; total+=per*days/dim;}
+    m++; if(m>12){m=1;y++;}
+  }
+  return total;
+}
+// 推估人事＝排班表預估薪資（區間加總）＋固定人員分攤
+function an_estLabor(fromStr,toStr){
+  var sched=(_an_sched||[]).reduce(function(a,x){return (x.date>=fromStr&&x.date<=toStr)?a+x.salary:a;},0);
+  var fixed=an_fixedProrate(fromStr,toStr);
+  return {sched:sched, fixed:fixed, total:sched+fixed};
+}
+// 決定人事採用值：進貨已入帳實際人事且達推估85%→用實際；否則用推估（月中進貨=0時避免淨利虛高）
+function an_laborPick(actual,est){
+  var used = (actual>0 && actual>=est*0.85) ? actual : est;
+  return {used:used, isEst:(used!==actual)};
+}
+
 function renderReports() {
   const revRows = filterByRange(_allRevData);
   const purRows = filterByRange(_allPurData);
@@ -2846,11 +2880,17 @@ function renderReports() {
   const totalRev = revRows.reduce((a,r) => a + (r.total||0), 0);
   const _cc={'食材':0,'人事':0,'固定':0,'耗材':0};
   purRows.forEach(r=>{const k=costClass(r.category);if(k)_cc[k]+=(r.cost||0);});
-  const totalCost = _cc['食材']+_cc['人事']+_cc['固定']+_cc['耗材'];
+  // 人事：進貨帳列(月底才登)常為0→改用排班表推估，避免淨利虛高
+  const _laborActual = _cc['人事'];
+  const _est = an_estLabor(from,to);
+  const _lab = an_laborPick(_laborActual, _est.total);
+  const _laborUsed = _lab.used, _laborIsEst = _lab.isEst;
+  const _otherCost = _cc['食材']+_cc['固定']+_cc['耗材'];   // 帳列非人事成本
+  const totalCost = _otherCost + _laborUsed;                 // 總成本＝非人事帳列 ＋ 採用人事
   const totalFee = revRows.reduce((a,r) => a + (r.cardFee||0) + (r.twqrFee||0) + (r.deliveryFee||0), 0);
   const netRevenue = totalRev - totalFee;   // 預估實收＝營收 − 手續費
   const _amort = periodAmort();             // 本區段創辦攤提
-  const netProfit = netRevenue - totalCost - _amort; // 淨利＝預估實收 − 成本 − 創辦攤提
+  const netProfit = netRevenue - totalCost - _amort; // 淨利＝預估實收 − 成本(含推估人事) − 創辦攤提
   const ch = { cash:0, card:0, twqr:0, foodpanda:0, ubereats:0 };
   revRows.forEach(r => { ch.cash+=r.cash||0; ch.card+=r.card||0; ch.twqr+=r.twqr||0; ch.foodpanda+=r.foodpanda||0; ch.ubereats+=r.ubereats||0; });
 
@@ -2882,7 +2922,11 @@ function renderReports() {
   $('kv-profit').textContent = Math.round(netProfit).toLocaleString();
   const margin = totalRev > 0 ? Math.round(netProfit/totalRev*100) : 0;
   if($('kv-margin'))$('kv-margin').textContent = margin;
-  $('kn-profit').textContent = '已扣手續費' + (_amort>0?'、創辦攤提 $'+Math.round(_amort).toLocaleString():'');
+  // 淨利註解：標明人事來源（推估／實際）＋手續費＋攤提
+  const _labTxt = _laborIsEst
+    ? '<span style="color:#f59e0b;font-weight:700">含推估人事 $'+Math.round(_laborUsed).toLocaleString()+'</span>（排班$'+Math.round(_est.sched).toLocaleString()+(_est.fixed>0?'＋固定$'+Math.round(_est.fixed).toLocaleString():'')+'，薪資入帳後自動改實際）'
+    : '含實際人事 $'+Math.round(_laborUsed).toLocaleString();
+  $('kn-profit').innerHTML = _labTxt + '・已扣手續費' + (_amort>0?'・創辦攤提 $'+Math.round(_amort).toLocaleString():'');
   // 上期比較（同長度區段）
   const _prevRev = prevPeriodRev(from,to);
   if(_prevRev!=null && _prevRev>0){const _d=Math.round((totalRev-_prevRev)/_prevRev*100);const _n=$('kn-month');if(_n)_n.innerHTML+=` <span style="color:${_d>=0?'#06c167':'#dc2626'};font-weight:700">${_d>=0?'▲':'▼'}${Math.abs(_d)}%</span>`;}
@@ -3329,7 +3373,9 @@ function drawPriceHistory(byAmt){
 }
 function renderAnalysis(revRows,purRows,totalRev,cc){
   const host=$('report-analysis');if(!host)return;
-  const foodCost=cc['食材'],laborCost=cc['人事'],fixedCost=cc['固定'],miscCost=cc['耗材'];
+  const _ab=getDateBounds();const _aEst=an_estLabor(_ab.from,_ab.to);const _aPick=an_laborPick(cc['人事'],_aEst.total);
+  const foodCost=cc['食材'],laborCost=_aPick.used,fixedCost=cc['固定'],miscCost=cc['耗材'];   // 人事：推估/實際擇一（與淨利 KPI 一致）
+  const _laborIsEst=_aPick.isEst;
   const opCost=foodCost+laborCost+fixedCost+miscCost;
   const foodRate=totalRev>0?foodCost/totalRev*100:0,laborRate=totalRev>0?laborCost/totalRev*100:0;
   const totalFee=revRows.reduce((a,r)=>a+(r.cardFee||0)+(r.twqrFee||0)+(r.deliveryFee||0),0);
@@ -3360,7 +3406,7 @@ function renderAnalysis(revRows,purRows,totalRev,cc){
     ${_amort>0?`<div class="kpi-card"><div class="kpi-label">創辦攤提</div><div class="kpi-val"><small>$</small>${Math.round(_amort).toLocaleString()}</div><div class="kpi-note">本區段 ${rangeDays()} 天</div></div>`:''}
     <div class="kpi-card gold-accent"><div class="kpi-label">淨利</div><div class="kpi-val"><small>$</small>${Math.round(net).toLocaleString()}</div><div class="kpi-note">淨利率 ${netRate.toFixed(0)}%${_amort>0?'（含創辦攤提）':''}</div></div>
   </div></div>`;
-  h+=`<div class="c-card"><div class="c-card-title">💰 成本結構</div><div class="kpi-grid" style="margin-bottom:12px">${costStat('🥬 食材',foodCost,foodRate,32)}${costStat('👥 人事',laborCost,laborRate,25)}${miniStat('🏠 固定',fixedCost,totalRev)}${miniStat('📦 耗材',miscCost,totalRev)}${_amort>0?miniStat('🏦 創辦攤提',_amort,totalRev):''}</div><div class="chart-wrap" style="max-width:240px;margin:0 auto"><canvas id="cost-pie"></canvas></div><div id="cost-legend" style="margin-top:10px;display:flex;flex-direction:column;gap:5px"></div></div>`;
+  h+=`<div class="c-card"><div class="c-card-title">💰 成本結構</div><div class="kpi-grid" style="margin-bottom:12px">${costStat('🥬 食材',foodCost,foodRate,32)}${costStat('👥 人事'+(_laborIsEst?'(推估)':''),laborCost,laborRate,25)}${miniStat('🏠 固定',fixedCost,totalRev)}${miniStat('📦 耗材',miscCost,totalRev)}${_amort>0?miniStat('🏦 創辦攤提',_amort,totalRev):''}</div><div class="chart-wrap" style="max-width:240px;margin:0 auto"><canvas id="cost-pie"></canvas></div><div id="cost-legend" style="margin-top:10px;display:flex;flex-direction:column;gap:5px"></div></div>`;
   h+=`<div class="c-card"><div class="c-card-title">📈 食材漲跌分析</div>`;
   if(!changed.length){h+=`<div class="game-empty">尚無足夠的進貨歷史可比較（同一主食材需至少 2 次進貨）</div>`;}
   else{
@@ -3430,10 +3476,12 @@ function drawSalesBar(cvId,arr,color){
 async function loadReports() {
   $('report-last-update').textContent='載入中…';
   try{
-    const [revRes,purRes]=await Promise.all([
+    const [revRes,purRes,schRes]=await Promise.all([
       apiGetCached('query_revenue'),
-      apiGetCached('query_purchase')
+      apiGetCached('query_purchase'),
+      apiGetCached('query_schedule').catch(function(){return null;})
     ]);
+    an_setSched((schRes&&schRes.rows)?schRes.rows:[]);   // 排班表→推估人事
     const revOk = revRes.status==='ok' || revRes.status==='success';
     const purOk = purRes.status==='ok' || purRes.status==='success';
     _allRevData = revOk
