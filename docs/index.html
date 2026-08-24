@@ -835,9 +835,8 @@ img,canvas,table,video{max-width:100%;}
 .cico svg{width:22px;height:22px;color:#111111;}
 .tc-emoji .cico svg{width:24px;height:24px;}
 .cico-emoji{font-size:20px;}
-/* ═══ 指定字體 ChillDINGothic ═══ */
-@font-face{font-family:'ChillDINGothic';src:url('https://cdn.jsdelivr.net/gh/Warren2060/ChillDIN-ChillDINGothic@main/ChillDINGothic%20v1.300_Std/ChillDINGothic_Std.woff2') format('woff2');font-display:swap;}
-body,html,button,input,select,textarea,.brand-name,.topbar-title,.sec-title,.c-card-title,.cc-title,.hero-name,.drawer-sys,.kpi-val,.home-name,.drawer-item,.nav-btn,.field-input,.form-input,.subform-title,.lb-name,.tc-title{font-family:'ChillDINGothic','Noto Sans TC','Inter',sans-serif!important;}
+/* 全站字體：Inter(拉丁) + Noto Sans TC(中文)。移除 ChillDINGothic：它無中文字且缺字符號會擋住中文遞補→名字顯示成「?」 */
+body,html,button,input,select,textarea,.brand-name,.topbar-title,.sec-title,.c-card-title,.cc-title,.hero-name,.drawer-sys,.kpi-val,.home-name,.drawer-item,.nav-btn,.field-input,.form-input,.subform-title,.lb-name,.tc-title{font-family:'Inter','Noto Sans TC',sans-serif!important;}
 
 /* ═══════════════ ✨ 整體精緻化設計層（酒紅 × 金 × 米白・高級感）═══════════════ */
 :root{--acc:#e8e8e8;--acc-2:#e8e8e8;}
@@ -1890,7 +1889,7 @@ html,body,button,input,select,textarea,
 
 <script>
 // ── 自動更新：開啟時比對版本，有新版就自動重載（免無痕）──
-const APP_VER='20260821230000';
+const APP_VER='20260822100000';
 const GT_KEY='gtk_9F3xQ7Lz_pW2rM8kT';  // 後台共用密鑰（階段A：前端帶上；階段B：後台驗證）
 // 是否有「打到一半、還沒送出」的資料（結帳/進貨/交接/申訴的輸入框有值）→ 有的話先別強制重載，免得清掉
 function _hasTypedData(){try{var els=document.querySelectorAll('#tab-revenue input,#tab-revenue textarea,#tab-purchase input,#tab-purchase textarea,#tab-handover input,#tab-handover textarea,#tab-bully input,#tab-bully textarea');for(var i=0;i<els.length;i++){var el=els[i];if(el.type==='date'||el.type==='hidden')continue;if((el.value||'').trim())return true;}return false;}catch(e){return false;}}
