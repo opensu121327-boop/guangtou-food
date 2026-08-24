@@ -1598,6 +1598,13 @@ html,body,button,input,select,textarea,
         </div>
         <div id="fnd-out" class="muted-note" style="margin-top:8px"></div>
       </div>
+      <div class="c-card">
+        <div class="c-card-title">🧹 固定人員薪資</div>
+        <div class="muted-note" style="margin-bottom:10px">不在「排班表」裡、每月固定支付的人員（例：掃地阿姨）。會按天數比例計入報表的「推估人事」。改完即時儲存。</div>
+        <div id="fixed-staff-list"></div>
+        <button type="button" class="btn-sm btn-neutral" style="margin-top:8px;padding:0 14px" onclick="an_fixedStaffAdd()">＋ 新增固定人員</button>
+        <div id="fixed-staff-total" class="muted-note" style="margin-top:8px"></div>
+      </div>
       <button class="btn-action" onclick="saveRewardCfg()">✓ 儲存制度設定</button>
       <div class="c-card" style="margin-top:16px">
         <div class="c-card-title">💰 分潤試算（依 Google Sheet 即時計算）</div>
@@ -2283,7 +2290,7 @@ function renderSettings(){   // 制度設定頁：填入目前值（僅老闆）
   const c=rewardCfg(); const set=(id,v)=>{if($(id))$(id).value=v;};
   set('set-wage',c.baseWage);set('set-pool',c.poolPct);set('set-penalty',c.penaltyPct);
   set('set-fee-card',c.fee.card);set('set-fee-twqr',c.fee.twqr);set('set-fee-delivery',c.fee.delivery);
-  renderFounding();renderProfitPreview();renderTreeEditor();renderAwardParams();
+  renderFounding();renderProfitPreview();renderTreeEditor();renderAwardParams();an_fixedStaffRender();
 }
 function _ymKey(v){return String(v||'').slice(0,7).replace(/\//g,'-');}   // 年月鍵 2026-08
 // ── 🎯 主推商品設定（老闆）──
@@ -2846,6 +2853,29 @@ function an_setSched(rows){
 // 固定人員（不在排班表、每月固定，如掃地）；制度設定可編輯 rm_fixed_staff
 function an_fixedStaff(){var v=LS.get('rm_fixed_staff',null);return Array.isArray(v)?v:[{name:'掃地',monthly:9000}];}
 function an_fixedMonthly(){return an_fixedStaff().reduce(function(a,x){return a+(Number(x.monthly)||0);},0);}
+function an_fixedStaffSave(list){LS.set('rm_fixed_staff',list);if(typeof cloudPush==='function')cloudPush('rm_fixed_staff');}
+// 制度設定：固定人員編輯
+function an_fixedStaffRender(){
+  var host=$('fixed-staff-list'); if(!host) return;
+  var list=an_fixedStaff();
+  host.innerHTML=list.map(function(s,i){
+    return '<div style="display:flex;gap:8px;align-items:center;margin-bottom:8px">'
+      +'<input class="form-input" style="flex:1" placeholder="姓名/職務" value="'+String(s.name||'').replace(/"/g,'&quot;')+'" onchange="an_fixedStaffSet('+i+',\'name\',this.value)">'
+      +'<input class="form-input" style="width:120px" type="number" min="0" inputmode="numeric" placeholder="月薪" value="'+(Number(s.monthly)||0)+'" onchange="an_fixedStaffSet('+i+',\'monthly\',this.value)">'
+      +'<button type="button" class="btn-sm btn-neutral" style="padding:0 12px" onclick="an_fixedStaffDel('+i+')">刪除</button>'
+    +'</div>';
+  }).join('') || '<div class="muted-note">尚無固定人員</div>';
+  var t=$('fixed-staff-total'); if(t) t.textContent='固定人員月支出合計：$'+an_fixedMonthly().toLocaleString();
+}
+function an_fixedStaffSet(i,field,val){
+  var list=an_fixedStaff();
+  if(!list[i]) return;
+  list[i][field] = field==='monthly' ? (Math.max(0,Number(val)||0)) : String(val||'');
+  an_fixedStaffSave(list);
+  var t=$('fixed-staff-total'); if(t) t.textContent='固定人員月支出合計：$'+an_fixedMonthly().toLocaleString();
+}
+function an_fixedStaffAdd(){var list=an_fixedStaff().slice();list.push({name:'',monthly:0});an_fixedStaffSave(list);an_fixedStaffRender();}
+function an_fixedStaffDel(i){var list=an_fixedStaff().slice();list.splice(i,1);an_fixedStaffSave(list);an_fixedStaffRender();toast('已刪除','gold');}
 // 固定人員按區段跨月天數比例分攤（每月 monthly × 該月落在區段內天數 / 該月總天數）
 function an_fixedProrate(fromStr,toStr){
   var per=an_fixedMonthly(); if(!per||!fromStr||!toStr) return 0;
