@@ -1899,7 +1899,7 @@ html,body,button,input,select,textarea,
 
 <script>
 // ── 自動更新：開啟時比對版本，有新版就自動重載（免無痕）──
-const APP_VER='20260822160000';
+const APP_VER='20260822180000';
 const GT_KEY='gtk_9F3xQ7Lz_pW2rM8kT';  // 後台共用密鑰（階段A：前端帶上；階段B：後台驗證）
 // 是否有「打到一半、還沒送出」的資料（結帳/進貨/交接/申訴的輸入框有值）→ 有的話先別強制重載，免得清掉
 function _hasTypedData(){try{var els=document.querySelectorAll('#tab-revenue input,#tab-revenue textarea,#tab-purchase input,#tab-purchase textarea,#tab-handover input,#tab-handover textarea,#tab-bully input,#tab-bully textarea');for(var i=0;i<els.length;i++){var el=els[i];if(el.type==='date'||el.type==='hidden')continue;if((el.value||'').trim())return true;}return false;}catch(e){return false;}}
@@ -2060,6 +2060,7 @@ async function enterApp() {
   // 背景把資料抓齊並刷新目前畫面（含照片），慢的雲端不再擋住登入
   if(syncOn())setTimeout(function(){
     refreshActiveUsers();   // 依帳號管理 Sheet 更新在職名單，離職(已刪帳號)者前台不再顯示
+    if(typeof cloudPush==='function')cloudPush('rm_material_pack');   // 補推包裝規格(兩個單位)到雲端，讓其他裝置也補齊
     cloudPull(true).then(function(){if(!CU)return;updateGameChip();if(_busyUI())return;var act=document.querySelector('.tab-panel.active');if(act)reRenderTab(act.id.replace('tab-',''));}).catch(function(){});
     // 登入後在背景先暖好常用查詢的快取，之後點進進貨/報表就秒開（Apps Script 每次呼叫約2.7秒，先偷偷抓好）
     if(typeof apiGetCached==='function'){apiGetCached('query_purchase_recent').catch(function(){});apiGetCached('query_revenue').catch(function(){});}
@@ -2626,7 +2627,7 @@ async function submitPu() {
   const unit=qty>0?Math.round(cost/qty*100)/100:cost;
   const code=$('pu-code').value.trim();
   const packq=parseFloat($('pu-packq')&&$('pu-packq').value)||0;const packu=($('pu-packu')&&$('pu-packu').value)||'克';
-  if(code&&packq>0){const mp=LS.get('rm_material_pack',{})||{};mp[code]=packq+packu;LS.set('rm_material_pack',mp);}
+  if(code&&packq>0){const mp=LS.get('rm_material_pack',{})||{};mp[code]=packq+packu;LS.set('rm_material_pack',mp);if(typeof cloudPush==='function')cloudPush('rm_material_pack');}
   const row={
     '進貨日期':date,'物料編號':$('pu-code').value,
     '分類':($('pu-cat')?$('pu-cat').value:''),'物料名稱':name,'進貨數量':qty>0?qty:'',
@@ -3265,7 +3266,7 @@ function mergeLogArr(key,cloudVal){
 }
 // 姓名對照表（每人登入寫自己的）：以鍵聯集合併，避免整包覆蓋把別人的名字蓋掉；本機值優先
 function mergeNames(key,cloudVal){try{var loc=JSON.parse(localStorage.getItem(key)||'{}')||{};var cl=JSON.parse(cloudVal||'{}')||{};localStorage.setItem(key,JSON.stringify(Object.assign({},cl,loc)));}catch(e){localStorage.setItem(key,cloudVal);}}
-function cloudPull(light){if(!syncOn())return Promise.resolve();return kv('kv_all',light?{light:1}:{}).then(function(res){if(res&&res.status==='ok'&&res.data){for(var k in res.data){if(k.indexOf('rm_')!==0||res.data[k]==null)continue;if(k==='rm_submissions'||k==='rm_redemptions')mergeLogArr(k,res.data[k]);else if(k==='rm_names')mergeNames(k,res.data[k]);else localStorage.setItem(k,res.data[k]);}}}).catch(function(){});}
+function cloudPull(light){if(!syncOn())return Promise.resolve();return kv('kv_all',light?{light:1}:{}).then(function(res){if(res&&res.status==='ok'&&res.data){for(var k in res.data){if(k.indexOf('rm_')!==0||res.data[k]==null)continue;if(k==='rm_submissions'||k==='rm_redemptions')mergeLogArr(k,res.data[k]);else if(k==='rm_names'||k==='rm_material_pack')mergeNames(k,res.data[k]);else localStorage.setItem(k,res.data[k]);}}}).catch(function(){});}
 function isTyping(){var a=document.activeElement;if(!a)return false;var t=(a.tagName||'').toUpperCase();return t==='INPUT'||t==='TEXTAREA'||t==='SELECT'||a.isContentEditable===true;}
 // 使用者正在操作中（輸入／彈窗開著／送出鈕處理中）→ 背景同步先別重刷畫面，避免手上的操作被打斷或閃動
 function _busyUI(){return isTyping()||!!document.querySelector('.subform-overlay.show,.btn-busy');}
