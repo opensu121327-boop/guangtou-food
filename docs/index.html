@@ -1484,6 +1484,18 @@ html,body,button,input,select,textarea,
       </details>
     </div>
 
+    <!-- 期末盤點 TAB -->
+    <div class="tab-panel" id="tab-endinv">
+      <div class="sec-header"><div class="sec-title">月底期末盤點</div><div class="divider"></div><div class="sec-sub">打烊後盤點關鍵食材庫存 → 算出期末存貨總值</div></div>
+      <div id="endinv-wrap"><div class="loading-state"><div class="spin"></div>載入中</div></div>
+    </div>
+
+    <!-- 食材率 TAB -->
+    <div class="tab-panel" id="tab-foodcost">
+      <div class="sec-header"><div class="sec-title">真實食材率</div><div class="divider"></div><div class="sec-sub">期初 ＋ 進貨 − 期末 ÷ 營收</div></div>
+      <div id="foodcost-wrap"><div class="loading-state"><div class="spin"></div>載入中</div></div>
+    </div>
+
     <!-- ACCOUNTS TAB -->
     <div class="tab-panel" id="tab-accounts">
       <div class="sec-header">
@@ -1907,7 +1919,7 @@ html,body,button,input,select,textarea,
 
 <script>
 // ── 自動更新：開啟時比對版本，有新版就自動重載（免無痕）──
-const APP_VER='20260823140000';
+const APP_VER='20260823160000';
 const GT_KEY='gtk_9F3xQ7Lz_pW2rM8kT';  // 後台共用密鑰（階段A：前端帶上；階段B：後台驗證）
 // 是否有「打到一半、還沒送出」的資料（結帳/進貨/交接/申訴的輸入框有值）→ 有的話先別強制重載，免得清掉
 function _hasTypedData(){try{var els=document.querySelectorAll('#tab-revenue input,#tab-revenue textarea,#tab-purchase input,#tab-purchase textarea,#tab-handover input,#tab-handover textarea,#tab-bully input,#tab-bully textarea');for(var i=0;i<els.length;i++){var el=els[i];if(el.type==='date'||el.type==='hidden')continue;if((el.value||'').trim())return true;}return false;}catch(e){return false;}}
@@ -2101,7 +2113,8 @@ function initApp() {
   // build nav
   // 員工與店長暫時只開放：每日結帳／進貨記錄／BOM成本／交接表（老闆維持全部）。要復原把此白名單移除即可。
   const NONBOSS_TABS=['revenue','purchase','bom','handover','bully'];
-  const tabs=(CU.role==='BOSS')?ALL_TABS.filter(t=>t.roles.includes(CU.role)):ALL_TABS.filter(t=>NONBOSS_TABS.indexOf(t.id)>=0);
+  // 期末盤點/食材率依角色 roles 開放給非老闆（endinv 給店長+員工、foodcost 只給店長）
+  const tabs=(CU.role==='BOSS')?ALL_TABS.filter(t=>t.roles.includes(CU.role)):ALL_TABS.filter(t=>NONBOSS_TABS.indexOf(t.id)>=0||(['endinv','foodcost'].indexOf(t.id)>=0&&t.roles.includes(CU.role)));
   $('main-nav').innerHTML=tabs.map((t,i)=>
     `<button class="nav-btn${i===0?' active':''}" data-tab="${t.id}" onclick="switchTab('${t.id}',this)">
       <span class="nav-icon">${t.icon}</span>${t.label}
@@ -2132,6 +2145,8 @@ function switchTab(name,btn) {
   btn.classList.add('active');
   if(name==='revenue')fillRvNoteSelect();
   if(name==='reports')loadReports();
+  if(name==='endinv')renderEndInv();
+  if(name==='foodcost')renderFoodCost();
   if(name==='purchase'){loadMaterials().then(fillMatCatSelect);renderRecentPurchases();fillPuUnitSelect();fillPuPackuSelect();}
   if(name==='bom'){renderBom();loadBomImgs(renderBom);Promise.all([loadMaterials(),loadRecipeCosts()]).then(renderBom);}
   if(name==='matcat')renderMatCat();
@@ -2186,6 +2201,8 @@ const ICONS={
   settings:_svg('<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.6 1.6 0 00.3 1.8l.1.1a2 2 0 11-2.8 2.8l-.1-.1a1.6 1.6 0 00-2.7 1.1V21a2 2 0 11-4 0v-.1A1.6 1.6 0 006 19.4l-.1.1a2 2 0 11-2.8-2.8l.1-.1A1.6 1.6 0 003 15a2 2 0 010-4 1.6 1.6 0 001.5-2.6l-.1-.1a2 2 0 112.8-2.8l.1.1A1.6 1.6 0 009 3.6V3a2 2 0 014 0v.1A1.6 1.6 0 0018 4.6l.1-.1a2 2 0 112.8 2.8l-.1.1A1.6 1.6 0 0021 11a2 2 0 010 4z"/>'),
   focuscfg:_svg('<circle cx="12" cy="12" r="8.5"/><circle cx="12" cy="12" r="4.6"/><circle cx="12" cy="12" r="1.1" fill="currentColor"/>'),
   revthr:_svg('<path d="M4 4v16h16"/><path d="M7 15l3-4 3 2 4-6"/>'),
+  endinv:_svg('<path d="M3 7l9-4 9 4-9 4-9-4z"/><path d="M3 7v10l9 4 9-4V7"/><path d="M12 11v10"/>'),
+  foodcost:_svg('<path d="M4 4v16h16"/><path d="M8 9l3 4 3-3 4 6"/>'),
   matcat:_svg('<path d="M4 12l8-8h6v6l-8 8z"/><circle cx="14.5" cy="9.5" r="1.3"/>')
 };
 function tabIcon(id){return ICONS[id]||'';}
@@ -3007,6 +3024,258 @@ function _invQueueDrainOne(key){try{var q=(LS.get('rm_inv_queue',[])||[]).filter
 // 自我測試（console 執行 invSelfTest()）：證明既有每日盤點資料可正常讀取與解析
 async function invSelfTest(){try{var d=await authApi({type:'query_inv'});var rows=(d&&d.rows)?d.rows:[];var data=rows.slice(1);var ok=0,bad=0,daily=0,sess=0,errs=[];data.forEach(function(r,i){try{var o=normInvRow(r);if(!o.date)throw '無法解析日期';parseInvKey(o.key);if(o.type==='日常回報')daily++;else sess++;ok++;}catch(e){bad++;if(errs.length<10)errs.push('列'+(i+2)+'：'+e);}});var msg='每日盤點自我測試：'+data.length+' 筆，解析成功 '+ok+'／失敗 '+bad+'（日常回報 '+daily+'・場次盤點 '+sess+'）';console.log(msg);if(errs.length)console.log('前幾筆錯誤：',errs);if(typeof toast==='function')toast(msg,bad?'red':'gold');return {total:data.length,ok:ok,bad:bad,daily:daily,sess:sess,errs:errs};}catch(e){console.log('測試連線失敗：',e);return null;}}
 
+// ══════════════ 期末盤點・UI（階段2–5）══════════════
+var _invPoll=null,_invSess=null,_invRows2=null,_invLocal={},_invSig='';
+function invRole(){return (CU&&CU.role)||'EMP';}
+function invCanPrice(){return invRole()==='BOSS'||invRole()==='MGR';}
+function invCanEnd(){return invRole()==='BOSS'||invRole()==='MGR';}
+function invCanEditItems(){return invRole()==='BOSS';}
+function invSessDate(sid){var m=String(sid||'').match(/INV-(\d{4})(\d{2})(\d{2})/);return m?(m[1]+'-'+m[2]+'-'+m[3]):bizDay();}
+function invPad(n){return String(n).padStart(2,'0');}
+function invNewId(){var d=new Date();return 'INV-'+d.getFullYear()+invPad(d.getMonth()+1)+invPad(d.getDate())+'-'+invPad(d.getHours())+invPad(d.getMinutes())+invPad(d.getSeconds());}
+function invFetchRows(){return authApi({type:'query_inv'}).then(function(d){_invRows2=(d&&d.rows)?d.rows:[];return _invRows2;}).catch(function(){return _invRows2||[];});}
+// KV 讀寫（歷史/last）
+function kvGetJSON(key){return kv('kv_get',{key:key}).then(function(d){try{return (d&&d.value)?JSON.parse(d.value):null;}catch(e){return null;}}).catch(function(){return null;});}
+function kvSetJSON(key,obj){return kv('kv_set',{key:key,value:JSON.stringify(obj)});}
+// 聚合本場次已寫入列 → {code:{qty,unit,price,amount,name,zone,note,by,byName}}
+function invWrittenMap(rows,sid){var m={};(rows||[]).slice(1).forEach(function(r){var o=normInvRow(r);if(o.type!=='期末盤點')return;var s=o.sessionId||parseInvKey(o.key).sessionId;if(s!==sid)return;m[o.matCode||o.name]=o;});return m;}
+function invSessTotal(map){var t=0;for(var k in map)t+=(map[k].amount||0);return t;}
+function invZoneCount(items,map,zone){var done=0,tot=0;items.forEach(function(it){if(it.zone!==zone)return;tot++;if(map[it.code||it.name])done++;});return {done:done,tot:tot};}
+// §6 食材分類判斷（startsWith；排除非食材）
+function invIsFoodCat(cat){cat=String(cat||'').trim();var ex=['餐具/廚具/設備維修','設備餐具維修','水電雜支','行銷','員工','耗材與雜項','包材消耗','金額異動'];for(var i=0;i<ex.length;i++)if(cat.indexOf(ex[i])===0)return false;if(cat.indexOf('漁船')===0)return false;var f=['水產','肉類','蔬菜','冷盤','半成品','調味'];for(var j=0;j<f.length;j++)if(cat.indexOf(f[j])===0)return true;return false;}
+function invNormName(s){return String(s||'').replace(/[\s（）()]/g,'');}
+
+// ── 主入口 ──
+function renderEndInv(){var wrap=$('endinv-wrap');if(!wrap||!CU)return;
+  wrap.innerHTML='<div class="loading-state"><div class="spin"></div>載入中</div>';
+  Promise.all([getInvSession(),invFetchRows(),kvGetJSON('inv_session_last')]).then(function(a){
+    var sess=a[0],rows=a[1],last=a[2];_invSess=sess;window._invLastSummary=last;
+    if(sess&&sess.status==='open')invPaintCount(sess,rows,last);
+    else invPaintHome(last,rows);
+  });
+}
+function invStopPoll(){if(_invPoll){clearInterval(_invPoll);_invPoll=null;}}
+
+// ── 首頁（無進行中場次）＝也是上次完成頁 ──
+function invPaintHome(last,rows){invStopPoll();var wrap=$('endinv-wrap');if(!wrap)return;
+  var h='<div class="c-card"><div class="c-card-title">📦 月底期末盤點</div><div class="muted-note">打烊後盤點下列關鍵食材,算出「期末存貨總值」。兩人可同時分區盤點。</div>'
+    +'<button class="btn-action" style="width:100%;margin-top:12px" onclick="startInvSession()">▶ 開始期末盤點</button></div>';
+  if(last&&last.total!=null){
+    var prev=last.prevTotal;
+    h+='<div class="c-card"><div class="c-card-title">🧾 上次盤點結果（'+esc(last.date||'')+'）</div>'
+      +'<div style="text-align:center;padding:6px 0"><div class="muted-note">期末存貨總值</div><div style="font-size:34px;font-weight:800;letter-spacing:-.02em">$'+Math.round(last.total).toLocaleString()+'</div>'
+      +(prev!=null?'<div class="xp-text">較上次 '+(last.total-prev>=0?'▲ +':'▼ ')+'$'+Math.abs(Math.round(last.total-prev)).toLocaleString()+'（'+(prev>0?Math.round((last.total-prev)/prev*100):0)+'%）</div>':'')
+      +'</div>';
+    if(last.zone){h+='<div style="margin-top:8px">';INV_ZONES.forEach(function(z){if(last.zone[z]!=null)h+=bLineInv(z,'$'+Math.round(last.zone[z]).toLocaleString());});h+='</div>';}
+    if(last.anomalies&&last.anomalies.length){h+='<div class="muted-note" style="margin-top:10px;color:#b45309">⚠️ 本次 '+last.anomalies.length+' 項異常（差異大）：'+last.anomalies.map(function(x){return esc(x.name);}).join('、')+'</div>';}
+    h+='<button class="btn-sm btn-neutral" style="margin-top:10px" onclick="invExportSummary()">📤 匯出摘要</button></div>';
+  }
+  wrap.innerHTML=h;
+}
+function bLineInv(label,val){return '<div style="display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid #f0f0f0;font-size:13.5px"><span style="color:var(--text-2)">'+esc(label)+'</span><b>'+esc(val)+'</b></div>';}
+
+// ── 開始/加入場次 ──
+function startInvSession(){
+  var sid=invNewId();
+  var sess={sessionId:sid,startedAt:new Date().toISOString(),startedBy:CU.username,startedByName:CU.name,status:'open',month:invSessDate(sid).slice(0,7),zoneClaims:{}};
+  INV_ZONES.forEach(function(z){sess.zoneClaims[z]=null;});
+  setInvSession(sess).then(function(){toast('已開始期末盤點','gold');renderEndInv();}).catch(function(){toast('開始失敗,請重試','red');});
+}
+
+// ── 盤點主畫面 ──
+function invPaintCount(sess,rows,last){var wrap=$('endinv-wrap');if(!wrap)return;
+  var items=invItems();var map=invWrittenMap(rows,sess.sessionId);
+  // 初始化本機編輯狀態（保留使用者尚未寫入的暫值不動）
+  items.forEach(function(it){var c=it.code||it.name;if(!_invLocal[c])_invLocal[c]={};var w=map[c];
+    if(_invLocal[c].price==null)_invLocal[c].price=(w&&w.price)||it.price;});
+  var lastMap=(last&&last.byCode)||{};
+  var joinBanner=(sess.startedBy!==CU.username)?'<div class="c-card" style="background:#e3f7ea;border-color:#86efac"><b>🟢 '+esc(sess.startedByName||sess.startedBy)+'</b> 正在盤點中,你可以認領下方儲位一起盤。</div>':'';
+  var top='<div class="c-card" id="inv-top" style="position:sticky;top:0;z-index:5">'+invTopHtml(sess,items,map)+'</div>';
+  var zones='';
+  INV_ZONES.forEach(function(z,zi){zones+=invZoneHtml(z,zi,items,sess,map,lastMap);});
+  var endBtn=invCanEnd()?'<button class="btn-action" style="width:100%;margin-top:14px;background:#b45309!important" onclick="endInvSession()">⏹ 結束盤點</button>':'<div class="muted-note" style="margin-top:12px">（結束盤點由店長以上執行）</div>';
+  wrap.innerHTML=joinBanner+top+zones+endBtn;
+  invStartPoll();
+}
+function invTopHtml(sess,items,map){
+  var total=invSessTotal(map);var done=Object.keys(map).length;var tot=items.length;
+  var mins=Math.max(0,Math.round((Date.now()-new Date(sess.startedAt).getTime())/60000));
+  return '<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">'
+    +'<div><div class="muted-note">目前累計</div><div style="font-size:24px;font-weight:800">$'+Math.round(total).toLocaleString()+'</div></div>'
+    +'<div style="text-align:center"><div class="muted-note">已完成</div><div style="font-size:18px;font-weight:700">'+done+' / '+tot+'</div></div>'
+    +'<div style="text-align:right"><div class="muted-note">經過</div><div style="font-size:18px;font-weight:700">'+mins+' 分</div></div></div>';
+}
+function invZoneHtml(zone,zi,items,sess,map,lastMap){
+  var zitems=items.filter(function(it){return it.zone===zone;});
+  var cnt=invZoneCount(items,map,zone);
+  var claimer=sess.zoneClaims?sess.zoneClaims[zone]:null;
+  var mine=claimer===CU.username;
+  var claimerName=claimer?(LS.get('rm_names',{})[claimer]||claimer):'';
+  var head='<div class="c-card-title" style="display:flex;justify-content:space-between;align-items:center">'
+    +'<span>'+['①','②','③','④'][zi]+' '+esc(zone)+' <span style="color:var(--text-3);font-weight:400">'+cnt.done+'/'+cnt.tot+'</span></span>';
+  var ctrl='';
+  if(!claimer)ctrl='<button class="btn-sm btn-neutral" onclick="invClaimZone(\''+esc(zone)+'\')">認領</button>';
+  else if(mine)ctrl='<button class="btn-sm btn-neutral" onclick="invReleaseZone(\''+esc(zone)+'\')">放棄</button>';
+  else ctrl='<span class="pill" style="background:#eee;color:#666">🔒 '+esc(claimerName)+' 盤點中</span>';
+  head+=ctrl+'</div>';
+  var body='';
+  if(mine){zitems.forEach(function(it){body+=invItemRowHtml(it,map,lastMap);});}
+  else if(claimer&&!mine){body='<div class="muted-note">由 '+esc(claimerName)+' 負責,進度 '+cnt.done+'/'+cnt.tot+'</div>';}
+  else{body='<div class="muted-note">尚未認領。按右上「認領」開始盤這一區。</div>';}
+  return '<div class="c-card">'+head+'<div>'+body+'</div></div>';
+}
+function invItemRowHtml(it,map,lastMap){
+  var c=it.code||it.name;var w=map[c];var loc=_invLocal[c]||{};
+  var qty=(loc.qty!=null?loc.qty:(w?w.qty:''));
+  var price=(loc.price!=null?loc.price:(w?w.price:it.price));
+  var amt=(parseFloat(qty)||0)*(parseFloat(price)||0);
+  var lastQ=lastMap[c]?lastMap[c].qty:null;
+  var lastTxt=(lastQ!=null)?('上次 '+lastQ):'首次盤點';
+  var mm=it.mismatch?(' <span title="物料總表登記為'+esc(it.mismatch.master)+'，盤點以'+esc(it.unit)+'計'+(it.mismatch.note?('（'+esc(it.mismatch.note)+'）'):'')+'" style="cursor:help">ⓘ</span>'):'';
+  var uncoded=it.uncoded?(' <span class="pill" style="background:#fff7ed;color:#b45309">未建檔</span>'):'';
+  var warn=invAnomaly(qty,lastQ)?('<div class="muted-note" style="color:#b45309;background:#fff7ed;padding:6px 8px;border-radius:8px;margin-top:4px">⚠️ 上次盤 '+lastQ+'，這次 '+(qty===''?'—':qty)+'，差很多。確認是不是看錯單位或算錯？<div style="margin-top:4px;display:flex;gap:6px;flex-wrap:wrap"><a href="#" onclick="invQuickNote(\''+esc(c)+'\',\'已用完\');return false">已用完</a>・<a href="#" onclick="invQuickNote(\''+esc(c)+'\',\'本月大量進貨\');return false">本月大量進貨</a>・<a href="#" onclick="invQuickNote(\''+esc(c)+'\',\'單位不同\');return false">單位不同</a></div></div>'):'';
+  var saved=w?'<span id="inv-st-'+esc(c)+'" style="color:#06c167;font-size:12px">✓</span>':'<span id="inv-st-'+esc(c)+'"></span>';
+  var priceRow=invCanPrice()
+    ?'<label class="muted-note">單價 <input class="form-input" style="width:90px;display:inline-block;padding:6px" type="number" value="'+price+'" onchange="invPriceChange(\''+esc(c)+'\',this.value)"></label>'
+    :'<span class="muted-note">單價 '+price+'（唯讀）</span>';
+  return '<div class="sub-row" id="inv-row-'+esc(c)+'" style="flex-direction:column;align-items:stretch;gap:6px;padding:10px 0;border-bottom:1px solid #f0f0f0">'
+    +'<div style="display:flex;align-items:center;gap:8px">'
+    +'<div style="flex:1;min-width:0"><div class="tc-title" style="font-size:14px">'+esc(it.name)+mm+uncoded+'</div><div class="xp-text">'+esc(it.unit)+' ・ '+lastTxt+'</div></div>'
+    +'<input class="form-input" id="inv-q-'+esc(c)+'" type="number" inputmode="decimal" step="0.1" min="0" placeholder="數量" value="'+(qty===''?'':qty)+'" style="width:86px;text-align:center;padding:8px" onchange="invQtyChange(\''+esc(c)+'\',this.value)">'
+    +'<div style="width:74px;text-align:right"><div class="xp-text">金額</div><b id="inv-amt-'+esc(c)+'">$'+Math.round(amt).toLocaleString()+'</b></div>'+saved+'</div>'
+    +'<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap">'
+    +'<label class="muted-note" style="cursor:pointer"><input type="checkbox" '+(loc.none||(w&&w.note==='無此品項')?'checked':'')+' onchange="invToggleNone(\''+esc(c)+'\',this.checked)"> 本月無此品項</label>'
+    +priceRow
+    +(it.uncoded?'<button class="btn-sm btn-neutral" onclick="invCreateUncoded(\''+esc(c)+'\')">＋建檔到物料總表</button>':'')
+    +'</div>'
+    +'<input class="form-input" id="inv-note-'+esc(c)+'" placeholder="備註（選填）" value="'+esc(loc.note||(w?w.note:'')||'')+'" onchange="invNoteSet(\''+esc(c)+'\',this.value)" style="padding:6px">'
+    +warn+'</div>';
+}
+function invAnomaly(qty,lastQ){if(lastQ==null||qty===''||qty==null)return false;var q=parseFloat(qty)||0,l=parseFloat(lastQ)||0;if(l===0)return q>0;return Math.abs(q-l)/l>0.5;}
+
+// ── 認領/放棄（讀→查→寫，寫後再確認避免雙認領）──
+function invClaimZone(zone){getInvSession().then(function(s){if(!s||s.status!=='open')return;
+  if(s.zoneClaims[zone]&&s.zoneClaims[zone]!==CU.username){toast('已被 '+(LS.get('rm_names',{})[s.zoneClaims[zone]]||s.zoneClaims[zone])+' 認領','red');renderEndInv();return;}
+  s.zoneClaims[zone]=CU.username;setInvSession(s).then(function(){setTimeout(function(){getInvSession().then(function(s2){if(s2&&s2.zoneClaims[zone]!==CU.username){toast('剛好被別人搶先認領了','red');}renderEndInv();});},400);});});}
+function invReleaseZone(zone){getInvSession().then(function(s){if(!s)return;if(s.zoneClaims[zone]===CU.username){s.zoneClaims[zone]=null;setInvSession(s).then(renderEndInv);}});}
+
+// ── 填數量/單價/備註/無此品項（onchange 觸發，立即寫入）──
+function invLocalOf(c){return _invLocal[c]||(_invLocal[c]={});}
+function invItemOf(c){return invItems().find(function(x){return (x.code||x.name)===c;});}
+function invRecalc(c){var it=invItemOf(c);var loc=invLocalOf(c);var amt=(parseFloat(loc.qty)||0)*(parseFloat(loc.price!=null?loc.price:(it?it.price:0))||0);var el=$('inv-amt-'+c);if(el)el.textContent='$'+Math.round(amt).toLocaleString();var t=$('inv-top');if(t&&_invSess)t.innerHTML=invTopHtml(_invSess,invItems(),invWrittenMap(_invRows2,_invSess.sessionId));}
+function invQtyChange(c,v){invLocalOf(c).qty=v;invRecalc(c);invPersist(c);}
+function invPriceChange(c,v){invLocalOf(c).price=parseFloat(v)||0;invRecalc(c);if(invLocalOf(c).qty!=null&&invLocalOf(c).qty!=='')invPersist(c);}
+function invNoteSet(c,v){invLocalOf(c).note=v;invPersist(c);}
+function invQuickNote(c,v){invLocalOf(c).note=v;var el=$('inv-note-'+c);if(el)el.value=v;invPersist(c);}
+function invToggleNone(c,on){var loc=invLocalOf(c);loc.none=on;if(on){loc.qty=0;loc.note=loc.note||'無此品項';var q=$('inv-q-'+c);if(q)q.value=0;var n=$('inv-note-'+c);if(n)n.value=loc.note;}invRecalc(c);invPersist(c);}
+function invPersist(c){if(!_invSess)return;var it=invItemOf(c);if(!it)return;var loc=invLocalOf(c);
+  if(loc.qty==null||loc.qty==='')return;
+  var price=(loc.price!=null?loc.price:it.price);var qty=parseFloat(loc.qty)||0;var amt=Math.round(qty*(parseFloat(price)||0));
+  var date=invSessDate(_invSess.sessionId);var code=it.code||('NC-'+invNormName(it.name));
+  var entry={date:date,matCode:code,name:it.name,qty:qty,unit:it.unit,price:parseFloat(price)||0,amount:amt,zone:it.zone,sessionId:_invSess.sessionId,type:'期末盤點',user:CU.username,userName:CU.name,ts:Date.now(),note:loc.note||'',key:date+'|'+_invSess.sessionId+'|'+code};
+  var st=$('inv-st-'+c);if(st)st.innerHTML='<span style="color:#999">…</span>';
+  writeInvLine(entry).then(function(ok){var s=$('inv-st-'+c);if(!s)return;
+    if(ok){s.innerHTML='<span style="color:#06c167">✓</span>';}
+    else{s.innerHTML='<a href="#" style="color:#dc2626" onclick="invPersist(\''+esc(c)+'\');return false">✗重試</a>';}
+    // 更新本機 rows 快取（讓累計即時）
+    invFetchRows().then(function(rr){var t=$('inv-top');if(t&&_invSess)t.innerHTML=invTopHtml(_invSess,invItems(),invWrittenMap(rr,_invSess.sessionId));});
+  });
+}
+
+// ── 三角仔建檔 ──
+function invCreateUncoded(c){var it=invItemOf(c);if(!it)return;
+  loadMaterials(true).then(function(){
+    var max=0;_materials.forEach(function(m){var mc=String(m.code||'');if(mc.indexOf('SE')===0){var n=parseInt(mc.slice(2).replace(/[^0-9]/g,''));if(!isNaN(n)&&n>max)max=n;}});
+    var code='SE'+String(max+1).padStart(3,'0');
+    if(!confirm('把「'+it.name+'」新增到物料總表,編號 '+code+'？'))return;
+    authApi({type:'purchase',rows:[{'進貨日期':bizDay(),'物料編號':code,'分類':'水產','物料名稱':it.name,'進貨數量':'','單位量詞':it.unit,'總成本':it.price,'單位成本':it.price,'供應商':'','填表人':CU.username}]}).then(function(d){
+      if(d&&(d.status==='success'||d.status==='ok')){it.code=code;it.uncoded=false;var arr=invItems();var f=arr.find(function(x){return x.name===it.name;});if(f){f.code=code;f.uncoded=false;}LS.set('rm_inv_endlist',arr);if(typeof cloudPush==='function')cloudPush('rm_inv_endlist');toast('已建檔 '+code,'gold');renderEndInv();}
+      else toast('建檔失敗,請重試','red');
+    }).catch(function(){toast('建檔連線失敗','red');});
+  });
+}
+
+// ── 輪詢（15秒）──
+function invStartPoll(){invStopPoll();_invPoll=setInterval(function(){
+  var p=document.querySelector('.tab-panel.active');if(!p||p.id!=='tab-endinv'){invStopPoll();return;}
+  Promise.all([getInvSession(),invFetchRows()]).then(function(a){var s=a[0],rows=a[1];_invRows2=rows;
+    if(!s||s.status!=='open'){renderEndInv();return;}
+    var map=invWrittenMap(rows,s.sessionId);
+    var sig=JSON.stringify(s.zoneClaims)+'|'+Object.keys(map).length;
+    var t=$('inv-top');if(t)t.innerHTML=invTopHtml(s,invItems(),map);   // 累計/時間即時更新
+    if(sig!==_invSig&&!isTyping()){_invSig=sig;_invSess=s;invPaintCount(s,rows,window._invLastSummary||null);}   // 認領或他人進度變動→重繪(未打字時)
+  });
+},15000);}
+
+// ── 結束場次 ──
+function endInvSession(){if(!invCanEnd()){toast('僅店長以上可結束','red');return;}
+  getInvSession().then(function(sess){if(!sess)return;
+    invFetchRows().then(function(rows){
+      var items=invItems();var map=invWrittenMap(rows,sess.sessionId);
+      var undone=[];INV_ZONES.forEach(function(z){var c=invZoneCount(items,map,z);if(c.done<c.tot)undone.push(z+'('+c.done+'/'+c.tot+')');});
+      if(!confirm('確定結束盤點？'+(undone.length?('\n\n還有未完成：'+undone.join('、')):'\n\n全部已完成 ✓')))return;
+      kvGetJSON('inv_session_last').then(function(prev){
+        var total=invSessTotal(map);var zone={};var byCode={};var anomalies=[];var prevBy=(prev&&prev.byCode)||{};
+        for(var k in map){var o=map[k];zone[o.zone]=(zone[o.zone]||0)+(o.amount||0);byCode[k]={qty:o.qty,unit:o.unit,amount:o.amount,name:o.name,zone:o.zone};
+          var lq=prevBy[k]?prevBy[k].qty:null;if(invAnomaly(o.qty,lq))anomalies.push({name:o.name,qty:o.qty,last:lq});}
+        var summary={sessionId:sess.sessionId,date:invSessDate(sess.sessionId),month:sess.month,closedAt:new Date().toISOString(),total:total,zone:zone,byCode:byCode,anomalies:anomalies,prevTotal:(prev?prev.total:null)};
+        kvSetJSON('inv_session_last',summary).then(function(){
+          kvGetJSON('inv_session_hist').then(function(hist){hist=Array.isArray(hist)?hist:[];hist=hist.filter(function(x){return x.sessionId!==summary.sessionId;});hist.push({sessionId:summary.sessionId,month:summary.month,date:summary.date,total:summary.total});kvSetJSON('inv_session_hist',hist).then(function(){
+            sess.status='closed';setInvSession(sess).then(function(){toast('盤點完成！期末存貨 $'+Math.round(total).toLocaleString(),'gold');renderEndInv();});
+          });});
+        });
+      });
+    });
+  });
+}
+function invExportSummary(){kvGetJSON('inv_session_last').then(function(s){if(!s){toast('尚無盤點結果','red');return;}
+  var txt='【期末盤點 '+s.date+'】\n期末存貨總值：$'+Math.round(s.total).toLocaleString()+'\n';
+  if(s.zone)INV_ZONES.forEach(function(z){if(s.zone[z]!=null)txt+='・'+z+'：$'+Math.round(s.zone[z]).toLocaleString()+'\n';});
+  if(s.prevTotal!=null)txt+='較上次：'+(s.total-s.prevTotal>=0?'+':'')+Math.round(s.total-s.prevTotal).toLocaleString()+'\n';
+  if(s.anomalies&&s.anomalies.length)txt+='異常品項：'+s.anomalies.map(function(x){return x.name;}).join('、')+'\n';
+  if(navigator.share){navigator.share({text:txt}).catch(function(){});}
+  else if(navigator.clipboard){navigator.clipboard.writeText(txt).then(function(){toast('已複製摘要','gold');});}
+  else{prompt('複製以下摘要：',txt);}
+});}
+
+// ── 食材率頁 ──
+function renderFoodCost(){var wrap=$('foodcost-wrap');if(!wrap||!CU)return;
+  if(!(invRole()==='BOSS'||invRole()==='MGR')){wrap.innerHTML='<div class="muted-note">此頁僅老闆／店長可看</div>';return;}
+  wrap.innerHTML='<div class="loading-state"><div class="spin"></div>計算中</div>';
+  var month=invMonthKey();
+  Promise.all([kvGetJSON('inv_session_hist'),apiGetCached('query_purchase'),apiGetCached('query_revenue')]).then(function(a){
+    var hist=Array.isArray(a[0])?a[0]:[];var pur=(a[1]&&a[1].rows)?a[1].rows:[];var rev=(a[2]&&a[2].rows)?a[2].rows:[];
+    // 月份下拉：有期末盤點的月份
+    var months=hist.map(function(x){return x.month;}).filter(Boolean);months=months.filter(function(v,i){return months.indexOf(v)===i;}).sort();
+    var pick=(months.indexOf(month)>=0?month:(months[months.length-1]||month));
+    var prevM=invPrevMonth(pick);
+    var endStock=invMonthClosedTotal(hist,pick);
+    var beginStock=invMonthClosedTotal(hist,prevM);
+    var purchase=0;pur.slice(1).forEach(function(r){if(normDate(r[0]).slice(0,7)===pick&&invIsFoodCat(r[2]))purchase+=(Number(r[6])||0);});
+    var revenue=0;rev.slice(1).forEach(function(r){if(normDate(r[0]).slice(0,7)===pick)revenue+=(Number(r[7])||0);});
+    var used=(beginStock!=null&&endStock!=null)?(beginStock+purchase-endStock):null;
+    var realRate=(used!=null&&revenue>0)?(used/revenue*100):null;
+    var bookRate=revenue>0?(purchase/revenue*100):null;
+    var h='<div class="c-card"><div class="c-card-title">📉 真實食材率（'+esc(pick)+'）</div>';
+    h+=bLineInv('① 期初存貨（上月期末）',beginStock==null?'—（無上月盤點）':'$'+Math.round(beginStock).toLocaleString());
+    h+=bLineInv('② 本期食材進貨',' $'+Math.round(purchase).toLocaleString());
+    h+=bLineInv('③ 期末存貨（本月盤點）',endStock==null?'—（本月尚未盤點）':'$'+Math.round(endStock).toLocaleString());
+    h+=bLineInv('④ 真實食材耗用（①+②−③）',used==null?'—':'$'+Math.round(used).toLocaleString());
+    h+=bLineInv('⑤ 本期營收',' $'+Math.round(revenue).toLocaleString());
+    if(realRate==null){
+      h+='<div style="text-align:center;padding:14px 0"><div style="font-size:15px;font-weight:700;color:#b45309">需要連續兩次盤點才能計算</div><div class="muted-note">本次為建立基準，下個月盤完就能算出真實食材率</div></div>';
+    }else{
+      h+='<div style="text-align:center;padding:14px 0"><div class="muted-note">⑥ 真實食材率</div><div style="font-size:36px;font-weight:800;letter-spacing:-.02em">'+realRate.toFixed(1)+'%</div>';
+      h+='<div class="xp-text">⑦ 帳面食材率（進貨÷營收）'+(bookRate!=null?bookRate.toFixed(1)+'%':'—')+'</div></div>';
+    }
+    h+='</div>';
+    h+='<div class="c-card"><div class="muted-note" style="line-height:1.9">📌 參考基準<br>・目前四個月累計 42.0%（進貨口徑）<br>・業界合理區間 35–38%<br>・目標 32%</div></div>';
+    wrap.innerHTML=h;
+  }).catch(function(){wrap.innerHTML='<div class="muted-note">讀取失敗,請重新整理</div>';});
+}
+function invPrevMonth(m){var p=String(m).split('-');var y=+p[0],mo=+p[1]-1;if(mo<1){mo=12;y--;}return y+'-'+String(mo).padStart(2,'0');}
+function invMonthClosedTotal(hist,month){var arr=(hist||[]).filter(function(x){return x.month===month;});if(!arr.length)return null;arr.sort(function(a,b){return String(a.sessionId).localeCompare(String(b.sessionId));});return arr[arr.length-1].total;}
+
 // ════════ report-analysis SKILL 整合 ════════
 const FOOD_KEYS=['肉','水產','蔬菜','半成品','冷盤','調味','酒水','飲料','漁船'];
 function costClass(cat){cat=String(cat||'');if(cat.indexOf('金額異動')===0)return null;for(var i=0;i<FOOD_KEYS.length;i++){if(cat.indexOf(FOOD_KEYS[i])===0)return '食材';}if(cat.indexOf('員工')===0||cat.indexOf('人事')===0)return '人事';if(cat.indexOf('餐具')===0||cat.indexOf('廚具')===0||cat.indexOf('設備')===0)return '固定';return '耗材';}
@@ -3519,6 +3788,8 @@ const ALL_TABS=[
   {id:'audit',icon:'🔍',label:'稽核紀錄',roles:['BOSS']},
   {id:'focuscfg',icon:'🎯',label:'主推商品設定',roles:['BOSS','MGR']},
   {id:'revthr',icon:'📈',label:'營收達標門檻',roles:['BOSS','MGR']},
+  {id:'endinv',icon:'📦',label:'期末盤點',roles:['BOSS','MGR','EMP']},
+  {id:'foodcost',icon:'📉',label:'食材率',roles:['BOSS','MGR']},
   {id:'settings',icon:'⚙️',label:'制度設定',roles:['BOSS']},
 ];
 function getParts(){
