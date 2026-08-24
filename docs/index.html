@@ -1345,20 +1345,20 @@ html,body,button,input,select,textarea,
           </div>
           <div class="form-group">
             <label class="form-label">單位</label>
-            <select class="form-input" id="pu-unit">
-              <option>公斤</option><option>公克</option><option>箱</option>
-              <option>包</option><option>瓶</option><option>個</option>
-              <option>條</option><option>份</option><option>隻</option>
-              <option>尾</option><option>台斤</option><option>斤</option>
-              <option>盒</option><option>盤</option><option>支</option><option>袋</option>
-            </select>
+            <div style="display:flex;gap:6px">
+              <select class="form-input" id="pu-unit" style="flex:1;min-width:0"></select>
+              <button type="button" class="btn-sm btn-neutral" onclick="puAddUnit()" style="flex:0 0 auto;padding:0 12px;white-space:nowrap">＋</button>
+            </div>
           </div>
         </div>
         <div class="form-group">
           <label class="form-label">單位（1 個購買單位＝多少，供 BOM 自動換算）</label>
-          <div class="form-row">
+          <div class="form-row" style="align-items:flex-end">
             <input class="form-input" id="pu-packq" type="number" min="0" placeholder="例：1000（可留白）">
-            <select class="form-input" id="pu-packu"><option>克</option><option>毫升</option><option>隻</option></select>
+            <div style="display:flex;gap:6px">
+              <select class="form-input" id="pu-packu" style="flex:1;min-width:0"></select>
+              <button type="button" class="btn-sm btn-neutral" onclick="puAddPackUnit()" style="flex:0 0 auto;padding:0 12px;white-space:nowrap">＋</button>
+            </div>
           </div>
         </div>
         <div class="form-group">
@@ -1899,7 +1899,7 @@ html,body,button,input,select,textarea,
 
 <script>
 // ── 自動更新：開啟時比對版本，有新版就自動重載（免無痕）──
-const APP_VER='20260822200000';
+const APP_VER='20260822220000';
 const GT_KEY='gtk_9F3xQ7Lz_pW2rM8kT';  // 後台共用密鑰（階段A：前端帶上；階段B：後台驗證）
 // 是否有「打到一半、還沒送出」的資料（結帳/進貨/交接/申訴的輸入框有值）→ 有的話先別強制重載，免得清掉
 function _hasTypedData(){try{var els=document.querySelectorAll('#tab-revenue input,#tab-revenue textarea,#tab-purchase input,#tab-purchase textarea,#tab-handover input,#tab-handover textarea,#tab-bully input,#tab-bully textarea');for(var i=0;i<els.length;i++){var el=els[i];if(el.type==='date'||el.type==='hidden')continue;if((el.value||'').trim())return true;}return false;}catch(e){return false;}}
@@ -2088,7 +2088,7 @@ function initApp() {
   const labels={BOSS:'老闆',MGR:'店長',EMP:'員工'};
   roleTag.textContent=labels[CU.role]||CU.role;
   roleTag.className='role-tag role-'+CU.role;
-  seedGame();ensureSalesTask();ensurePsaleTask();wireTaskInput();wirePartInput();recordName(CU.username,CU.name);oneTimePointsReset();updateGameChip();fillRvNoteSelect();
+  seedGame();ensureSalesTask();ensurePsaleTask();wireTaskInput();wirePartInput();recordName(CU.username,CU.name);oneTimePointsReset();updateGameChip();fillRvNoteSelect();fillPuUnitSelect();fillPuPackuSelect();
 
   // build nav
   // 員工與店長暫時只開放：每日結帳／進貨記錄／BOM成本／交接表（老闆維持全部）。要復原把此白名單移除即可。
@@ -2124,7 +2124,7 @@ function switchTab(name,btn) {
   btn.classList.add('active');
   if(name==='revenue')fillRvNoteSelect();
   if(name==='reports')loadReports();
-  if(name==='purchase'){loadMaterials().then(fillMatCatSelect);renderRecentPurchases();}
+  if(name==='purchase'){loadMaterials().then(fillMatCatSelect);renderRecentPurchases();fillPuUnitSelect();fillPuPackuSelect();}
   if(name==='bom'){renderBom();loadBomImgs(renderBom);Promise.all([loadMaterials(),loadRecipeCosts()]).then(renderBom);}
   if(name==='matcat')renderMatCat();
   if(name==='accounts'){loadPending();loadAccounts();}
@@ -2516,6 +2516,16 @@ function fillFromMaterial(m){
   const pk=(LS.get('rm_material_pack',{})||{})[m.code];
   if(pk&&$('pu-packq')&&$('pu-packu')){const mo=/([\d.]+)\s*(克|毫升|隻)/.exec(pk);if(mo){$('pu-packq').value=mo[1];$('pu-packu').value=mo[2];}}
 }
+// 進貨單位下拉（量詞＋規格單位）可自訂新增，存 rm_pu_units / rm_pu_packunits 並同步雲端
+const PU_UNIT_SEED=['公斤','公克','箱','包','瓶','個','條','份','隻','尾','台斤','斤','盒','盤','支','袋'];
+const PU_PACKU_SEED=['克','毫升','隻'];
+function puUnits(){var a=LS.get('rm_pu_units',null);if(!Array.isArray(a)||!a.length){a=PU_UNIT_SEED.slice();LS.set('rm_pu_units',a);}return a;}
+function puPackUnits(){var a=LS.get('rm_pu_packunits',null);if(!Array.isArray(a)||!a.length){a=PU_PACKU_SEED.slice();LS.set('rm_pu_packunits',a);}return a;}
+function _fillSel(id,list){var sel=$(id);if(!sel||sel.tagName!=='SELECT')return;var cur=sel.value;sel.innerHTML=list.map(function(o){return '<option>'+esc(o)+'</option>';}).join('');if(cur){var f=false;for(var i=0;i<sel.options.length;i++){if(sel.options[i].value===cur){f=true;break;}}if(!f){var op=document.createElement('option');op.text=cur;sel.add(op);}sel.value=cur;}}
+function fillPuUnitSelect(){_fillSel('pu-unit',puUnits());}
+function fillPuPackuSelect(){_fillSel('pu-packu',puPackUnits());}
+function puAddUnit(){var v=(prompt('新增單位（量詞，例：組、打、桶）：')||'').trim();if(!v)return;var a=puUnits();if(a.indexOf(v)<0){a.push(v);LS.set('rm_pu_units',a);if(typeof cloudPush==='function')cloudPush('rm_pu_units');}fillPuUnitSelect();if($('pu-unit'))$('pu-unit').value=v;toast('已新增單位「'+v+'」','gold');}
+function puAddPackUnit(){var v=(prompt('新增規格單位（例：公升、台斤）：')||'').trim();if(!v)return;var a=puPackUnits();if(a.indexOf(v)<0){a.push(v);LS.set('rm_pu_packunits',a);if(typeof cloudPush==='function')cloudPush('rm_pu_packunits');}fillPuPackuSelect();if($('pu-packu'))$('pu-packu').value=v;toast('已新增規格單位「'+v+'」','gold');}
 function onPickMaterial(){
   const v=$('pu-mat')&&$('pu-mat').value;if(v==='')return;const m=_materials[parseInt(v)];if(!m)return;
   fillFromMaterial(m);const box=$('pu-suggest');if(box){box.style.display='none';box.innerHTML='';}
@@ -3266,7 +3276,9 @@ function mergeLogArr(key,cloudVal){
 }
 // 姓名對照表（每人登入寫自己的）：以鍵聯集合併，避免整包覆蓋把別人的名字蓋掉；本機值優先
 function mergeNames(key,cloudVal){try{var loc=JSON.parse(localStorage.getItem(key)||'{}')||{};var cl=JSON.parse(cloudVal||'{}')||{};localStorage.setItem(key,JSON.stringify(Object.assign({},cl,loc)));}catch(e){localStorage.setItem(key,cloudVal);}}
-function cloudPull(light){if(!syncOn())return Promise.resolve();return kv('kv_all',light?{light:1}:{}).then(function(res){if(res&&res.status==='ok'&&res.data){for(var k in res.data){if(k.indexOf('rm_')!==0||res.data[k]==null)continue;if(k==='rm_submissions'||k==='rm_redemptions')mergeLogArr(k,res.data[k]);else if(k==='rm_names'||k==='rm_material_pack')mergeNames(k,res.data[k]);else localStorage.setItem(k,res.data[k]);}}}).catch(function(){});}
+// 陣列聯集合併（單位清單等：本機＋雲端去重，兩邊新增的都保留）
+function mergeArrUnion(key,cloudVal){try{var loc=JSON.parse(localStorage.getItem(key)||'[]')||[];var cl=JSON.parse(cloudVal||'[]')||[];var seen={},out=[];loc.concat(cl).forEach(function(x){var s=String(x);if(!seen[s]){seen[s]=1;out.push(x);}});localStorage.setItem(key,JSON.stringify(out));}catch(e){localStorage.setItem(key,cloudVal);}}
+function cloudPull(light){if(!syncOn())return Promise.resolve();return kv('kv_all',light?{light:1}:{}).then(function(res){if(res&&res.status==='ok'&&res.data){for(var k in res.data){if(k.indexOf('rm_')!==0||res.data[k]==null)continue;if(k==='rm_submissions'||k==='rm_redemptions')mergeLogArr(k,res.data[k]);else if(k==='rm_names'||k==='rm_material_pack')mergeNames(k,res.data[k]);else if(k==='rm_pu_units'||k==='rm_pu_packunits')mergeArrUnion(k,res.data[k]);else localStorage.setItem(k,res.data[k]);}}}).catch(function(){});}
 function isTyping(){var a=document.activeElement;if(!a)return false;var t=(a.tagName||'').toUpperCase();return t==='INPUT'||t==='TEXTAREA'||t==='SELECT'||a.isContentEditable===true;}
 // 使用者正在操作中（輸入／彈窗開著／送出鈕處理中）→ 背景同步先別重刷畫面，避免手上的操作被打斷或閃動
 function _busyUI(){return isTyping()||!!document.querySelector('.subform-overlay.show,.btn-busy');}
