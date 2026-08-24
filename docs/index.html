@@ -1452,6 +1452,27 @@ html,body,button,input,select,textarea,
         </div>
       </div>
 
+      <!-- 異常日標註（老闆/店長；標了就從星期別基準排除）-->
+      <div id="annot-card" class="c-card" style="margin-top:14px;display:none">
+        <div class="c-card-title">🚩 異常日標註</div>
+        <div class="muted-note" style="margin-bottom:10px">把颱風、公休、包場、補給等「非常態」日子標起來，就不會污染上面的「星期別中位數」基準。</div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+          <input class="form-input" id="annot-date" type="date" style="flex:0 0 auto;width:auto">
+          <select class="form-input" id="annot-reason" style="flex:1;min-width:110px">
+            <option value="颱風/天災">颱風/天災</option>
+            <option value="公休">公休</option>
+            <option value="包場">包場</option>
+            <option value="補給日">補給日</option>
+            <option value="店休整修">店休整修</option>
+            <option value="大型活動">大型活動</option>
+            <option value="資料異常">資料異常</option>
+            <option value="__other">其他（自訂）…</option>
+          </select>
+          <button type="button" class="btn-sm btn-neutral" style="padding:0 14px" onclick="an_annotMark()">標註</button>
+        </div>
+        <div id="annot-list" style="margin-top:12px"></div>
+      </div>
+
       <!-- 進階分析（預設收起，展開時重繪圖表）-->
       <details class="adv-details" ontoggle="if(this.open)setTimeout(loadReports,60)" style="margin-top:18px">
         <summary class="adv-summary">📂 進階分析　<span style="font-weight:400;color:var(--text-3);font-size:12px">成本結構・食材漲跌・賣最好最差・明細記錄</span></summary>
@@ -1932,7 +1953,7 @@ html,body,button,input,select,textarea,
 
 <script>
 // ── 自動更新：開啟時比對版本，有新版就自動重載（免無痕）──
-const APP_VER='20260824140000';
+const APP_VER='20260825120000';
 const GT_KEY='gtk_9F3xQ7Lz_pW2rM8kT';  // 後台共用密鑰（階段A：前端帶上；階段B：後台驗證）
 // 是否有「打到一半、還沒送出」的資料（結帳/進貨/交接/申訴的輸入框有值）→ 有的話先別強制重載，免得清掉
 function _hasTypedData(){try{var els=document.querySelectorAll('#tab-revenue input,#tab-revenue textarea,#tab-purchase input,#tab-purchase textarea,#tab-handover input,#tab-handover textarea,#tab-bully input,#tab-bully textarea');for(var i=0;i<els.length;i++){var el=els[i];if(el.type==='date'||el.type==='hidden')continue;if((el.value||'').trim())return true;}return false;}catch(e){return false;}}
@@ -2935,6 +2956,46 @@ function an_cmpChip(label,base,cur,sub){
     +'</div>';
 }
 
+// ── 異常日標註（寫營收表 U/V；標了即從星期別基準排除）──
+function an_canAnnot(){return !!(CU&&(CU.role==='BOSS'||CU.role==='MGR'));}
+function an_annotRender(){
+  var card=$('annot-card'); if(!card)return;
+  if(!an_canAnnot()){card.style.display='none';return;}
+  card.style.display='';
+  var di=$('annot-date'); if(di&&!di.value)di.value=bizDay();
+  var seen={}, rows=[];
+  (_allRevData||[]).forEach(function(r){var d=normDate(r.date);var rs=String(r.reason||'').trim();if(!d||!rs||seen[d])return;seen[d]=1;rows.push({date:d,reason:rs,by:String(r.annotator||'')});});
+  rows.sort(function(a,b){return a.date<b.date?1:-1;});
+  var host=$('annot-list'); if(!host)return;
+  host.innerHTML = rows.length ? rows.map(function(x){
+    return '<div style="display:flex;align-items:center;gap:8px;padding:8px 10px;background:var(--surface-2);border:1px solid var(--line-soft);border-radius:10px;margin-bottom:6px">'
+      +'<span style="font-weight:700;color:var(--text)">'+x.date+'</span>'
+      +'<span style="font-size:12px;color:#dc2626;font-weight:700">🚩 '+esc(x.reason)+'</span>'
+      +(x.by?'<span style="font-size:11px;color:var(--text-3)">'+esc(x.by)+'</span>':'')
+      +'<button type="button" class="btn-sm btn-neutral" style="margin-left:auto;padding:0 10px" onclick="an_annotUnmark(\''+x.date+'\')">取消</button>'
+    +'</div>';
+  }).join('') : '<div class="muted-note">目前沒有標註的異常日</div>';
+}
+function an_annotMark(){
+  if(!an_canAnnot()){toast('僅老闆或店長可標註','red');return;}
+  var d=$('annot-date')?$('annot-date').value:''; if(!d){toast('請選日期','red');return;}
+  var sel=$('annot-reason'); var reason=sel?sel.value:'';
+  if(reason==='__other'){reason=(prompt('輸入異常原因：')||'').trim();if(!reason)return;}
+  an_annotSend(d,reason);
+}
+function an_annotUnmark(d){ if(!confirm(d+'　取消異常標註？'))return; an_annotSend(d,''); }
+function an_annotSend(date,reason){
+  toast(reason?'標註中…':'取消中…','gold');
+  authApi({type:'revenue_annotate',date:date,reason:reason,by:(CU&&CU.name)||'',role:(CU&&CU.role)||''}).then(function(res){
+    if(res&&(res.status==='ok'||res.status==='success')){
+      (_allRevData||[]).forEach(function(r){if(normDate(r.date)===date){r.reason=reason;r.annotator=reason?((CU&&CU.name)||''):'';}});
+      try{delete _qCache['query_revenue'];}catch(e){}   // 讓下次載入重抓，避免舊快取蓋回
+      toast(reason?'已標註異常日':'已取消標註','gold');
+      renderReports();
+    } else { toast('失敗：'+((res&&res.message)||'請重試'),'red'); }
+  }).catch(function(){toast('連線失敗，請重試','red');});
+}
+
 function renderReports() {
   const revRows = filterByRange(_allRevData);
   const purRows = filterByRange(_allPurData);
@@ -2985,6 +3046,7 @@ function renderReports() {
       } else { _cmp.style.display='none'; }
     }
   }catch(e){}
+  an_annotRender();
   // Card 2 = 選取區段總營收（標題隨區段變動）
   if ($('kl-month')) $('kl-month').textContent = rangeLabel + '總營收';
   $('kv-month').textContent = totalRev.toLocaleString();
