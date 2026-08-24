@@ -1907,7 +1907,7 @@ html,body,button,input,select,textarea,
 
 <script>
 // ── 自動更新：開啟時比對版本，有新版就自動重載（免無痕）──
-const APP_VER='20260823100000';
+const APP_VER='20260823140000';
 const GT_KEY='gtk_9F3xQ7Lz_pW2rM8kT';  // 後台共用密鑰（階段A：前端帶上；階段B：後台驗證）
 // 是否有「打到一半、還沒送出」的資料（結帳/進貨/交接/申訴的輸入框有值）→ 有的話先別強制重載，免得清掉
 function _hasTypedData(){try{var els=document.querySelectorAll('#tab-revenue input,#tab-revenue textarea,#tab-purchase input,#tab-purchase textarea,#tab-handover input,#tab-handover textarea,#tab-bully input,#tab-bully textarea');for(var i=0;i<els.length;i++){var el=els[i];if(el.type==='date'||el.type==='hidden')continue;if((el.value||'').trim())return true;}return false;}catch(e){return false;}}
@@ -2939,6 +2939,73 @@ function renderReports() {
   }
   try{ renderAnalysis(revRows,purRows,totalRev,_cc); }catch(e){ const _h=$('report-analysis'); if(_h)_h.innerHTML='<div class="muted-note">（分析區載入失敗：'+e.message+'）</div>'; }
 }
+
+// ══════════════ 期末盤點・資料層（階段1；尚無 UI）══════════════
+// 儲位順序＝實際盤點動線，勿改成依名稱/編號排序
+const INV_ZONES=['超低溫冷凍庫','冷凍庫','冷藏冷台','乾貨米酒水'];
+// A 類 41 必盤品項種子（依 2026 5–8 月採購額排序，涵蓋約 85% 金額）。price＝最近一次實際進貨單價。
+// mismatch＝物料總表基本單位與實際進貨單位不一致，盤點一律用 unit（實際），mismatch.master 供提示與 TODO。
+const END_INV_SEED=[
+  {code:'SE007',name:'8/9挪威鮭魚菲力',unit:'公斤',price:720,zone:'超低溫冷凍庫'},
+  {code:'SE028',name:'8/9挪威鮭魚（整尾）',unit:'公斤',price:460,zone:'超低溫冷凍庫'},
+  {code:'SE012',name:'大目鮪',unit:'公斤',price:320,zone:'超低溫冷凍庫'},
+  {code:'SE036',name:'黃鰭鮪',unit:'台斤',price:243,zone:'超低溫冷凍庫'},
+  {code:'SE019',name:'旗魚',unit:'公斤',price:400,zone:'超低溫冷凍庫'},
+  {code:'',name:'三角仔',unit:'公斤',price:350,zone:'超低溫冷凍庫',uncoded:true},
+  {code:'SE040',name:'竹午',unit:'公斤',price:350,zone:'超低溫冷凍庫'},
+  {code:'SE008',name:'海鱺(整尾)',unit:'公斤',price:500,zone:'超低溫冷凍庫'},
+  {code:'SE037',name:'油串',unit:'公斤',price:300,zone:'超低溫冷凍庫'},
+  {code:'SE038',name:'鸚哥魚',unit:'公斤',price:230,zone:'超低溫冷凍庫'},
+  {code:'SE010',name:'黑鮪魚赤身',unit:'公斤',price:417,zone:'超低溫冷凍庫'},
+  {code:'SE009',name:'黑鮪魚皮油',unit:'公斤',price:1250,zone:'超低溫冷凍庫'},
+  {code:'ME002',name:'牛板腱骰子(200克)',unit:'包',price:120,zone:'冷凍庫',mismatch:{master:'公斤'}},
+  {code:'ME026',name:'嫩煎骰子牛(200克)',unit:'包',price:110,zone:'冷凍庫'},
+  {code:'ME010',name:'元氣豬肋眼(1KG)',unit:'包',price:280,zone:'冷凍庫'},
+  {code:'ME007',name:'台畜里肌條肉(3KG)',unit:'包',price:720,zone:'冷凍庫',mismatch:{master:'份'}},
+  {code:'ME003',name:'牛肉片-前腿(全)',unit:'公斤',price:235,zone:'冷凍庫'},
+  {code:'ME012',name:'雞腿',unit:'支',price:50,zone:'冷凍庫'},
+  {code:'ME009',name:'雞皮串',unit:'包',price:180,zone:'冷凍庫',mismatch:{master:'支',note:'1 包＝10 串'}},
+  {code:'ME013',name:"7''特製雞(10串)",unit:'包',price:175,zone:'冷凍庫'},
+  {code:'ME019',name:"7''肥腸串(10串)",unit:'包',price:230,zone:'冷凍庫'},
+  {code:'ME017',name:"7''雞心(10串)",unit:'包',price:160,zone:'冷凍庫'},
+  {code:'ME005',name:'烤肉串-羊',unit:'支',price:22,zone:'冷凍庫'},
+  {code:'ME004',name:'烤肉串-厚切牛肉串',unit:'支',price:22,zone:'冷凍庫'},
+  {code:'ME001',name:'烤肉串-照燒雞腿串',unit:'支',price:22,zone:'冷凍庫'},
+  {code:'SE002',name:'蒲燒鰻魚20P(500克)',unit:'公斤',price:720,zone:'冷凍庫'},
+  {code:'SE006',name:'花枝文甲(德) 35隻',unit:'盒',price:700,zone:'冷凍庫'},
+  {code:'SE035',name:'蒜香奶油螃蟹',unit:'包',price:145,zone:'冷凍庫'},
+  {code:'SE032',name:'白蝦2號',unit:'盒',price:215,zone:'冷凍庫'},
+  {code:'SE018',name:'甜蝦',unit:'台斤',price:300,zone:'冷藏冷台',mismatch:{master:'斤'}},
+  {code:'SE005',name:'日本帶子 (4S 干貝)',unit:'盒',price:1520,zone:'冷藏冷台'},
+  {code:'SE004',name:'醬油漬鮭魚卵 (500G)',unit:'盒',price:1040,zone:'冷藏冷台'},
+  {code:'HALF003',name:'呈冠帶殼溫泉蛋(10粒)',unit:'盒',price:130,zone:'冷藏冷台'},
+  {code:'ICE002',name:'山葵章魚',unit:'包',price:690,zone:'冷藏冷台'},
+  {code:'SE016',name:'日本生蠔2L兵庫縣',unit:'公斤',price:320,zone:'冷藏冷台'},
+  {code:'SE034',name:'海膽醬',unit:'包',price:89,zone:'冷藏冷台'},
+  {code:'SE015',name:'尼信',unit:'盒',price:846,zone:'冷藏冷台'},
+  {code:'VE003',name:'壽司米',unit:'袋',price:1560,zone:'乾貨米酒水'},
+  {code:'DR003',name:'生啤酒(30L)',unit:'桶',price:1800,zone:'乾貨米酒水'},
+  {code:'DR006',name:'紫蘇梅梅酒(750ML)',unit:'瓶',price:800,zone:'乾貨米酒水'},
+  {code:'DR004',name:'冰塊',unit:'袋',price:100,zone:'乾貨米酒水'}
+];
+// 可編輯品項清單：首次用種子並回寫 KV(rm_inv_endlist)；之後可編輯
+function invItems(){var a=LS.get('rm_inv_endlist',null);if(!Array.isArray(a)||!a.length){a=END_INV_SEED.map(function(x){return Object.assign({},x);});LS.set('rm_inv_endlist',a);if(typeof cloudPush==='function')cloudPush('rm_inv_endlist');}return a;}
+// 解析 key：同時吃「日期|食材ID」(日常) 與「日期|場次ID|物料編號」(期末)
+function parseInvKey(key){var p=String(key||'').split('|');if(p.length>=3)return {date:p[0]||'',sessionId:p[1]||'',matCode:p[2]||'',kind:'session'};return {date:p[0]||'',id:p[1]||'',kind:'legacy'};}
+// 讀一列每日盤點(A..Q 陣列)→物件；容忍 J–Q 空/不存在；J 空一律視為「日常回報」
+function normInvRow(r){r=r||[];function g(i){return (r[i]!=null?r[i]:'');}
+  return {date:normDate(g(0)),itemId:String(g(1)),name:String(g(2)),qty:parseFloat(g(3))||0,user:String(g(4)),userName:String(g(5)),ts:g(7),key:String(g(8)),
+    type:(String(g(9)).trim()||'日常回報'),matCode:String(g(10)),unit:String(g(11)),price:parseFloat(g(12))||0,amount:parseFloat(g(13))||0,zone:String(g(14)),sessionId:String(g(15)),note:String(g(16))};}
+// KV 場次讀寫（存 getActive 綁定表的 KV 分頁；走既有 kv 端點）
+function getInvSession(){return kv('kv_get',{key:'inv_session_active'}).then(function(d){try{return (d&&d.value)?JSON.parse(d.value):null;}catch(e){return null;}}).catch(function(){return null;});}
+function setInvSession(obj){return kv('kv_set',{key:'inv_session_active',value:JSON.stringify(obj||{})});}
+// 寫入一列期末盤點（後端 inv_write2 以 key upsert）；失敗存本機待送佇列 rm_inv_queue
+function writeInvLine(entry){entry=entry||{};entry.type=entry.type||'期末盤點';
+  return authApi({type:'inv_write2',row:entry}).then(function(d){if(d&&(d.status==='success'||d.status==='ok')){_invQueueDrainOne(entry.key);return true;}_invQueuePush(entry);return false;}).catch(function(){_invQueuePush(entry);return false;});}
+function _invQueuePush(e){try{var q=LS.get('rm_inv_queue',[])||[];q=q.filter(function(x){return x&&x.key!==e.key;});q.push(e);LS.set('rm_inv_queue',q);}catch(_e){}}
+function _invQueueDrainOne(key){try{var q=(LS.get('rm_inv_queue',[])||[]).filter(function(x){return x&&x.key!==key;});LS.set('rm_inv_queue',q);}catch(_e){}}
+// 自我測試（console 執行 invSelfTest()）：證明既有每日盤點資料可正常讀取與解析
+async function invSelfTest(){try{var d=await authApi({type:'query_inv'});var rows=(d&&d.rows)?d.rows:[];var data=rows.slice(1);var ok=0,bad=0,daily=0,sess=0,errs=[];data.forEach(function(r,i){try{var o=normInvRow(r);if(!o.date)throw '無法解析日期';parseInvKey(o.key);if(o.type==='日常回報')daily++;else sess++;ok++;}catch(e){bad++;if(errs.length<10)errs.push('列'+(i+2)+'：'+e);}});var msg='每日盤點自我測試：'+data.length+' 筆，解析成功 '+ok+'／失敗 '+bad+'（日常回報 '+daily+'・場次盤點 '+sess+'）';console.log(msg);if(errs.length)console.log('前幾筆錯誤：',errs);if(typeof toast==='function')toast(msg,bad?'red':'gold');return {total:data.length,ok:ok,bad:bad,daily:daily,sess:sess,errs:errs};}catch(e){console.log('測試連線失敗：',e);return null;}}
 
 // ════════ report-analysis SKILL 整合 ════════
 const FOOD_KEYS=['肉','水產','蔬菜','半成品','冷盤','調味','酒水','飲料','漁船'];
