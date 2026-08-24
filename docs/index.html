@@ -1125,6 +1125,26 @@ html,body,button,input,select,textarea,
 .c-card-title{font-weight:700!important;letter-spacing:-.01em!important;}
 .form-input,.field-input{border-radius:10px!important;}
 .pts-pill,.pill{border-radius:8px!important;}
+
+/* ═══════════ 登入頁 Uber 化（白底極簡・拿掉食物照） ═══════════ */
+.scene-bg{background:#ffffff!important;background-image:none!important;}
+.scene-bg::after{display:none!important;}
+.noise{display:none!important;}
+#auth-screen .brand-icon{background:#fff!important;border:1px solid #ededed!important;box-shadow:0 2px 10px rgba(0,0,0,.06)!important;}
+#auth-screen .brand-name{font-family:'Inter','Noto Sans TC',sans-serif!important;background:none!important;-webkit-background-clip:border-box!important;background-clip:border-box!important;-webkit-text-fill-color:#111!important;color:#111!important;font-weight:800!important;letter-spacing:-.01em!important;}
+#auth-screen .brand-sub{color:#9a9a9a!important;}
+#auth-screen .glass-card{background:#fff!important;border:1px solid #ededed!important;border-radius:16px!important;backdrop-filter:none!important;-webkit-backdrop-filter:none!important;box-shadow:0 2px 14px rgba(0,0,0,.07)!important;}
+#auth-screen .glass-card::before{display:none!important;}
+#auth-screen .auth-tabs-row{background:#f3f3f3!important;}
+#auth-screen .auth-tab-btn{color:#8a8a8a!important;}
+#auth-screen .auth-tab-btn.active{background:#fff!important;color:#111!important;border:1px solid #111!important;box-shadow:0 1px 3px rgba(0,0,0,.08)!important;}
+#auth-screen .field-label{color:#6b6b6b!important;}
+#auth-screen .field-input{background:#f6f6f6!important;border:1px solid #e5e5e5!important;color:#111!important;border-radius:10px!important;}
+#auth-screen .field-input::placeholder{color:#a5a5a5!important;}
+#auth-screen .field-input:focus{border-color:#111!important;box-shadow:0 0 0 3px rgba(0,0,0,.06)!important;}
+#auth-screen .btn-primary{background:#000!important;background-image:none!important;color:#fff!important;box-shadow:none!important;border-radius:10px!important;font-weight:600!important;letter-spacing:0!important;}
+#auth-screen .msg{color:#111!important;}
+.login-bg-caption{color:#a5a5a5!important;}
 </style>
 </head>
 <body>
@@ -1870,7 +1890,7 @@ html,body,button,input,select,textarea,
 
 <script>
 // ── 自動更新：開啟時比對版本，有新版就自動重載（免無痕）──
-const APP_VER='20260821200000';
+const APP_VER='20260821220000';
 const GT_KEY='gtk_9F3xQ7Lz_pW2rM8kT';  // 後台共用密鑰（階段A：前端帶上；階段B：後台驗證）
 // 是否有「打到一半、還沒送出」的資料（結帳/進貨/交接/申訴的輸入框有值）→ 有的話先別強制重載，免得清掉
 function _hasTypedData(){try{var els=document.querySelectorAll('#tab-revenue input,#tab-revenue textarea,#tab-purchase input,#tab-purchase textarea,#tab-handover input,#tab-handover textarea,#tab-bully input,#tab-bully textarea');for(var i=0;i<els.length;i++){var el=els[i];if(el.type==='date'||el.type==='hidden')continue;if((el.value||'').trim())return true;}return false;}catch(e){return false;}}
