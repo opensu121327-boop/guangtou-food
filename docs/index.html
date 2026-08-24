@@ -1124,6 +1124,11 @@ html,body,button,input,select,textarea,
 .c-card-title{font-weight:700!important;letter-spacing:-.01em!important;}
 .form-input,.field-input{border-radius:10px!important;}
 .pts-pill,.pill{border-radius:8px!important;}
+/* 進階分析摺疊標題 */
+.adv-summary{cursor:pointer;list-style:none;padding:14px 16px;background:#fff;border:1px solid #ededed;border-radius:12px;font-weight:700;box-shadow:0 1px 3px rgba(0,0,0,.05);}
+.adv-summary::-webkit-details-marker{display:none;}
+.adv-summary::before{content:'▸ ';color:#6b6b6b;}
+.adv-details[open] .adv-summary::before{content:'▾ ';}
 
 /* ═══════════ 登入頁 Uber 化（白底極簡・拿掉食物照） ═══════════ */
 .scene-bg{background:#ffffff!important;background-image:none!important;}
@@ -1400,7 +1405,7 @@ html,body,button,input,select,textarea,
         </div>
       </div>
 
-      <!-- KPI Cards -->
+      <!-- KPI Cards（精簡：只留 4 個核心數字）-->
       <div class="kpi-grid">
         <div class="kpi-card gold-accent">
           <div class="kpi-label" id="kl-today">今日營收</div>
@@ -1413,21 +1418,18 @@ html,body,button,input,select,textarea,
           <div class="kpi-note" id="kn-month">—</div>
         </div>
         <div class="kpi-card">
-          <div class="kpi-label" id="kl-netrev">預估實收</div>
-          <div class="kpi-val"><small>$</small><span id="kv-netrev">—</span></div>
-          <div class="kpi-note" id="kn-netrev">—</div>
-        </div>
-        <div class="kpi-card">
-          <div class="kpi-label" id="kl-cost">本月進貨成本</div>
-          <div class="kpi-val"><small>$</small><span id="kv-cost">—</span></div>
-          <div class="kpi-note" id="kn-cost">—</div>
-        </div>
-        <div class="kpi-card">
           <div class="kpi-label" id="kl-profit">本月淨利</div>
           <div class="kpi-val"><small>$</small><span id="kv-profit">—</span></div>
           <div class="kpi-note" id="kn-profit">—</div>
         </div>
+        <div class="kpi-card">
+          <div class="kpi-label">淨利率</div>
+          <div class="kpi-val"><span id="kv-margin">—</span><small>%</small></div>
+          <div class="kpi-note">淨利 ÷ 營收</div>
+        </div>
       </div>
+      <!-- 已精簡掉的 KPI 元素保留為隱藏，供 loadReports 沿用不報錯（預估實收/進貨成本的數字在下方「進階分析」的成本結構仍看得到）-->
+      <div style="display:none"><span id="kl-cost"></span><span id="kv-cost"></span><span id="kn-cost"></span><span id="kl-netrev"></span><span id="kv-netrev"></span><span id="kn-netrev"></span></div>
 
       <!-- Charts row -->
       <div class="charts-row">
@@ -1444,36 +1446,42 @@ html,body,button,input,select,textarea,
         </div>
       </div>
 
-      <div id="report-analysis" style="margin-top:16px"></div>
+      <!-- 進階分析（預設收起，展開時重繪圖表）-->
+      <details class="adv-details" ontoggle="if(this.open)setTimeout(loadReports,60)" style="margin-top:18px">
+        <summary class="adv-summary">📂 進階分析　<span style="font-weight:400;color:var(--text-3);font-size:12px">成本結構・食材漲跌・賣最好最差・明細記錄</span></summary>
+        <div style="margin-top:12px">
+          <div id="report-analysis"></div>
 
-      <div style="height:16px"></div>
+          <div style="height:16px"></div>
 
-      <!-- Recent records table -->
-      <div class="c-card">
-        <div class="c-card-title">📋 最近營收記錄</div>
-        <div style="overflow-x:auto">
-          <table class="data-table" id="rev-table">
-            <thead><tr>
-              <th>日期</th><th>現金</th><th>刷卡</th><th>TWQR</th>
-              <th>Foodpanda</th><th>UberEats</th><th>合計</th><th>填表人</th><th></th>
-            </tr></thead>
-            <tbody id="rev-tbody"><tr><td colspan="9" style="text-align:center;padding:30px;color:var(--text-3)">載入中…</td></tr></tbody>
-          </table>
+          <!-- Recent records table -->
+          <div class="c-card">
+            <div class="c-card-title">📋 最近營收記錄</div>
+            <div style="overflow-x:auto">
+              <table class="data-table" id="rev-table">
+                <thead><tr>
+                  <th>日期</th><th>現金</th><th>刷卡</th><th>TWQR</th>
+                  <th>Foodpanda</th><th>UberEats</th><th>合計</th><th>填表人</th><th></th>
+                </tr></thead>
+                <tbody id="rev-tbody"><tr><td colspan="9" style="text-align:center;padding:30px;color:var(--text-3)">載入中…</td></tr></tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- Purchase cost table -->
+          <div class="c-card">
+            <div class="c-card-title">📦 最近進貨記錄</div>
+            <div style="overflow-x:auto">
+              <table class="data-table" id="pur-table">
+                <thead><tr>
+                  <th>日期</th><th>分類</th><th>品名</th><th>數量</th><th>成本</th><th>供應商</th>
+                </tr></thead>
+                <tbody id="pur-tbody"><tr><td colspan="6" style="text-align:center;padding:30px;color:var(--text-3)">載入中…</td></tr></tbody>
+              </table>
+            </div>
+          </div>
         </div>
-      </div>
-
-      <!-- Purchase cost table -->
-      <div class="c-card">
-        <div class="c-card-title">📦 最近進貨記錄</div>
-        <div style="overflow-x:auto">
-          <table class="data-table" id="pur-table">
-            <thead><tr>
-              <th>日期</th><th>分類</th><th>品名</th><th>數量</th><th>成本</th><th>供應商</th>
-            </tr></thead>
-            <tbody id="pur-tbody"><tr><td colspan="6" style="text-align:center;padding:30px;color:var(--text-3)">載入中…</td></tr></tbody>
-          </table>
-        </div>
-      </div>
+      </details>
     </div>
 
     <!-- ACCOUNTS TAB -->
@@ -1899,7 +1907,7 @@ html,body,button,input,select,textarea,
 
 <script>
 // ── 自動更新：開啟時比對版本，有新版就自動重載（免無痕）──
-const APP_VER='20260822220000';
+const APP_VER='20260823100000';
 const GT_KEY='gtk_9F3xQ7Lz_pW2rM8kT';  // 後台共用密鑰（階段A：前端帶上；階段B：後台驗證）
 // 是否有「打到一半、還沒送出」的資料（結帳/進貨/交接/申訴的輸入框有值）→ 有的話先別強制重載，免得清掉
 function _hasTypedData(){try{var els=document.querySelectorAll('#tab-revenue input,#tab-revenue textarea,#tab-purchase input,#tab-purchase textarea,#tab-handover input,#tab-handover textarea,#tab-bully input,#tab-bully textarea');for(var i=0;i<els.length;i++){var el=els[i];if(el.type==='date'||el.type==='hidden')continue;if((el.value||'').trim())return true;}return false;}catch(e){return false;}}
@@ -2856,7 +2864,8 @@ function renderReports() {
   if ($('kl-profit')) $('kl-profit').textContent = rangeLabel + '淨利';
   $('kv-profit').textContent = Math.round(netProfit).toLocaleString();
   const margin = totalRev > 0 ? Math.round(netProfit/totalRev*100) : 0;
-  $('kn-profit').textContent = '淨利率 ' + margin + '%（已扣手續費' + (_amort>0?'、創辦攤提 $'+Math.round(_amort).toLocaleString():'') + '）';
+  if($('kv-margin'))$('kv-margin').textContent = margin;
+  $('kn-profit').textContent = '已扣手續費' + (_amort>0?'、創辦攤提 $'+Math.round(_amort).toLocaleString():'');
   // 上期比較（同長度區段）
   const _prevRev = prevPeriodRev(from,to);
   if(_prevRev!=null && _prevRev>0){const _d=Math.round((totalRev-_prevRev)/_prevRev*100);const _n=$('kn-month');if(_n)_n.innerHTML+=` <span style="color:${_d>=0?'#06c167':'#dc2626'};font-weight:700">${_d>=0?'▲':'▼'}${Math.abs(_d)}%</span>`;}
