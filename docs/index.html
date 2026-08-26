@@ -1965,7 +1965,7 @@ html,body,button,input,select,textarea,
 
 <script>
 // ── 自動更新：開啟時比對版本，有新版就自動重載（免無痕）──
-const APP_VER='20260825140000';
+const APP_VER='20260825150000';
 const GT_KEY='gtk_9F3xQ7Lz_pW2rM8kT';  // 後台共用密鑰（階段A：前端帶上；階段B：後台驗證）
 // 是否有「打到一半、還沒送出」的資料（結帳/進貨/交接/申訴的輸入框有值）→ 有的話先別強制重載，免得清掉
 function _hasTypedData(){try{var els=document.querySelectorAll('#tab-revenue input,#tab-revenue textarea,#tab-purchase input,#tab-purchase textarea,#tab-handover input,#tab-handover textarea,#tab-bully input,#tab-bully textarea');for(var i=0;i<els.length;i++){var el=els[i];if(el.type==='date'||el.type==='hidden')continue;if((el.value||'').trim())return true;}return false;}catch(e){return false;}}
@@ -3023,14 +3023,13 @@ function an_renderRates(totalRev,laborUsed,foodCost,dRev,dFee,rangeLabel){
   var rr=$('rate-range'); if(rr)rr.textContent=rangeLabel;
   var GREEN='#06c167',RED='#dc2626',AMBER='#f59e0b';
   var laborR=laborUsed/totalRev*100, foodR=foodCost/totalRev*100;
-  var dNet= dRev>0 ? (dRev-dFee)/dRev*100 : null;
+  var dShare= dRev>0 ? dRev/totalRev*100 : 0;   // 外送佔比（純事實，不判斷划算）
   var lc=laborR>32?RED:(laborR>28?AMBER:GREEN);
   var fc=foodR>38?RED:(foodR>33?AMBER:GREEN);
-  var dc=dNet==null?'var(--text-3)':(dNet<62?RED:(dNet<68?AMBER:GREEN));
   $('rate-body').innerHTML =
     _rateBox('👥 人事率', laborR.toFixed(1)+'%', lc, '目標 ≤30%') +
     _rateBox('🥬 食材率', foodR.toFixed(1)+'%', fc, '進貨基礎・真實見食材率頁') +
-    _rateBox('🛵 外送實收率', dNet==null?'—':dNet.toFixed(1)+'%', dc, dRev>0?('外送營收 $'+Math.round(dRev).toLocaleString()):'無外送');
+    _rateBox('🛵 外送佔比', dRev>0?dShare.toFixed(1)+'%':'—', 'var(--text)', dRev>0?('外送營收 $'+Math.round(dRev).toLocaleString()+' ・平台抽成 $'+Math.round(dFee).toLocaleString()):'本期無外送');
 }
 
 // ── 營運警示清單（可關閉）──
@@ -3048,7 +3047,6 @@ function an_buildAlerts(ctx){
     if(laborR>32) out.push({id:'rate-labor@'+bd,sev:80,icon:'👥',text:'人事率 '+laborR.toFixed(0)+'%（>32%）偏高'});
     var foodR=(cc['食材']||0)/totalRev*100;
     if(foodR>38) out.push({id:'rate-food@'+bd,sev:75,icon:'🥬',text:'食材率 '+foodR.toFixed(0)+'%（>38%，進貨基礎）偏高'});
-    if(dRev>0){var dNet=(dRev-dFee)/dRev*100; if(dNet<62) out.push({id:'rate-delivery@'+bd,sev:60,icon:'🛵',text:'外送實收率僅 '+dNet.toFixed(0)+'%，手續費侵蝕大'});}
   }
   // 異常營收日：近30天，偏離同星期別中位數 >40%、未標註、非補給
   var dayMap={},dayNote={},dayReason={};
