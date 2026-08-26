@@ -1437,6 +1437,18 @@ html,body,button,input,select,textarea,
         <div id="today-compare-body" style="display:flex;gap:10px;flex-wrap:wrap"></div>
       </div>
 
+      <!-- 營運三率：人事率／食材率／外送實收率 -->
+      <div id="rate-card" class="c-card" style="margin:0 0 14px 0;display:none">
+        <div class="c-card-title">📐 營運三率（<span id="rate-range">本月</span>）</div>
+        <div id="rate-body" style="display:flex;gap:10px;flex-wrap:wrap"></div>
+      </div>
+
+      <!-- 營運警示（前10項，可關閉）-->
+      <div id="alert-card" class="c-card" style="margin:0 0 14px 0;display:none">
+        <div class="c-card-title">⚠️ 營運警示 <span id="alert-count" style="font-weight:400;color:var(--text-3);font-size:12px"></span></div>
+        <div id="alert-body"></div>
+      </div>
+
       <!-- Charts row -->
       <div class="charts-row">
         <div class="c-card" style="margin-bottom:0">
@@ -1953,7 +1965,7 @@ html,body,button,input,select,textarea,
 
 <script>
 // ── 自動更新：開啟時比對版本，有新版就自動重載（免無痕）──
-const APP_VER='20260825120000';
+const APP_VER='20260825140000';
 const GT_KEY='gtk_9F3xQ7Lz_pW2rM8kT';  // 後台共用密鑰（階段A：前端帶上；階段B：後台驗證）
 // 是否有「打到一半、還沒送出」的資料（結帳/進貨/交接/申訴的輸入框有值）→ 有的話先別強制重載，免得清掉
 function _hasTypedData(){try{var els=document.querySelectorAll('#tab-revenue input,#tab-revenue textarea,#tab-purchase input,#tab-purchase textarea,#tab-handover input,#tab-handover textarea,#tab-bully input,#tab-bully textarea');for(var i=0;i<els.length;i++){var el=els[i];if(el.type==='date'||el.type==='hidden')continue;if((el.value||'').trim())return true;}return false;}catch(e){return false;}}
@@ -2996,6 +3008,88 @@ function an_annotSend(date,reason){
   }).catch(function(){toast('連線失敗，請重試','red');});
 }
 
+// ── 營運三率（人事率／食材率／外送實收率）──
+function _rateBox(label,valTxt,color,sub){
+  return '<div style="flex:1;min-width:100px;background:var(--surface-2);border:1px solid var(--line-soft);border-radius:10px;padding:10px 12px">'
+    +'<div style="font-size:11px;color:var(--text-3)">'+label+'</div>'
+    +'<div style="font-size:18px;font-weight:800;color:'+color+'">'+valTxt+'</div>'
+    +'<div style="font-size:11px;color:var(--text-3)">'+sub+'</div>'
+  +'</div>';
+}
+function an_renderRates(totalRev,laborUsed,foodCost,dRev,dFee,rangeLabel){
+  var card=$('rate-card'); if(!card)return;
+  if(!an_canAnnot()||!(totalRev>0)){card.style.display='none';return;}
+  card.style.display='';
+  var rr=$('rate-range'); if(rr)rr.textContent=rangeLabel;
+  var GREEN='#06c167',RED='#dc2626',AMBER='#f59e0b';
+  var laborR=laborUsed/totalRev*100, foodR=foodCost/totalRev*100;
+  var dNet= dRev>0 ? (dRev-dFee)/dRev*100 : null;
+  var lc=laborR>32?RED:(laborR>28?AMBER:GREEN);
+  var fc=foodR>38?RED:(foodR>33?AMBER:GREEN);
+  var dc=dNet==null?'var(--text-3)':(dNet<62?RED:(dNet<68?AMBER:GREEN));
+  $('rate-body').innerHTML =
+    _rateBox('👥 人事率', laborR.toFixed(1)+'%', lc, '目標 ≤30%') +
+    _rateBox('🥬 食材率', foodR.toFixed(1)+'%', fc, '進貨基礎・真實見食材率頁') +
+    _rateBox('🛵 外送實收率', dNet==null?'—':dNet.toFixed(1)+'%', dc, dRev>0?('外送營收 $'+Math.round(dRev).toLocaleString()):'無外送');
+}
+
+// ── 營運警示清單（可關閉）──
+var _anAlerts=[];
+function an_alertDismissed(){var a=LS.get('rm_alert_dismiss',[]);return Array.isArray(a)?a:[];}
+function an_alertDismiss(id){var a=an_alertDismissed();if(a.indexOf(id)<0)a.push(id);if(a.length>200)a=a.slice(a.length-200);LS.set('rm_alert_dismiss',a);an_renderAlerts(_anAlerts);}
+function an_annotFromAlert(date){var di=$('annot-date');if(di)di.value=date;var sel=$('annot-reason');if(sel)sel.value='資料異常';var c=$('annot-card');if(c)c.scrollIntoView({behavior:'smooth',block:'center'});toast('已帶入日期，選原因後按「標註」','gold');}
+function an_buildAlerts(ctx){
+  var out=[], bd=bizDay(), WN=['日','一','二','三','四','五','六'];
+  var totalRev=ctx.totalRev, laborUsed=ctx.laborUsed, cc=ctx.cc||{}, dRev=ctx.dRev, dFee=ctx.dFee, netProfit=ctx.netProfit;
+  if(totalRev>0){
+    var netR=netProfit/totalRev*100;
+    if(netR<10) out.push({id:'rate-net@'+bd,sev:90,icon:'📉',text:'本區段淨利率僅 '+netR.toFixed(0)+'%（<10%）'});
+    var laborR=laborUsed/totalRev*100;
+    if(laborR>32) out.push({id:'rate-labor@'+bd,sev:80,icon:'👥',text:'人事率 '+laborR.toFixed(0)+'%（>32%）偏高'});
+    var foodR=(cc['食材']||0)/totalRev*100;
+    if(foodR>38) out.push({id:'rate-food@'+bd,sev:75,icon:'🥬',text:'食材率 '+foodR.toFixed(0)+'%（>38%，進貨基礎）偏高'});
+    if(dRev>0){var dNet=(dRev-dFee)/dRev*100; if(dNet<62) out.push({id:'rate-delivery@'+bd,sev:60,icon:'🛵',text:'外送實收率僅 '+dNet.toFixed(0)+'%，手續費侵蝕大'});}
+  }
+  // 異常營收日：近30天，偏離同星期別中位數 >40%、未標註、非補給
+  var dayMap={},dayNote={},dayReason={};
+  (_allRevData||[]).forEach(function(r){var d=normDate(r.date);if(!d)return;dayMap[d]=(dayMap[d]||0)+(Number(r.total)||0);if(String(r.note||'').indexOf('補給')>=0)dayNote[d]=1;if(String(r.reason||'').trim())dayReason[d]=1;});
+  var cutoff=normDate(new Date(new Date(bd).getTime()-30*86400000));
+  Object.keys(dayMap).forEach(function(d){
+    if(d<cutoff||d>bd||dayReason[d]||dayNote[d])return;
+    var t=dayMap[d]; if(t<=0)return;
+    var wd=new Date(d).getDay(), med=an_median(an_weekdayTotals(wd));
+    if(med<=0)return;
+    var dev=(t-med)/med;
+    if(Math.abs(dev)>0.4){
+      var p=d.split('-');
+      out.push({id:'dev@'+d,sev:40+Math.min(28,Math.abs(dev)*40),icon:dev>0?'📈':'📉',date:d,
+        text:p[1]+'/'+p[2]+' 營收 $'+Math.round(t).toLocaleString()+'，偏離週'+WN[wd]+'中位數 '+(dev>0?'+':'')+Math.round(dev*100)+'%（可標為異常日）'});
+    }
+  });
+  out.sort(function(a,b){return b.sev-a.sev;});
+  return out;
+}
+function an_renderAlerts(list){
+  _anAlerts=list||[];
+  var card=$('alert-card'); if(!card)return;
+  if(!an_canAnnot()){card.style.display='none';return;}
+  var dis=an_alertDismissed();
+  var show=_anAlerts.filter(function(a){return dis.indexOf(a.id)<0;}).sort(function(a,b){return b.sev-a.sev;}).slice(0,10);
+  if(!show.length){card.style.display='none';return;}
+  card.style.display='';
+  var cnt=$('alert-count'); if(cnt)cnt.textContent='（'+show.length+'）';
+  $('alert-body').innerHTML=show.map(function(a){
+    var mkBtn=a.date?'<button type="button" class="btn-sm btn-neutral" style="padding:0 10px" onclick="an_annotFromAlert(\''+a.date+'\')">標為異常</button>':'';
+    var bar=a.sev>=80?'#dc2626':(a.sev>=60?'#f59e0b':'var(--line-soft)');
+    return '<div style="display:flex;align-items:center;gap:8px;padding:9px 11px;background:var(--surface-2);border:1px solid var(--line-soft);border-left:4px solid '+bar+';border-radius:10px;margin-bottom:6px">'
+      +'<span style="font-size:15px">'+a.icon+'</span>'
+      +'<span style="flex:1;font-size:13px;color:var(--text);font-weight:600">'+esc(a.text)+'</span>'
+      +mkBtn
+      +'<button type="button" title="關閉" style="background:none;border:none;color:var(--text-3);font-size:17px;cursor:pointer;line-height:1;padding:0 4px" onclick="an_alertDismiss(\''+a.id+'\')">×</button>'
+    +'</div>';
+  }).join('');
+}
+
 function renderReports() {
   const revRows = filterByRange(_allRevData);
   const purRows = filterByRange(_allPurData);
@@ -3073,6 +3167,12 @@ function renderReports() {
   // 上期比較（同長度區段）
   const _prevRev = prevPeriodRev(from,to);
   if(_prevRev!=null && _prevRev>0){const _d=Math.round((totalRev-_prevRev)/_prevRev*100);const _n=$('kn-month');if(_n)_n.innerHTML+=` <span style="color:${_d>=0?'#06c167':'#dc2626'};font-weight:700">${_d>=0?'▲':'▼'}${Math.abs(_d)}%</span>`;}
+
+  // 營運三率 ＋ 警示清單
+  const _dFee = revRows.reduce((a,r)=>a+(r.deliveryFee||0),0);
+  const _dRev = ch.foodpanda + ch.ubereats;
+  an_renderRates(totalRev, _laborUsed, _cc['食材'], _dRev, _dFee, rangeLabel);
+  an_renderAlerts(an_buildAlerts({totalRev, laborUsed:_laborUsed, cc:_cc, dRev:_dRev, dFee:_dFee, netProfit}));
 
   // Pie chart
   const pieData = [ch.cash, ch.card, ch.twqr, ch.foodpanda, ch.ubereats];
