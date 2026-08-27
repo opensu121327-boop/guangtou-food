@@ -1965,7 +1965,7 @@ html,body,button,input,select,textarea,
 
 <script>
 // ── 自動更新：開啟時比對版本，有新版就自動重載（免無痕）──
-const APP_VER='20260825150000';
+const APP_VER='20260827120000';
 const GT_KEY='gtk_9F3xQ7Lz_pW2rM8kT';  // 後台共用密鑰（階段A：前端帶上；階段B：後台驗證）
 // 是否有「打到一半、還沒送出」的資料（結帳/進貨/交接/申訴的輸入框有值）→ 有的話先別強制重載，免得清掉
 function _hasTypedData(){try{var els=document.querySelectorAll('#tab-revenue input,#tab-revenue textarea,#tab-purchase input,#tab-purchase textarea,#tab-handover input,#tab-handover textarea,#tab-bully input,#tab-bully textarea');for(var i=0;i<els.length;i++){var el=els[i];if(el.type==='date'||el.type==='hidden')continue;if((el.value||'').trim())return true;}return false;}catch(e){return false;}}
@@ -3291,7 +3291,7 @@ const END_INV_SEED=[
   {code:'DR004',name:'冰塊',unit:'袋',price:100,zone:'乾貨米酒水'}
 ];
 // 可編輯品項清單：首次用種子並回寫 KV(rm_inv_endlist)；之後可編輯
-function invItems(){var a=LS.get('rm_inv_endlist',null);if(!Array.isArray(a)||!a.length){a=END_INV_SEED.map(function(x){return Object.assign({},x);});LS.set('rm_inv_endlist',a);if(typeof cloudPush==='function')cloudPush('rm_inv_endlist');}return a;}
+function invItems(){var a=LS.get('rm_inv_endlist',null);if(!Array.isArray(a)||!a.length){a=END_INV_SEED.map(function(x){return Object.assign({},x);});_seedLS('rm_inv_endlist',a);}return a;}   // 種子只寫本機、不推雲端(避免蓋掉 KV 真實清單)
 // 解析 key：同時吃「日期|食材ID」(日常) 與「日期|場次ID|物料編號」(期末)
 function parseInvKey(key){var p=String(key||'').split('|');if(p.length>=3)return {date:p[0]||'',sessionId:p[1]||'',matCode:p[2]||'',kind:'session'};return {date:p[0]||'',id:p[1]||'',kind:'legacy'};}
 // 讀一列每日盤點(A..Q 陣列)→物件；容忍 J–Q 空/不存在；J 空一律視為「日常回報」
@@ -4313,8 +4313,11 @@ const RECIPE_SEED=[
 ];
 // 預設任務 / 獎勵
 const SEED_VER=5;
+// 種子預設「只寫本機、不推雲端」——避免空白裝置(無痕/清快取)把種子推上 KV 蓋掉真實資料。
+// 真實資料一律由 cloudPull 從 KV 帶回；種子只是首次開啟的本機顯示用。
+function _seedLS(k,v){try{localStorage.setItem(k,JSON.stringify(v));}catch(e){}}
 function seedGame(){
-  if(!LS.get('rm_tasks',null)||LS.get('rm_seed_v',0)<SEED_VER)LS.set('rm_tasks',[
+  if(!LS.get('rm_tasks',null)||LS.get('rm_seed_v',0)<SEED_VER)_seedLS('rm_tasks',[
     {id:'t1',icon:'🧻',title:'補充廁所衛生紙',xp:15,cat:'daily',type:'photo'},
     {id:'t2',icon:'🧹',title:'打烊清潔地板',xp:20,cat:'daily',type:'photo'},
     {id:'t3',icon:'🧊',title:'冰箱溫度檢查並記錄',xp:15,cat:'daily',type:'photo'},
@@ -4326,9 +4329,9 @@ function seedGame(){
     {id:'tr1',icon:'🍳',title:'提案一道新菜色',xp:50,cat:'rnd',type:'text'},
     {id:'tr2',icon:'🎉',title:'提出一個店面活動建議',xp:40,cat:'rnd',type:'text'},
   ]);
-  if(!LS.get('rm_parts',null))LS.set('rm_parts',{});
-  if(!LS.get('rm_recipes',null))LS.set('rm_recipes',RECIPE_SEED.map((r,i)=>({id:'rcseed'+i,dish:r.dish,items:r.items})));
-  if(!LS.get('rm_quiz',null))LS.set('rm_quiz',[
+  if(!LS.get('rm_parts',null))_seedLS('rm_parts',{});
+  if(!LS.get('rm_recipes',null))_seedLS('rm_recipes',RECIPE_SEED.map((r,i)=>({id:'rcseed'+i,dish:r.dish,items:r.items})));
+  if(!LS.get('rm_quiz',null))_seedLS('rm_quiz',[
     {id:'q1',q:'外場接到客訴時，第一步應該做什麼？',opts:['先誠懇道歉並傾聽','直接叫店長處理','假裝沒聽到','跟客人爭辯'],ans:0,xp:15},
     {id:'q2',q:'處理生魚片最重要的原則是？',opts:['全程低溫與衛生','切得越快越好','擺盤越花俏越好','份量給超大'],ans:0,xp:15},
     {id:'q3',q:'打烊結帳發現帳目對不起來，應該？',opts:['立即回報主管並記錄','自己默默補錢','明天再說','忽略它'],ans:0,xp:15},
@@ -4337,10 +4340,10 @@ function seedGame(){
     {id:'q6',q:'冰箱溫度檢查發現異常，正確做法是？',opts:['記錄並立即通報主管','關門當沒看到','自己亂調溫度','忽略'],ans:0,xp:15},
     {id:'q7',q:'顧客點餐後，理想的上菜原則是？',opts:['兼顧速度與品質','越快越好不管品質','不重要','等廚房有空再說'],ans:0,xp:15},
   ]);
-  LS.set('rm_seed_v',SEED_VER);
-  if(!LS.get('rm_submissions',null))LS.set('rm_submissions',[]);
-  if(!LS.get('rm_redemptions',null))LS.set('rm_redemptions',[]);
-  if(!LS.get('rm_expenses',null))LS.set('rm_expenses',[]);
+  _seedLS('rm_seed_v',SEED_VER);
+  if(!LS.get('rm_submissions',null))_seedLS('rm_submissions',[]);
+  if(!LS.get('rm_redemptions',null))_seedLS('rm_redemptions',[]);
+  if(!LS.get('rm_expenses',null))_seedLS('rm_expenses',[]);
 }
 
 function isMgr(){return CU&&(CU.role==='BOSS'||CU.role==='MGR');}
