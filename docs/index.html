@@ -1994,7 +1994,7 @@ html,body,button,input,select,textarea,
 
 <script>
 // ── 自動更新：開啟時比對版本，有新版就自動重載（免無痕）──
-const APP_VER='20260830120000';
+const APP_VER='20260830230000';
 const GT_KEY='gtk_9F3xQ7Lz_pW2rM8kT';  // 後台共用密鑰（階段A：前端帶上；階段B：後台驗證）
 // 是否有「打到一半、還沒送出」的資料（結帳/進貨/交接/申訴的輸入框有值）→ 有的話先別強制重載，免得清掉
 function _hasTypedData(){try{var els=document.querySelectorAll('#tab-revenue input,#tab-revenue textarea,#tab-purchase input,#tab-purchase textarea,#tab-handover input,#tab-handover textarea,#tab-bully input,#tab-bully textarea');for(var i=0;i<els.length;i++){var el=els[i];if(el.type==='date'||el.type==='hidden')continue;if((el.value||'').trim())return true;}return false;}catch(e){return false;}}
@@ -3137,14 +3137,18 @@ function an_topSellers(){
   });
   return Object.keys(cnt).map(function(k){return {name:k,n:cnt[k]};}).sort(function(a,b){return b.n-a.n;});
 }
-// 毛利最高品項：用 BOM 配方(rm_recipes)成本 vs 售價(recipe.price)算毛利率，銷量作次要排序
+// 菜單表內用價對照（品名→內用價），售價一律自動抓菜單表，BOM 不必填售價
+var _menuPriceMap={};
+function buildMenuPriceMap(menu){ var mp={}; for(var i=1;i<(menu||[]).length;i++){ var r=menu[i]; var nm=String(r[0]||'').trim(); if(!nm||/ZZTEST/i.test(nm))continue; if(String(r[6]||'').trim()==='已下架')continue; var p=_mcNum(r[3]); if(p>0)mp[nm]=p; } _menuPriceMap=mp; return mp; }
+function menuPriceOf(name){ return _menuPriceMap[String(name||'').trim()]||0; }
+// 毛利最高品項：用 BOM 配方(rm_recipes)成本 vs 菜單表內用價算毛利率，銷量作次要排序
 function an_topMargin(){
   var recipes=(LS.get('rm_recipes',[])||[]).filter(function(r){return r&&!r.isSemi;});
   var pop={}; an_topSellers().forEach(function(x){pop[x.name]=x.n;});
   var out=[];
   recipes.forEach(function(r){
     var dish=String(r.dish||'').trim(); if(!dish)return;
-    var price=parseFloat(r.price)||0; if(!(price>0))return;      // 需在 BOM 填售價才能算毛利
+    var price=menuPriceOf(dish)||parseFloat(r.price)||0; if(!(price>0))return;   // 菜單表內用價優先，無(如加購/組合不在菜單表)才用配方定價
     var cc=recipeCost(r); if(!cc||!(cc.cost>0))return;
     var margin=(price-cc.cost)/price*100; if(!isFinite(margin))return;
     out.push({name:dish, margin:margin, pop:pop[dish]||0, partial:!!cc.miss});
@@ -3196,9 +3200,9 @@ function an_renderDecisions(ctx){
     var ts=an_topSellers().slice(0,3);
     if(ts.length){
       html+=_decCard('🎯','主推商品','var(--text)','近期熱賣',
-        ts.map(function(x){return x.name;}).join('、')+'。建好 BOM 配方並填售價後，會自動改推「毛利最高」。');
+        ts.map(function(x){return x.name;}).join('、')+'。建好 BOM 配方後（售價自動抓菜單表），會自動改推「毛利最高」。');
     }else{
-      html+=_decCard('🎯','主推商品','var(--text-3)','待資料','建好 BOM 配方（含售價）並累積銷售後，自動推「毛利最高」品項。');
+      html+=_decCard('🎯','主推商品','var(--text-3)','待資料','建好 BOM 配方（售價自動抓菜單表內用價）並累積銷售後，自動推「毛利最高」品項。');
     }
   }
 
@@ -3911,6 +3915,7 @@ function _mcSetSort(s){ _mcSort=s; renderMenuCost(); }
 function renderMenuCost(){
   if(!window._mcData)return;
   var menu=window._mcData.menu, qty=window._mcData.qty;
+  buildMenuPriceMap(menu);   // 同步菜單表內用價對照（主推卡毛利用）
   var GREEN='#06c167',RED='#dc2626',AMBER='#f59e0b';
   // 菜單表：品項0 FP價1 UE價2 內用價3 食材成本4 更新時間5 狀態6
   var items={};
@@ -3991,6 +3996,7 @@ async function loadReports() {
     _allSalesData=(sres&&sres.rows)?sres.rows.slice(1).map(r=>({date:normDate(r[0]),best:[r[3],r[4],r[5],r[6],r[7]],worst:[r[8],r[9],r[10],r[11],r[12]]})):[];
     _allFocusData=(fres&&fres.rows)?fres.rows.slice(1).map(r=>({date:normDate(r[0]),product:String(r[1]||'').trim(),qty:Number(r[2])||0})).filter(x=>x.product):[];
     try{ await loadRecipeCosts(); }catch(e){}   // BOM 進貨單價→供「主推商品(毛利最高)」決策卡計算
+    try{ var _mq=await apiGetCached('query_menuqty'); if(_mq&&(_mq.status==='ok'||_mq.status==='success'))buildMenuPriceMap(_mq.menu||[]); }catch(e){}   // 菜單表內用價→主推卡毛利用
     renderReports();
     const now=new Date();
     $('report-last-update').textContent='最後更新：'+now.getHours()+':'+String(now.getMinutes()).padStart(2,'0');
@@ -5048,6 +5054,7 @@ function findRecipe(id){return (LS.get('rm_recipes',[])||[]).find(r=>r.id===id);
 function round2(n){return Math.round((n||0)*100)/100;}
 // 單一食材成本（物料 or 半成品，含遞迴與循環防呆）
 function itemCost(it,stack){
+  if(it&&it.noCost)return 0;   // 適量/不計：照列食譜但成本0、不算缺料
   if(it&&it.semiId){
     const semi=findRecipe(it.semiId);if(!semi)return null;
     const yq=parseFloat(semi.yieldQty)||0,yu=semi.yieldUnit||'';if(!(yq>0)||!yu)return null;
@@ -5072,7 +5079,7 @@ function itemCost(it,stack){
   return null;
 }
 // 整份配方成本（遞迴展開半成品）
-function recipeCost(rc,stack){stack=stack||[];if(!rc||stack.indexOf(rc.id)>=0)return{cost:0,miss:true};const st=stack.concat(rc.id);let total=0,miss=false;(rc.items||[]).forEach(it=>{const c=itemCost(it,st);if(c==null)miss=true;else total+=c;});return{cost:total,miss:miss};}
+function recipeCost(rc,stack){stack=stack||[];if(!rc||stack.indexOf(rc.id)>=0)return{cost:0,miss:true};var _fx=rc.fixedCost;if(_fx!=null&&_fx!==''&&isFinite(parseFloat(_fx)))return{cost:parseFloat(_fx),miss:false};/* 手動固定成本(贈品/外購品，免拆食材) */const st=stack.concat(rc.id);let total=0,miss=false;(rc.items||[]).forEach(it=>{const c=itemCost(it,st);if(c==null)miss=true;else total+=c;});return{cost:total,miss:miss};}
 function renderBom(){
   const wrap=$('bom-wrap');if(!wrap)return;
   const recipes=LS.get('rm_recipes',[])||[];
