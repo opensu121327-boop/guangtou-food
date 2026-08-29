@@ -1610,6 +1610,17 @@ html,body,button,input,select,textarea,
       <button class="refresh-btn" onclick="renderAudit()" style="margin-top:4px">↻ 重新載入</button>
     </div>
 
+    <!-- MENU COST TAB（菜單毛利・老闆/店長）-->
+    <div class="tab-panel" id="tab-menucost">
+      <div class="sec-header"><div class="sec-title">菜單毛利分析</div><div class="divider"></div><div class="sec-sub">內用價 vs 外送加價 × 食材成本 × 本月銷量</div></div>
+      <div style="display:flex;gap:8px;align-items:center;margin-bottom:12px;flex-wrap:wrap">
+        <span id="mc-month-label" class="muted-note"></span>
+        <button class="refresh-btn" onclick="loadMenuCost()" style="margin-left:auto">↻ 重新載入</button>
+      </div>
+      <div id="mc-cards" class="kpi-grid" style="margin-bottom:14px"></div>
+      <div id="mc-wrap"><div class="game-empty">載入中…</div></div>
+    </div>
+
     <!-- SETTINGS TAB（制度設定・老闆限定）-->
     <div class="tab-panel" id="tab-settings">
       <div class="sec-header">
@@ -1971,7 +1982,7 @@ html,body,button,input,select,textarea,
 
 <script>
 // ── 自動更新：開啟時比對版本，有新版就自動重載（免無痕）──
-const APP_VER='20260827120000';
+const APP_VER='20260829180000';
 const GT_KEY='gtk_9F3xQ7Lz_pW2rM8kT';  // 後台共用密鑰（階段A：前端帶上；階段B：後台驗證）
 // 是否有「打到一半、還沒送出」的資料（結帳/進貨/交接/申訴的輸入框有值）→ 有的話先別強制重載，免得清掉
 function _hasTypedData(){try{var els=document.querySelectorAll('#tab-revenue input,#tab-revenue textarea,#tab-purchase input,#tab-purchase textarea,#tab-handover input,#tab-handover textarea,#tab-bully input,#tab-bully textarea');for(var i=0;i<els.length;i++){var el=els[i];if(el.type==='date'||el.type==='hidden')continue;if((el.value||'').trim())return true;}return false;}catch(e){return false;}}
@@ -2166,7 +2177,7 @@ function initApp() {
   // 員工與店長暫時只開放：每日結帳／進貨記錄／BOM成本／交接表（老闆維持全部）。要復原把此白名單移除即可。
   const NONBOSS_TABS=['revenue','purchase','bom','handover','bully'];
   // 期末盤點/食材率依角色 roles 開放給非老闆（endinv 給店長+員工、foodcost 只給店長）
-  const tabs=(CU.role==='BOSS')?ALL_TABS.filter(t=>t.roles.includes(CU.role)):ALL_TABS.filter(t=>NONBOSS_TABS.indexOf(t.id)>=0||(['endinv','foodcost'].indexOf(t.id)>=0&&t.roles.includes(CU.role))||(t.id==='reports'&&CU.role==='MGR'));   // 數據報表開放給店長(MGR)
+  const tabs=(CU.role==='BOSS')?ALL_TABS.filter(t=>t.roles.includes(CU.role)):ALL_TABS.filter(t=>NONBOSS_TABS.indexOf(t.id)>=0||(['endinv','foodcost'].indexOf(t.id)>=0&&t.roles.includes(CU.role))||(['reports','menucost'].indexOf(t.id)>=0&&CU.role==='MGR'));   // 數據報表/菜單毛利開放給店長(MGR)
   $('main-nav').innerHTML=tabs.map((t,i)=>
     `<button class="nav-btn${i===0?' active':''}" data-tab="${t.id}" onclick="switchTab('${t.id}',this)">
       <span class="nav-icon">${t.icon}</span>${t.label}
@@ -2197,6 +2208,7 @@ function switchTab(name,btn) {
   btn.classList.add('active');
   if(name==='revenue')fillRvNoteSelect();
   if(name==='reports')loadReports();
+  if(name==='menucost')loadMenuCost();
   if(name==='endinv')renderEndInv();
   if(name==='foodcost')renderFoodCost();
   if(name==='purchase'){loadMaterials().then(fillMatCatSelect);renderRecentPurchases();fillPuUnitSelect();fillPuPackuSelect();}
@@ -3799,6 +3811,72 @@ function drawSalesBar(cvId,arr,color){
   window._salesCharts[cvId]=new Chart(cv.getContext('2d'),{type:'bar',data:{labels:arr.map(x=>x.name),datasets:[{data:arr.map(x=>x.n),backgroundColor:color}]},options:{indexAxis:'y',plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>c.raw+' 次'}}},scales:{x:{ticks:{precision:0,font:{size:10}}},y:{ticks:{font:{size:11}}}},responsive:true}});
 }
 
+// ── 菜單毛利分析（讀 菜單表 + 銷售份數）──
+function _mcNum(v){ var n=parseFloat(String(v==null?'':v).replace(/[,$\s]/g,'')); return isFinite(n)?n:0; }
+function _mcCard(label,val,sub){ return '<div class="kpi-card"><div class="kpi-label">'+label+'</div><div class="kpi-val">'+val+'</div><div class="kpi-note">'+sub+'</div></div>'; }
+var _mcSort='qty';
+async function loadMenuCost(){
+  var wrap=$('mc-wrap'); if(wrap)wrap.innerHTML='<div class="game-empty">載入中…</div>';
+  try{
+    var res=await apiGet('query_menuqty');
+    if(!res||(res.status!=='ok'&&res.status!=='success')){ if(wrap)wrap.innerHTML='<div class="game-empty">載入失敗</div>'; return; }
+    window._mcData={menu:res.menu||[], qty:res.qty||[]};
+    renderMenuCost();
+  }catch(e){ if(wrap)wrap.innerHTML='<div class="game-empty">載入失敗：'+esc(e.message)+'</div>'; }
+}
+function _mcSetSort(s){ _mcSort=s; renderMenuCost(); }
+function renderMenuCost(){
+  if(!window._mcData)return;
+  var menu=window._mcData.menu, qty=window._mcData.qty;
+  var GREEN='#06c167',RED='#dc2626',AMBER='#f59e0b';
+  // 菜單表：品項0 FP價1 UE價2 內用價3 食材成本4 更新時間5 狀態6
+  var items={};
+  for(var i=1;i<menu.length;i++){ var r=menu[i]; var nm=String(r[0]||'').trim(); if(!nm||/ZZTEST/i.test(nm))continue; if(String(r[6]||'').trim()==='已下架')continue;
+    items[nm]={name:nm, fp:_mcNum(r[1]), ue:_mcNum(r[2]), dine:_mcNum(r[3]), cost:_mcNum(r[4]), qtyTot:0, amtTot:0}; }
+  // 銷售份數：月份0 品項1 …合計份5 …合計額9；取最新月
+  var latest='';
+  for(var j=1;j<qty.length;j++){ var m=String(qty[j][0]||'').trim(); if(m.length===7&&m>latest)latest=m; }
+  for(var k=1;k<qty.length;k++){ var q=qty[k]; if(String(q[0]||'').trim()!==latest)continue; var nm2=String(q[1]||'').trim(); if(!items[nm2])continue; items[nm2].qtyTot=_mcNum(q[5]); items[nm2].amtTot=_mcNum(q[9]); }
+  var arr=Object.keys(items).map(function(k){return items[k];});
+  arr.forEach(function(it){
+    it.markFp=(it.dine>0&&it.fp>0)?(it.fp/it.dine-1)*100:null;
+    it.markUe=(it.dine>0&&it.ue>0)?(it.ue/it.dine-1)*100:null;
+    it.margin=(it.dine>0&&it.cost>0)?(it.dine-it.cost)/it.dine*100:null;
+  });
+  arr.sort(function(a,b){ return _mcSort==='margin'?((b.margin==null?-1:b.margin)-(a.margin==null?-1:a.margin)):(b.qtyTot-a.qtyTot); });
+  // 摘要卡
+  var totAmt=arr.reduce(function(s,x){return s+x.amtTot;},0);
+  var wm=arr.filter(function(x){return x.margin!=null;});
+  var avgMargin=wm.length?wm.reduce(function(s,x){return s+x.margin;},0)/wm.length:null;
+  var wk=arr.filter(function(x){return x.markFp!=null||x.markUe!=null;});
+  var avgMark=wk.length?wk.reduce(function(s,x){return s+(x.markFp!=null?x.markFp:x.markUe);},0)/wk.length:null;
+  var noCost=arr.filter(function(x){return x.margin==null&&x.dine>0;}).length;
+  if($('mc-month-label'))$('mc-month-label').textContent='統計月份：'+(latest||'—')+'　共 '+arr.length+' 品項'+(noCost>0?'（'+noCost+' 個待填食材成本）':'');
+  if($('mc-cards'))$('mc-cards').innerHTML=
+    _mcCard('本月營收','$'+Math.round(totAmt).toLocaleString(),'各通路合計')+
+    _mcCard('平均內用毛利率',avgMargin!=null?avgMargin.toFixed(0)+'%':'—',wm.length+' 個有成本')+
+    _mcCard('平均外送加價',avgMark!=null?avgMark.toFixed(0)+'%':'—','平台價 vs 內用價')+
+    _mcCard('在售品項',String(arr.length),'菜單表');
+  var rows=arr.map(function(it){
+    var mk=''; if(it.markFp!=null)mk+='FP +'+Math.round(it.markFp)+'%'; if(it.markUe!=null)mk+=(mk?'　':'')+'UE +'+Math.round(it.markUe)+'%'; if(!mk)mk='<span style="color:var(--text-3)">—</span>';
+    var mg=it.margin!=null?('<span style="color:'+(it.margin>=50?GREEN:it.margin>=30?AMBER:RED)+';font-weight:700">'+it.margin.toFixed(0)+'%</span>'):'<span style="color:var(--text-3)">填成本</span>';
+    return '<tr><td style="font-weight:600">'+esc(it.name)+'</td>'
+      +'<td style="text-align:right">'+(it.dine>0?'$'+it.dine:'—')+'</td>'
+      +'<td style="font-size:12px">'+mk+'</td>'
+      +'<td style="text-align:right">'+(it.cost>0?'$'+it.cost:'<span style="color:var(--text-3)">—</span>')+'</td>'
+      +'<td style="text-align:center">'+mg+'</td>'
+      +'<td style="text-align:right;font-weight:700">'+it.qtyTot+'</td>'
+      +'<td style="text-align:right">$'+Math.round(it.amtTot).toLocaleString()+'</td></tr>';
+  }).join('');
+  if($('mc-wrap'))$('mc-wrap').innerHTML=
+    '<div style="margin-bottom:8px;font-size:12px;color:var(--text-3)">排序：'
+    +'<a href="#" onclick="_mcSetSort(\'qty\');return false" style="'+(_mcSort==='qty'?'font-weight:700;color:var(--text)':'')+'">銷量</a> ／ '
+    +'<a href="#" onclick="_mcSetSort(\'margin\');return false" style="'+(_mcSort==='margin'?'font-weight:700;color:var(--text)':'')+'">毛利率</a></div>'
+    +'<div style="overflow-x:auto"><table class="data-table"><thead><tr>'
+    +'<th>品項</th><th>內用價</th><th>外送加價</th><th>食材成本</th><th>內用毛利率</th><th>本月份數</th><th>本月營收</th>'
+    +'</tr></thead><tbody>'+rows+'</tbody></table></div>';
+}
+
 async function loadReports() {
   $('report-last-update').textContent='載入中…';
   try{
@@ -4143,6 +4221,7 @@ const ALL_TABS=[
   {id:'revenue',icon:'💳',label:'每日結帳',roles:['BOSS','MGR','EMP']},
   {id:'purchase',icon:'📦',label:'進貨記錄',roles:['BOSS','MGR','EMP']},
   {id:'reports',icon:'📊',label:'數據報表',roles:['BOSS','MGR']},
+  {id:'menucost',icon:'💰',label:'菜單毛利',roles:['BOSS','MGR']},
   {id:'bom',icon:'🧮',label:'BOM成本',roles:['BOSS','MGR']},
   {id:'matcat',icon:'🏷️',label:'物料分類',roles:['BOSS']},
   {id:'handover',icon:'📋',label:'交接表',roles:['BOSS','MGR','EMP']},
