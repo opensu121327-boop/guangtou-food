@@ -1630,12 +1630,24 @@ html,body,button,input,select,textarea,
       </div>
       <div class="c-card">
         <div class="c-card-title">💳 手續費率</div>
-        <div style="font-size:12.5px;color:#6b6b6b;line-height:1.6;margin-bottom:12px">只影響<b>之後新增</b>的結帳，已存的歷史紀錄不會被改動。</div>
-        <div class="grid-3">
+        <div style="font-size:12.5px;color:#6b6b6b;line-height:1.6;margin-bottom:12px">刷卡／TWQR 只影響<b>之後新增</b>的結帳；<b>外送手續費在報表會用最新費率即時重算</b>（FP／UE 分開），改了費率報表數字會跟著更新。</div>
+        <div class="grid-2">
           <div class="form-group"><label class="form-label">刷卡 (%)</label><input class="form-input" id="set-fee-card" type="number" min="0" step="0.01" placeholder="2.2"></div>
           <div class="form-group"><label class="form-label">TWQR (%)</label><input class="form-input" id="set-fee-twqr" type="number" min="0" step="0.01" placeholder="2.2"></div>
-          <div class="form-group"><label class="form-label">外送 (%)</label><input class="form-input" id="set-fee-delivery" type="number" min="0" step="0.01" placeholder="31"></div>
+          <div class="form-group"><label class="form-label">Foodpanda 抽成 (%)</label><input class="form-input" id="set-fee-fp" type="number" min="0" step="0.1" placeholder="31"></div>
+          <div class="form-group"><label class="form-label">UberEats 抽成 (%)</label><input class="form-input" id="set-fee-ue" type="number" min="0" step="0.1" placeholder="35"></div>
         </div>
+        <div style="font-size:12px;color:#9a9a9a;line-height:1.5;margin-top:2px">Foodpanda 抽 31%（交易金額）、UberEats 抽 35%（未稅銷售）。</div>
+      </div>
+      <div class="c-card">
+        <div class="c-card-title">📣 Foodpanda 當月額外費（實際金額）</div>
+        <div style="font-size:12.5px;color:#6b6b6b;line-height:1.6;margin-bottom:12px">廣告曝光費＋期租費＋拒單費，<b>依對帳單／發票的實際金額</b>逐月輸入。報表淨利會扣掉當月這筆（抽成%不含這些可控行銷／固定費）。</div>
+        <div class="grid-2">
+          <div class="form-group"><label class="form-label">月份</label><input class="form-input" id="set-fpx-month" type="month"></div>
+          <div class="form-group"><label class="form-label">金額（元）</label><input class="form-input" id="set-fpx-amt" type="number" min="0" step="1" placeholder="例：3341"></div>
+        </div>
+        <button class="btn-action" onclick="saveFpExtra()">＋ 儲存當月額外費</button>
+        <div id="fpx-list" style="margin-top:12px"></div>
       </div>
       <div class="c-card">
         <div class="c-card-title">🎁 獎勵制度參數</div>
@@ -1982,7 +1994,7 @@ html,body,button,input,select,textarea,
 
 <script>
 // ── 自動更新：開啟時比對版本，有新版就自動重載（免無痕）──
-const APP_VER='20260829180000';
+const APP_VER='20260830120000';
 const GT_KEY='gtk_9F3xQ7Lz_pW2rM8kT';  // 後台共用密鑰（階段A：前端帶上；階段B：後台驗證）
 // 是否有「打到一半、還沒送出」的資料（結帳/進貨/交接/申訴的輸入框有值）→ 有的話先別強制重載，免得清掉
 function _hasTypedData(){try{var els=document.querySelectorAll('#tab-revenue input,#tab-revenue textarea,#tab-purchase input,#tab-purchase textarea,#tab-handover input,#tab-handover textarea,#tab-bully input,#tab-bully textarea');for(var i=0;i<els.length;i++){var el=els[i];if(el.type==='date'||el.type==='hidden')continue;if((el.value||'').trim())return true;}return false;}catch(e){return false;}}
@@ -2327,7 +2339,7 @@ const CICON_OPTS='<option value="check">完成 / 打勾</option><option value="c
 
 // ── 手續費費率（可調整，變動時老闆在結帳頁設定）──
 // ── 制度設定（獎勵制度所有參數，老闆可改；單一設定物件 rm_reward_cfg）──
-const REWARD_DEFAULT={baseWage:196,poolPct:20,penaltyPct:1,fee:{card:2.2,twqr:2.2,delivery:31}};  // 費率校正2.2/2.2/31；成本改由 Google Sheet 即時計算；創辦攤提存 rm_founding
+const REWARD_DEFAULT={baseWage:196,poolPct:20,penaltyPct:1,fee:{card:2.2,twqr:2.2,delivery:31,fpComm:31,ueComm:35}};  // 費率校正：刷卡/TWQR 2.2；外送分開 FP 31%(交易額)、UE 35%(未稅銷售)；delivery 保留為舊相容鍵。成本改由 Google Sheet 即時計算；創辦攤提存 rm_founding
 function rewardCfg(){
   const num=(x,def)=>{const n=parseFloat(x);return isFinite(n)&&n>=0?n:def;};
   const d=LS.get('rm_reward_cfg',null); const c=(d&&typeof d==='object')?d:{};
@@ -2337,17 +2349,56 @@ function rewardCfg(){
     baseWage:num(c.baseWage,REWARD_DEFAULT.baseWage),
     poolPct:num(c.poolPct,REWARD_DEFAULT.poolPct),
     penaltyPct:num(c.penaltyPct,REWARD_DEFAULT.penaltyPct),
-    fee:{card:num(f.card,num(lf.card,REWARD_DEFAULT.fee.card)),twqr:num(f.twqr,num(lf.twqr,REWARD_DEFAULT.fee.twqr)),delivery:num(f.delivery,num(lf.delivery,REWARD_DEFAULT.fee.delivery))}
+    fee:(function(){
+      var dv=num(f.delivery,num(lf.delivery,REWARD_DEFAULT.fee.delivery));   // 舊統一外送費率（相容用）
+      return {
+        card:num(f.card,num(lf.card,REWARD_DEFAULT.fee.card)),
+        twqr:num(f.twqr,num(lf.twqr,REWARD_DEFAULT.fee.twqr)),
+        delivery:dv,
+        fpComm:num(f.fpComm,num(lf.fpComm,dv)),                              // Foodpanda 抽成%（無設定則沿用舊統一費率）
+        ueComm:num(f.ueComm,num(lf.ueComm,REWARD_DEFAULT.fee.ueComm))        // UberEats 抽成%
+      };
+    })()
   };
 }
 function feePct(){return rewardCfg().fee;}                 // 百分比（顯示用）
-function feeRates(){const p=feePct();return {card:p.card/100,twqr:p.twqr/100,delivery:p.delivery/100};}   // 小數（計算用）
+function feeRates(){const p=feePct();return {card:p.card/100,twqr:p.twqr/100,delivery:p.delivery/100,fpComm:p.fpComm/100,ueComm:p.ueComm/100};}   // 小數（計算用）
+// 外送手續費（分平台）：FP 用 fpComm、UE 用 ueComm
+function deliveryFeeCalc(fp,ue){var r=feeRates();return Math.round((Number(fp)||0)*r.fpComm+(Number(ue)||0)*r.ueComm);}
+// FP 當月額外費（廣告曝光＋期租＋拒單）實際金額，依月份存 rm_fp_extra {'2026-08':金額}
+function fpExtraMap(){var o=LS.get('rm_fp_extra',null);return (o&&typeof o==='object')?o:{};}
+function fpExtraForRange(from,to){var m=fpExtraMap(),s=0;for(var k in m){if(!m.hasOwnProperty(k))continue;var d=k+'-01';if((!from||d>=from.slice(0,7)+'-01')&&(!to||d<=to.slice(0,7)+'-31'))s+=Number(m[k])||0;}return s;}
 function renderSettings(){   // 制度設定頁：填入目前值（僅老闆）
   if(!(CU&&CU.role==='BOSS'))return;
   const c=rewardCfg(); const set=(id,v)=>{if($(id))$(id).value=v;};
   set('set-wage',c.baseWage);set('set-pool',c.poolPct);set('set-penalty',c.penaltyPct);
-  set('set-fee-card',c.fee.card);set('set-fee-twqr',c.fee.twqr);set('set-fee-delivery',c.fee.delivery);
+  set('set-fee-card',c.fee.card);set('set-fee-twqr',c.fee.twqr);set('set-fee-fp',c.fee.fpComm);set('set-fee-ue',c.fee.ueComm);
+  renderFpExtraList();
   renderFounding();renderProfitPreview();renderTreeEditor();renderAwardParams();an_fixedStaffRender();
+}
+// FP 當月額外費：儲存 / 列表 / 刪除
+function saveFpExtra(){
+  if(!(CU&&CU.role==='BOSS'))return;
+  var m=($('set-fpx-month')&&$('set-fpx-month').value)||'';
+  var a=parseFloat(($('set-fpx-amt')&&$('set-fpx-amt').value)||'');
+  if(!m){toast('請選月份','red');return;}
+  if(!(a>=0)){toast('請輸入金額','red');return;}
+  var o=fpExtraMap();o[m]=Math.round(a);LS.set('rm_fp_extra',o);
+  if(typeof cloudPush==='function')cloudPush('rm_fp_extra');
+  if($('set-fpx-amt'))$('set-fpx-amt').value='';
+  renderFpExtraList();toast('✓ 已存 '+m+' 額外費 $'+Math.round(a).toLocaleString(),'gold');
+  if(typeof loadReports==='function'&&$('tab-reports'))try{loadReports();}catch(e){}
+}
+function delFpExtra(m){
+  if(!(CU&&CU.role==='BOSS'))return;
+  var o=fpExtraMap();if(o.hasOwnProperty(m)){delete o[m];LS.set('rm_fp_extra',o);if(typeof cloudPush==='function')cloudPush('rm_fp_extra');}
+  renderFpExtraList();
+}
+function renderFpExtraList(){
+  var el=$('fpx-list');if(!el)return;
+  var o=fpExtraMap();var keys=Object.keys(o).sort().reverse();
+  if(!keys.length){el.innerHTML='<div style="font-size:12px;color:#9a9a9a">尚未輸入任何月份。</div>';return;}
+  el.innerHTML=keys.map(function(k){return '<div style="display:flex;justify-content:space-between;align-items:center;padding:7px 10px;background:#f7f7f7;border-radius:8px;margin-bottom:6px"><span style="font-size:13px"><b>'+esc(k)+'</b>　$'+(Number(o[k])||0).toLocaleString()+'</span><button onclick="delFpExtra(\''+esc(k)+'\')" style="border:none;background:none;color:#dc2626;font-size:12px;cursor:pointer">刪除</button></div>';}).join('');
 }
 function _ymKey(v){return String(v||'').slice(0,7).replace(/\//g,'-');}   // 年月鍵 2026-08
 // ── 🎯 主推商品設定（老闆）──
@@ -2438,7 +2489,7 @@ function renderFounding(){
 function loadRevPurForPreview(cb){
   var need=[];
   if(!(_allPurData&&_allPurData.length)&&typeof apiGet==='function')need.push(apiGetCached('query_purchase').then(function(res){if(res&&(res.status==='ok'||res.status==='success')&&res.rows){_allPurData=res.rows.slice(1).map(function(r){return {date:r[0],cost:Number(r[6])||0,name:String(r[3]||''),category:String(r[2]||''),qty:Number(r[4])||0,unit:String(r[5]||''),unitCost:Number(r[7])||0,supplier:String(r[8]||'')};});}}));
-  if(!(_allRevData&&_allRevData.length)&&typeof apiGet==='function')need.push(apiGetCached('query_revenue').then(function(res){if(res&&(res.status==='ok'||res.status==='success')&&res.rows){_allRevData=res.rows.slice(1).map(function(r){return {date:r[0],total:Number(r[7])||0,cardFee:Number(r[8])||0,twqrFee:Number(r[9])||0,deliveryFee:Number(r[10])||0};});}}));
+  if(!(_allRevData&&_allRevData.length)&&typeof apiGet==='function')need.push(apiGetCached('query_revenue').then(function(res){if(res&&(res.status==='ok'||res.status==='success')&&res.rows){_allRevData=res.rows.slice(1).map(function(r){return {date:r[0],foodpanda:Number(r[5])||0,ubereats:Number(r[6])||0,total:Number(r[7])||0,cardFee:Number(r[8])||0,twqrFee:Number(r[9])||0,deliveryFee:Number(r[10])||0};});}}));
   if(!need.length){cb();return;}
   Promise.all(need).then(function(){cb();}).catch(function(){cb();});
 }
@@ -2448,16 +2499,18 @@ function renderProfitPreview(){
   loadRevPurForPreview(function(){
     const m=_ymKey(bizDay());
     let rev=0,fee=0;
-    (_allRevData||[]).forEach(function(r){if(_ymKey(r.date)!==m)return;rev+=Number(r.total)||0;fee+=(Number(r.cardFee)||0)+(Number(r.twqrFee)||0)+(Number(r.deliveryFee)||0);});
+    (_allRevData||[]).forEach(function(r){if(_ymKey(r.date)!==m)return;rev+=Number(r.total)||0;fee+=(Number(r.cardFee)||0)+(Number(r.twqrFee)||0)+deliveryFeeCalc(r.foodpanda,r.ubereats);});
+    const fpx=(function(){var o=fpExtraMap();return Number(o[m])||0;})();   // 本月 FP 額外費
     let food=0,labor=0,equip=0,misc=0;
     (_allPurData||[]).forEach(function(r){if(_ymKey(r.date)!==m)return;var k=(typeof costClass==='function')?costClass(r.category):null;var cc=Number(r.cost)||0;if(k==='食材')food+=cc;else if(k==='人事')labor+=cc;else if(k==='固定')equip+=cc;else if(k==='耗材')misc+=cc;});
-    const netRev=rev-fee, amort=Math.round(foundingMonthly()), cost=food+labor+equip+misc, net=Math.round(netRev-cost-amort);
+    const netRev=rev-fee, amort=Math.round(foundingMonthly()), cost=food+labor+equip+misc, net=Math.round(netRev-cost-amort-fpx);
     const cfg=rewardCfg(), pool=Math.max(0,Math.round(net*cfg.poolPct/100));
     const row=(lbl,val,strong,color)=>'<div style="display:flex;justify-content:space-between;padding:3px 0'+(strong?';border-top:1px solid #e8e8e8;margin-top:4px;padding-top:6px':'')+'"><span'+(strong?' style="font-weight:800"':'')+'>'+lbl+'</span><span style="font-variant-numeric:tabular-nums'+(color?';color:'+color:'')+(strong?';font-weight:800':'')+'">$'+Math.round(val).toLocaleString()+'</span></div>';
     host.innerHTML='<div style="font-size:12px;color:#6b6b6b;margin-bottom:6px">本月（'+m+'）即時試算</div>'
       +row('營收',rev)+row('− 手續費',-fee)+row('= 預估實收',netRev,true)
       +'<div style="font-size:12px;color:#6b6b6b;margin:8px 0 2px">成本結構</div>'
       +row('　🥬 食材',-food)+row('　👥 人事',-labor)+row('　🔧 設備/房租/POS',-equip)+row('　📦 水電/保險/雜項',-misc)
+      +(fpx>0?row('　📣 FP額外費（廣告/期租/拒單）',-fpx):'')
       +row('− 創辦攤提（月）',-amort)+row('= 淨利',net,true,net>=0?'#06c167':'#b91c1c')
       +row('分潤池（'+cfg.poolPct+'%）',pool,true,'#111111')
       +'<div style="font-size:12px;color:#6b6b6b;margin-top:8px;line-height:1.6">👥 這是本月要分給員工的獎金池。每人實際分得 ＝ 分潤池 × 個人點數比例（第2階段點數系統上線後，這裡會列出每個人的預估金額）。</div>';
@@ -2466,11 +2519,11 @@ function renderProfitPreview(){
 function saveRewardCfg(){
   if(!(CU&&CU.role==='BOSS')){toast('僅老闆可設定','red');return;}
   const g=id=>parseFloat($(id)?$(id).value:'');
-  const wage=g('set-wage'),pool=g('set-pool'),pen=g('set-penalty'),fc=g('set-fee-card'),ft=g('set-fee-twqr'),fd=g('set-fee-delivery');
+  const wage=g('set-wage'),pool=g('set-pool'),pen=g('set-penalty'),fc=g('set-fee-card'),ft=g('set-fee-twqr'),ffp=g('set-fee-fp'),fue=g('set-fee-ue');
   const famt=Math.max(0,Math.round(g('fnd-amount'))||0),fyr=Math.max(0,g('fnd-years')||0);
-  if(![wage,pool,pen,fc,ft,fd].every(x=>isFinite(x)&&x>=0)){toast('所有欄位請填 0 或以上的數字','red');return;}
-  LS.set('rm_reward_cfg',{baseWage:wage,poolPct:pool,penaltyPct:pen,fee:{card:fc,twqr:ft,delivery:fd}});
-  LS.set('rm_fee_rates',{card:fc,twqr:ft,delivery:fd});   // 同步舊鍵，維持相容
+  if(![wage,pool,pen,fc,ft,ffp,fue].every(x=>isFinite(x)&&x>=0)){toast('所有欄位請填 0 或以上的數字','red');return;}
+  LS.set('rm_reward_cfg',{baseWage:wage,poolPct:pool,penaltyPct:pen,fee:{card:fc,twqr:ft,delivery:ffp,fpComm:ffp,ueComm:fue}});
+  LS.set('rm_fee_rates',{card:fc,twqr:ft,delivery:ffp,fpComm:ffp,ueComm:fue});   // 同步舊鍵，維持相容
   LS.set('rm_founding',{amount:famt,years:fyr});
   if(typeof cloudPush==='function')cloudPush();
   toast('✓ 制度設定已更新','gold');
@@ -2486,7 +2539,7 @@ function calcRev() {
   const _fr=feeRates();
   const cFee=Math.round(card*_fr.card);
   const qFee=Math.round(twqr*_fr.twqr);
-  const dFee=Math.round((fp+ue)*_fr.delivery);
+  const dFee=deliveryFeeCalc(fp,ue);
   $('t-total').textContent='$'+total.toLocaleString();
   $('t-cfee').textContent='$'+cFee.toLocaleString();
   $('t-qfee').textContent='$'+qFee.toLocaleString();
@@ -2511,7 +2564,7 @@ async function submitRev() {
   const _fr=feeRates();
   const row={date,note:$('rv-note').value,cash,card,twqr,foodpanda:fp,ubereats:ue,total,
     cardFee:Math.round(card*_fr.card),twqrFee:Math.round(twqr*_fr.twqr),
-    deliveryFee:Math.round((fp+ue)*_fr.delivery),platformRemittance:0,offRecord:off,
+    deliveryFee:deliveryFeeCalc(fp,ue),platformRemittance:0,offRecord:off,
     filler:(CU&&CU.username)||''};
   if(window._rvEdit){   // 編輯模式：原地更新該列
     const ed=window._rvEdit;
@@ -3084,6 +3137,22 @@ function an_topSellers(){
   });
   return Object.keys(cnt).map(function(k){return {name:k,n:cnt[k]};}).sort(function(a,b){return b.n-a.n;});
 }
+// 毛利最高品項：用 BOM 配方(rm_recipes)成本 vs 售價(recipe.price)算毛利率，銷量作次要排序
+function an_topMargin(){
+  var recipes=(LS.get('rm_recipes',[])||[]).filter(function(r){return r&&!r.isSemi;});
+  var pop={}; an_topSellers().forEach(function(x){pop[x.name]=x.n;});
+  var out=[];
+  recipes.forEach(function(r){
+    var dish=String(r.dish||'').trim(); if(!dish)return;
+    var price=parseFloat(r.price)||0; if(!(price>0))return;      // 需在 BOM 填售價才能算毛利
+    var cc=recipeCost(r); if(!cc||!(cc.cost>0))return;
+    var margin=(price-cc.cost)/price*100; if(!isFinite(margin))return;
+    out.push({name:dish, margin:margin, pop:pop[dish]||0, partial:!!cc.miss});
+  });
+  // 主要照毛利率高→低，毛利相近時熱賣的優先
+  out.sort(function(a,b){ return (b.margin-a.margin)||(b.pop-a.pop); });
+  return out;
+}
 function an_renderDecisions(ctx){
   var card=$('decision-card'); if(!card)return;
   if(!an_canAnnot()||!(ctx.totalRev>0)){card.style.display='none';return;}
@@ -3116,13 +3185,21 @@ function an_renderDecisions(ctx){
     html+=_decCard('🥬','食材漲價',GREEN,'無明顯漲價','近期進貨單價穩定。');
   }
 
-  // 4) 主推商品（毛利精準版需菜單表；先用熱賣代理）
-  var ts=an_topSellers().slice(0,3);
-  if(ts.length){
-    html+=_decCard('🎯','主推商品','var(--text)','近期熱賣',
-      ts.map(function(x){return x.name;}).join('、')+'。填完菜單表內用價/成本後，改推「毛利最高」。');
+  // 4) 主推商品：以 BOM 配方毛利率排序，取毛利最高（銷量為次要）
+  var tm=an_topMargin();
+  if(tm.length){
+    var top=tm.slice(0,3);
+    var anyPartial=top.some(function(x){return x.partial;});
+    html+=_decCard('🎯','主推商品',GREEN,'毛利最高',
+      top.map(function(x){return x.name+'（毛利'+x.margin.toFixed(0)+'%'+(x.pop>0?'・熱賣':'')+'）';}).join('、')+'。優先主推這些高毛利品項，衝業績同時守住利潤。'+(anyPartial?'（標*者部分食材缺單價，毛利略高估）':''));
   }else{
-    html+=_decCard('🎯','主推商品','var(--text-3)','待資料','填「菜單表」內用價/成本並累積銷售後，自動推「毛利最高」品項。');
+    var ts=an_topSellers().slice(0,3);
+    if(ts.length){
+      html+=_decCard('🎯','主推商品','var(--text)','近期熱賣',
+        ts.map(function(x){return x.name;}).join('、')+'。建好 BOM 配方並填售價後，會自動改推「毛利最高」。');
+    }else{
+      html+=_decCard('🎯','主推商品','var(--text-3)','待資料','建好 BOM 配方（含售價）並累積銷售後，自動推「毛利最高」品項。');
+    }
   }
 
   $('decision-body').innerHTML=html;
@@ -3200,10 +3277,13 @@ function renderReports() {
   const _laborUsed = _lab.used, _laborIsEst = _lab.isEst;
   const _otherCost = _cc['食材']+_cc['固定']+_cc['耗材'];   // 帳列非人事成本
   const totalCost = _otherCost + _laborUsed;                 // 總成本＝非人事帳列 ＋ 採用人事
-  const totalFee = revRows.reduce((a,r) => a + (r.cardFee||0) + (r.twqrFee||0) + (r.deliveryFee||0), 0);
+  // 外送手續費：以最新費率分平台即時重算（FP fpComm、UE ueComm），歷史資料一併正確
+  const _delFee = revRows.reduce((a,r) => a + deliveryFeeCalc(r.foodpanda,r.ubereats), 0);
+  const totalFee = revRows.reduce((a,r) => a + (r.cardFee||0) + (r.twqrFee||0), 0) + _delFee;
+  const _fpExtra = fpExtraForRange(from,to);   // FP 當月額外費（廣告曝光＋期租＋拒單）實際金額
   const netRevenue = totalRev - totalFee;   // 預估實收＝營收 − 手續費
   const _amort = periodAmort();             // 本區段創辦攤提
-  const netProfit = netRevenue - totalCost - _amort; // 淨利＝預估實收 − 成本(含推估人事) − 創辦攤提
+  const netProfit = netRevenue - totalCost - _amort - _fpExtra; // 淨利＝預估實收 − 成本(含推估人事) − 創辦攤提 − FP額外費
   const ch = { cash:0, card:0, twqr:0, foodpanda:0, ubereats:0 };
   revRows.forEach(r => { ch.cash+=r.cash||0; ch.card+=r.card||0; ch.twqr+=r.twqr||0; ch.foodpanda+=r.foodpanda||0; ch.ubereats+=r.ubereats||0; });
 
@@ -3257,13 +3337,13 @@ function renderReports() {
   const _labTxt = _laborIsEst
     ? '<span style="color:#f59e0b;font-weight:700">含推估人事 $'+Math.round(_laborUsed).toLocaleString()+'</span>（排班$'+Math.round(_est.sched).toLocaleString()+(_est.fixed>0?'＋固定$'+Math.round(_est.fixed).toLocaleString():'')+'，薪資入帳後自動改實際）'
     : '含實際人事 $'+Math.round(_laborUsed).toLocaleString();
-  $('kn-profit').innerHTML = _labTxt + '・已扣手續費' + (_amort>0?'・創辦攤提 $'+Math.round(_amort).toLocaleString():'');
+  $('kn-profit').innerHTML = _labTxt + '・已扣手續費' + (_amort>0?'・創辦攤提 $'+Math.round(_amort).toLocaleString():'') + (_fpExtra>0?'・FP額外費 $'+Math.round(_fpExtra).toLocaleString():'');
   // 上期比較（同長度區段）
   const _prevRev = prevPeriodRev(from,to);
   if(_prevRev!=null && _prevRev>0){const _d=Math.round((totalRev-_prevRev)/_prevRev*100);const _n=$('kn-month');if(_n)_n.innerHTML+=` <span style="color:${_d>=0?'#06c167':'#dc2626'};font-weight:700">${_d>=0?'▲':'▼'}${Math.abs(_d)}%</span>`;}
 
   // 營運三率 ＋ 警示清單
-  const _dFee = revRows.reduce((a,r)=>a+(r.deliveryFee||0),0);
+  const _dFee = _delFee;
   const _dRev = ch.foodpanda + ch.ubereats;
   an_renderRates(totalRev, _laborUsed, _cc['食材'], _dRev, _dFee, rangeLabel);
   an_renderDecisions({totalRev, cc:_cc, laborUsed:_laborUsed, netProfit, feeTotal:totalFee, rangeLabel});
@@ -3716,10 +3796,11 @@ function renderAnalysis(revRows,purRows,totalRev,cc){
   const _laborIsEst=_aPick.isEst;
   const opCost=foodCost+laborCost+fixedCost+miscCost;
   const foodRate=totalRev>0?foodCost/totalRev*100:0,laborRate=totalRev>0?laborCost/totalRev*100:0;
-  const totalFee=revRows.reduce((a,r)=>a+(r.cardFee||0)+(r.twqrFee||0)+(r.deliveryFee||0),0);
+  const totalFee=revRows.reduce((a,r)=>a+(r.cardFee||0)+(r.twqrFee||0)+deliveryFeeCalc(r.foodpanda,r.ubereats),0);   // 外送手續費分平台重算
+  const _fpExtra=fpExtraForRange(_ab.from,_ab.to);   // FP 當月額外費
   const netRevenue=totalRev-totalFee;      // 預估實收
   const _amort=periodAmort();  // 本區段創辦攤提（每日攤提×天數）
-  const net=netRevenue-opCost-_amort,netRate=totalRev>0?net/totalRev*100:0; // 淨利＝實收 − 營運成本 − 創辦攤提
+  const net=netRevenue-opCost-_amort-_fpExtra,netRate=totalRev>0?net/totalRev*100:0; // 淨利＝實收 − 營運成本 − 創辦攤提 − FP額外費
   const fmap={};
   _allPurData.forEach(r=>{if(!isMainFood(r.category))return;const uc=Number(r.unitCost)||0;if(uc<=0)return;const nm=r.name;if(!nm)return;if(!fmap[nm])fmap[nm]={name:nm,cat:r.category,recs:[],total:0};fmap[nm].recs.push({d:normDate(r.date),uc:uc,unit:String(r.unit||'').trim()});fmap[nm].total+=(Number(r.cost)||0);});
   const foods=Object.keys(fmap).map(k=>fmap[k]);
@@ -3821,6 +3902,8 @@ async function loadMenuCost(){
     var res=await apiGet('query_menuqty');
     if(!res||(res.status!=='ok'&&res.status!=='success')){ if(wrap)wrap.innerHTML='<div class="game-empty">載入失敗</div>'; return; }
     window._mcData={menu:res.menu||[], qty:res.qty||[]};
+    // 食材成本改由 BOM 自動換算：先載入進貨單價(_costMap)與物料(_materials)
+    try{ await Promise.all([loadRecipeCosts(), (typeof loadMaterials==='function'?loadMaterials():Promise.resolve())]); }catch(e){}
     renderMenuCost();
   }catch(e){ if(wrap)wrap.innerHTML='<div class="game-empty">載入失敗：'+esc(e.message)+'</div>'; }
 }
@@ -3838,9 +3921,13 @@ function renderMenuCost(){
   for(var j=1;j<qty.length;j++){ var m=String(qty[j][0]||'').trim(); if(m.length===7&&m>latest)latest=m; }
   for(var k=1;k<qty.length;k++){ var q=qty[k]; if(String(q[0]||'').trim()!==latest)continue; var nm2=String(q[1]||'').trim(); if(!items[nm2])continue; items[nm2].qtyTot=_mcNum(q[5]); items[nm2].amtTot=_mcNum(q[9]); }
   var arr=Object.keys(items).map(function(k){return items[k];});
+  // BOM 配方索引（品名→配方，僅成品）：食材成本優先用 BOM 自動換算，其次才用菜單表手填值
+  var _bomIdx={}; (LS.get('rm_recipes',[])||[]).forEach(function(r){ if(r&&!r.isSemi){ var d=String(r.dish||'').trim(); if(d&&!_bomIdx[d])_bomIdx[d]=r; } });
   arr.forEach(function(it){
     it.markFp=(it.dine>0&&it.fp>0)?(it.fp/it.dine-1)*100:null;
     it.markUe=(it.dine>0&&it.ue>0)?(it.ue/it.dine-1)*100:null;
+    var rc=_bomIdx[it.name];
+    if(rc){ var cc=recipeCost(rc); if(cc&&cc.cost>0){ it.cost=Math.round(cc.cost*100)/100; it.costSrc=cc.miss?'BOM部分':'BOM'; } }
     it.margin=(it.dine>0&&it.cost>0)?(it.dine-it.cost)/it.dine*100:null;
   });
   arr.sort(function(a,b){ return _mcSort==='margin'?((b.margin==null?-1:b.margin)-(a.margin==null?-1:a.margin)):(b.qtyTot-a.qtyTot); });
@@ -3851,7 +3938,8 @@ function renderMenuCost(){
   var wk=arr.filter(function(x){return x.markFp!=null||x.markUe!=null;});
   var avgMark=wk.length?wk.reduce(function(s,x){return s+(x.markFp!=null?x.markFp:x.markUe);},0)/wk.length:null;
   var noCost=arr.filter(function(x){return x.margin==null&&x.dine>0;}).length;
-  if($('mc-month-label'))$('mc-month-label').textContent='統計月份：'+(latest||'—')+'　共 '+arr.length+' 品項'+(noCost>0?'（'+noCost+' 個待填食材成本）':'');
+  var bomCnt=arr.filter(function(x){return x.costSrc==='BOM'||x.costSrc==='BOM部分';}).length;
+  if($('mc-month-label'))$('mc-month-label').textContent='統計月份：'+(latest||'—')+'　共 '+arr.length+' 品項'+(bomCnt>0?'（'+bomCnt+' 個由 BOM 配方自動算成本）':'')+(noCost>0?'（'+noCost+' 個待建 BOM 配方）':'');
   if($('mc-cards'))$('mc-cards').innerHTML=
     _mcCard('本月營收','$'+Math.round(totAmt).toLocaleString(),'各通路合計')+
     _mcCard('平均內用毛利率',avgMargin!=null?avgMargin.toFixed(0)+'%':'—',wm.length+' 個有成本')+
@@ -3859,11 +3947,12 @@ function renderMenuCost(){
     _mcCard('在售品項',String(arr.length),'菜單表');
   var rows=arr.map(function(it){
     var mk=''; if(it.markFp!=null)mk+='FP +'+Math.round(it.markFp)+'%'; if(it.markUe!=null)mk+=(mk?'　':'')+'UE +'+Math.round(it.markUe)+'%'; if(!mk)mk='<span style="color:var(--text-3)">—</span>';
-    var mg=it.margin!=null?('<span style="color:'+(it.margin>=50?GREEN:it.margin>=30?AMBER:RED)+';font-weight:700">'+it.margin.toFixed(0)+'%</span>'):'<span style="color:var(--text-3)">填成本</span>';
+    var mg=it.margin!=null?('<span style="color:'+(it.margin>=50?GREEN:it.margin>=30?AMBER:RED)+';font-weight:700">'+it.margin.toFixed(0)+'%</span>'):'<span style="color:var(--text-3)">建配方</span>';
+    var costCell=it.cost>0?('$'+it.cost+(it.costSrc==='BOM'?' <span style="font-size:10px;color:'+GREEN+'">BOM</span>':it.costSrc==='BOM部分'?' <span style="font-size:10px;color:'+AMBER+'" title="部分食材缺單價">BOM*</span>':'')):'<span style="color:var(--text-3)">—</span>';
     return '<tr><td style="font-weight:600">'+esc(it.name)+'</td>'
       +'<td style="text-align:right">'+(it.dine>0?'$'+it.dine:'—')+'</td>'
       +'<td style="font-size:12px">'+mk+'</td>'
-      +'<td style="text-align:right">'+(it.cost>0?'$'+it.cost:'<span style="color:var(--text-3)">—</span>')+'</td>'
+      +'<td style="text-align:right">'+costCell+'</td>'
       +'<td style="text-align:center">'+mg+'</td>'
       +'<td style="text-align:right;font-weight:700">'+it.qtyTot+'</td>'
       +'<td style="text-align:right">$'+Math.round(it.amtTot).toLocaleString()+'</td></tr>';
@@ -3901,6 +3990,7 @@ async function loadReports() {
     const [sres,fres]=await Promise.all([authApi({type:'query_sales'}).catch(function(){return null;}),authApi({type:'query_focus'}).catch(function(){return null;})]);   // 平行抓，減少等待
     _allSalesData=(sres&&sres.rows)?sres.rows.slice(1).map(r=>({date:normDate(r[0]),best:[r[3],r[4],r[5],r[6],r[7]],worst:[r[8],r[9],r[10],r[11],r[12]]})):[];
     _allFocusData=(fres&&fres.rows)?fres.rows.slice(1).map(r=>({date:normDate(r[0]),product:String(r[1]||'').trim(),qty:Number(r[2])||0})).filter(x=>x.product):[];
+    try{ await loadRecipeCosts(); }catch(e){}   // BOM 進貨單價→供「主推商品(毛利最高)」決策卡計算
     renderReports();
     const now=new Date();
     $('report-last-update').textContent='最後更新：'+now.getHours()+':'+String(now.getMinutes()).padStart(2,'0');
