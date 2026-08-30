@@ -1657,17 +1657,12 @@ html,body,button,input,select,textarea,
     <div class="tab-panel" id="tab-calendar">
       <div class="sec-header"><div class="sec-title">共用行事曆</div><div class="divider"></div><div class="sec-sub">公休・活動・進貨・待辦，全店共享，人人可編輯</div></div>
       <div class="cal-seg" id="cal-view-seg">
-        <button data-v="month" onclick="calSetView('month')">📅 月曆</button>
-        <button data-v="list" onclick="calSetView('list')">📋 清單</button>
+        <button data-v="month" onclick="calSetView('month')"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-3px;margin-right:5px"><rect x="3.5" y="5" width="17" height="15.5" rx="2"/><path d="M3.5 9.5h17M8 3.5v3M16 3.5v3"/></svg>月曆</button>
+        <button data-v="list" onclick="calSetView('list')"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-3px;margin-right:5px"><path d="M8 6h11M8 12h11M8 18h11M4 6h.01M4 12h.01M4 18h.01"/></svg>清單</button>
       </div>
       <div id="cal-month-wrap"></div>
       <div id="cal-list-wrap" style="display:none"></div>
-      <div class="cal-legend">
-        <span><i class="cal-lg-dot" style="background:#3b82f6"></i>✅ 待辦提醒</span>
-        <span><i class="cal-lg-dot" style="background:#ef4444"></i>🏖️ 公休/特殊日</span>
-        <span><i class="cal-lg-dot" style="background:#f59e0b"></i>📦 進貨/廠商</span>
-        <span><i class="cal-lg-dot" style="background:#06c167"></i>🎉 活動/促銷</span>
-      </div>
+      <div class="cal-legend" id="cal-legend"></div>
     </div>
 
     <!-- SETTINGS TAB（制度設定・老闆限定）-->
@@ -1985,7 +1980,7 @@ html,body,button,input,select,textarea,
     <button id="cal-add-btn" class="btn-action" style="width:100%;justify-content:center;margin-top:10px" onclick="calShowForm()">＋ 新增行程</button>
     <div id="cal-form-wrap" style="display:none;margin-top:12px">
       <div class="grid-2">
-        <div class="form-group"><label class="form-label">日期</label><input class="form-input" type="date" id="cal-f-date"></div>
+        <div class="form-group"><label class="form-label">日期</label><input class="form-input" type="date" id="cal-f-date" onchange="calRepeatHint()"></div>
         <div class="form-group"><label class="form-label">時間（選填）</label><input class="form-input" type="time" id="cal-f-time"></div>
       </div>
       <div class="form-group"><label class="form-label">分類</label><select class="form-input" id="cal-f-cat">
@@ -1994,13 +1989,21 @@ html,body,button,input,select,textarea,
         <option value="supply">📦 進貨/廠商</option>
         <option value="event">🎉 活動/促銷</option>
       </select></div>
+      <div class="form-group"><label class="form-label">重複</label><select class="form-input" id="cal-f-repeat" onchange="calRepeatHint()">
+        <option value="none">不重複（單一天）</option>
+        <option value="weekly">每週（同星期，例：每週日）</option>
+        <option value="biweekly">每兩週</option>
+        <option value="monthly">每月（同一號）</option>
+      </select></div>
       <div class="form-group"><label class="form-label">標題</label><input class="form-input" id="cal-f-title" placeholder="例：週二公休 / 中秋活動 / 叫貨 / 換濾網"></div>
       <div class="form-group"><label class="form-label">備註（選填）</label><textarea class="form-input" id="cal-f-note" rows="2"></textarea></div>
+      <div id="cal-repeat-hint" style="display:none;font-size:12.5px;color:#b8860b;background:#fff6e0;border-radius:8px;padding:8px 10px;margin-top:-4px"></div>
     </div>
-    <div style="display:flex;gap:10px;margin-top:14px">
-      <button class="btn-sm btn-neutral" style="padding:12px 16px" onclick="calCloseModal()">關閉</button>
-      <button id="cal-del-btn" class="btn-sm" style="display:none;padding:12px 16px;background:#dc2626;color:#fff;border:none;border-radius:12px" onclick="calDelete()">刪除</button>
-      <button id="cal-save-btn" class="btn-action" style="display:none;flex:1;justify-content:center" onclick="calSubmit()">儲存</button>
+    <div style="display:flex;gap:8px;margin-top:14px;flex-wrap:wrap">
+      <button class="btn-sm btn-neutral" style="padding:12px 14px" onclick="calCloseModal()">關閉</button>
+      <button id="cal-delocc-btn" class="btn-sm" style="display:none;padding:12px 12px;background:#6b6b6b;color:#fff;border:none;border-radius:12px" onclick="calDeleteOccurrence()">只刪這天</button>
+      <button id="cal-del-btn" class="btn-sm" style="display:none;padding:12px 14px;background:#dc2626;color:#fff;border:none;border-radius:12px" onclick="calDelete()">刪除</button>
+      <button id="cal-save-btn" class="btn-action" style="display:none;flex:1;justify-content:center;min-width:90px" onclick="calSubmit()">儲存</button>
     </div>
   </div>
 </div>
@@ -2070,7 +2073,7 @@ html,body,button,input,select,textarea,
 
 <script>
 // ── 自動更新：開啟時比對版本，有新版就自動重載（免無痕）──
-const APP_VER='20260831140000';
+const APP_VER='20260831200000';
 const GT_KEY='gtk_9F3xQ7Lz_pW2rM8kT';  // 後台共用密鑰（階段A：前端帶上；階段B：後台驗證）
 // 是否有「打到一半、還沒送出」的資料（結帳/進貨/交接/申訴的輸入框有值）→ 有的話先別強制重載，免得清掉
 function _hasTypedData(){try{var els=document.querySelectorAll('#tab-revenue input,#tab-revenue textarea,#tab-purchase input,#tab-purchase textarea,#tab-handover input,#tab-handover textarea,#tab-bully input,#tab-bully textarea');for(var i=0;i<els.length;i++){var el=els[i];if(el.type==='date'||el.type==='hidden')continue;if((el.value||'').trim())return true;}return false;}catch(e){return false;}}
@@ -2356,7 +2359,9 @@ const ICONS={
   revthr:_svg('<path d="M4 4v16h16"/><path d="M7 15l3-4 3 2 4-6"/>'),
   endinv:_svg('<path d="M3 7l9-4 9 4-9 4-9-4z"/><path d="M3 7v10l9 4 9-4V7"/><path d="M12 11v10"/>'),
   foodcost:_svg('<path d="M4 4v16h16"/><path d="M8 9l3 4 3-3 4 6"/>'),
-  matcat:_svg('<path d="M4 12l8-8h6v6l-8 8z"/><circle cx="14.5" cy="9.5" r="1.3"/>')
+  matcat:_svg('<path d="M4 12l8-8h6v6l-8 8z"/><circle cx="14.5" cy="9.5" r="1.3"/>'),
+  menucost:_svg('<circle cx="12" cy="12" r="8.5"/><path d="M12 7.3v9.4"/><path d="M14.5 9.4c-.5-.9-1.4-1.4-2.5-1.4-1.4 0-2.5.8-2.5 1.9 0 2.6 5 1.4 5 4.1 0 1.1-1.1 1.9-2.6 1.9-1.1 0-2.1-.5-2.6-1.4"/>'),
+  calendar:_svg('<rect x="3.5" y="5" width="17" height="15.5" rx="2"/><path d="M3.5 9.5h17M8 3.5v3M16 3.5v3"/><circle cx="8" cy="13.5" r=".95" fill="currentColor"/><circle cx="12" cy="13.5" r=".95" fill="currentColor"/><circle cx="16" cy="13.5" r=".95" fill="currentColor"/>')
 };
 function tabIcon(id){return ICONS[id]||'';}
 // 🎨 卡片標題 emoji → 線條圖示 自動替換（全 App 分頁內小圖統一風格）
@@ -3979,12 +3984,13 @@ function _mcCard(label,val,sub){ return '<div class="kpi-card"><div class="kpi-l
 var _mcSort='qty';
 // ═══════ 共用行事曆（雲端 KV 共享，全員可編輯，依 id 合併）═══════
 const CAL_CATS={
-  todo:{label:'待辦提醒',icon:'✅',color:'#3b82f6'},
-  holiday:{label:'公休/特殊日',icon:'🏖️',color:'#ef4444'},
-  supply:{label:'進貨/廠商',icon:'📦',color:'#f59e0b'},
-  event:{label:'活動/促銷',icon:'🎉',color:'#06c167'}
+  todo:{label:'待辦提醒',color:'#3b82f6',svg:'<rect x="4" y="4" width="16" height="16" rx="3.2"/><path d="M8.3 12.2l2.5 2.5 5-5.6"/>'},
+  holiday:{label:'公休/特殊日',color:'#ef4444',svg:'<circle cx="12" cy="12" r="3.6"/><path d="M12 2.8v2.4M12 18.8v2.4M2.8 12h2.4M18.8 12h2.4M5.2 5.2l1.7 1.7M17.1 17.1l1.7 1.7M18.8 5.2l-1.7 1.7M6.9 17.1l-1.7 1.7"/>'},
+  supply:{label:'進貨/廠商',color:'#f59e0b',svg:'<path d="M3 7l9-4 9 4-9 4-9-4z"/><path d="M3 7v10l9 4 9-4V7"/><path d="M12 11v10"/>'},
+  event:{label:'活動/促銷',color:'#06c167',svg:'<path d="M12 4l2.3 4.7 5.2.8-3.8 3.7.9 5.2-4.6-2.4-4.6 2.4.9-5.2L4.3 9.5l5.2-.8z"/>'}
 };
 function calCatOf(c){return CAL_CATS[c]||CAL_CATS.todo;}
+function calCatSvg(cat,size){var c=calCatOf(cat),s=size||14;return '<svg width="'+s+'" height="'+s+'" viewBox="0 0 24 24" fill="none" stroke="'+c.color+'" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px">'+c.svg+'</svg>';}
 function calAllRaw(){var a=LS.get('rm_calendar',[]);return Array.isArray(a)?a:[];}
 function calEvents(){return calAllRaw().filter(function(e){return e&&e.id&&!e.deleted;});}
 function calSaveAll(arr){LS.set('rm_calendar',arr);if(typeof cloudPush==='function')cloudPush('rm_calendar');}
@@ -3993,6 +3999,33 @@ function _calId(){return 'cal_'+Date.now().toString(36)+Math.random().toString(3
 function _cpad(n){return (n<10?'0':'')+n;}
 function _calToday(){var d=new Date();return d.getFullYear()+'-'+_cpad(d.getMonth()+1)+'-'+_cpad(d.getDate());}
 function _calDateLabel(ds){var p=String(ds||'').split('-');if(p.length<3)return ds;var d=new Date(+p[0],+p[1]-1,+p[2]);var w=['日','一','二','三','四','五','六'][d.getDay()];return (+p[1])+'/'+(+p[2])+'（'+w+'）';}
+function _calFmt(d){return d.getFullYear()+'-'+_cpad(d.getMonth()+1)+'-'+_cpad(d.getDate());}
+function _calWd(ds){var p=String(ds||'').split('-');return ['日','一','二','三','四','五','六'][new Date(+p[0],+p[1]-1,+p[2]).getDay()];}
+// 重複事件展開：把一筆重複規則，在 [from,to] 內展開成多個「當日出現」；exdates 跳過
+function calOccurrences(e,from,to){
+  var rep=e.repeat||'none',out=[];
+  if(rep==='none'){ if(e.date>=from&&e.date<=to)out.push(Object.assign({},e,{_base:e.id,_occ:false})); return out; }
+  var ex=e.exdates||[],d=new Date(e.date+'T00:00:00'),toD=new Date(to+'T00:00:00'),cap=0;
+  while(d<=toD&&cap<900){
+    var ds=_calFmt(d);
+    if(ds>=from&&ds>=e.date&&ex.indexOf(ds)<0)out.push(Object.assign({},e,{date:ds,_base:e.id,_occ:true}));
+    if(rep==='weekly')d.setDate(d.getDate()+7);
+    else if(rep==='biweekly')d.setDate(d.getDate()+14);
+    else if(rep==='monthly')d.setMonth(d.getMonth()+1);
+    else break;
+    cap++;
+  }
+  return out;
+}
+function calExpandRange(from,to){var out=[];calEvents().forEach(function(e){out=out.concat(calOccurrences(e,from,to));});return out;}
+function _calRepLabel(rep,ds){var m={weekly:'每週'+(ds?('週'+_calWd(ds)):''),biweekly:'每兩週',monthly:'每月'+(ds?(' '+(+String(ds).split('-')[2])+'號'):'')};return m[rep]||'';}
+function calRepeatHint(){
+  var sel=$('cal-f-repeat'); var h=$('cal-repeat-hint'); if(!sel||!h)return;
+  var v=sel.value, ds=($('cal-f-date')&&$('cal-f-date').value)||'';
+  if(v==='none'){h.style.display='none';return;}
+  h.textContent='🔁 這筆會重複：'+_calRepLabel(v,ds)+'。之後可用「只刪這天」跳過某一次，或「刪整個重複」全部取消。';
+  h.style.display='';
+}
 function loadCalendar(){
   if(_calView==null)_calView=LS.get('rm_cal_view','month')||'month';
   if(_calView!=='list'&&_calView!=='month')_calView='month';
@@ -4002,7 +4035,9 @@ function loadCalendar(){
   if($('cal-month-wrap'))$('cal-month-wrap').style.display=_calView==='month'?'':'none';
   if($('cal-list-wrap'))$('cal-list-wrap').style.display=_calView==='list'?'':'none';
   if(_calView==='month')renderCalMonth();else renderCalList();
+  renderCalLegend();
 }
+function renderCalLegend(){var el=$('cal-legend');if(!el)return;el.innerHTML=Object.keys(CAL_CATS).map(function(k){return '<span>'+calCatSvg(k,15)+CAL_CATS[k].label+'</span>';}).join('');}
 function calSetView(v){_calView=v;LS.set('rm_cal_view',v);loadCalendar();}
 function calNavMonth(delta){_calYM.m+=delta;if(_calYM.m<0){_calYM.m=11;_calYM.y--;}if(_calYM.m>11){_calYM.m=0;_calYM.y++;}renderCalMonth();}
 function calToday(){var d=new Date();_calYM={y:d.getFullYear(),m:d.getMonth()};loadCalendar();}
@@ -4010,7 +4045,8 @@ function renderCalMonth(){
   var host=$('cal-month-wrap');if(!host)return;
   var y=_calYM.y,m=_calYM.m;
   var startDow=new Date(y,m,1).getDay(),daysIn=new Date(y,m+1,0).getDate();
-  var byDate={};calEvents().forEach(function(e){(byDate[e.date]=byDate[e.date]||[]).push(e);});
+  var mfrom=y+'-'+_cpad(m+1)+'-01',mto=y+'-'+_cpad(m+1)+'-'+_cpad(daysIn);
+  var byDate={};calExpandRange(mfrom,mto).forEach(function(e){(byDate[e.date]=byDate[e.date]||[]).push(e);});
   var today=_calToday();
   var html='<div class="cal-topbar"><button class="cal-nav" onclick="calNavMonth(-1)">‹</button>'
     +'<div class="cal-title">'+y+' 年 '+(m+1)+' 月</div>'
@@ -4022,7 +4058,7 @@ function renderCalMonth(){
   for(var dd=1;dd<=daysIn;dd++){
     var ds=y+'-'+_cpad(m+1)+'-'+_cpad(dd);
     var list=(byDate[ds]||[]).slice().sort(function(a,b){return (a.time||'').localeCompare(b.time||'');});
-    var chips=list.slice(0,2).map(function(e){return '<div class="cal-chip" style="border-left:3px solid '+calCatOf(e.cat).color+'">'+esc(e.title||calCatOf(e.cat).label)+'</div>';}).join('');
+    var chips=list.slice(0,2).map(function(e){return '<div class="cal-chip" style="border-left:3px solid '+calCatOf(e.cat).color+'">'+((e.repeat&&e.repeat!=='none')?'🔁':'')+esc(e.title||calCatOf(e.cat).label)+'</div>';}).join('');
     var more=list.length>2?'<div class="cal-more">＋'+(list.length-2)+' 更多</div>':'';
     html+='<div class="cal-cell'+(ds===today?' cal-today':'')+'" onclick="calOpenDay(\''+ds+'\')"><div class="cal-daynum">'+dd+'</div>'+chips+more+'</div>';
   }
@@ -4031,18 +4067,20 @@ function renderCalMonth(){
 }
 function renderCalList(){
   var host=$('cal-list-wrap');if(!host)return;
-  var evs=calEvents().slice().sort(function(a,b){return (a.date+(a.time||'')).localeCompare(b.date+(b.time||''));});
   var today=_calToday();
+  var f=new Date(today+'T00:00:00');f.setDate(f.getDate()-120);
+  var t=new Date(today+'T00:00:00');t.setDate(t.getDate()+366);
+  var evs=calExpandRange(_calFmt(f),_calFmt(t)).sort(function(a,b){return (a.date+(a.time||'')).localeCompare(b.date+(b.time||''));});
   var up=evs.filter(function(e){return e.date>=today;}),past=evs.filter(function(e){return e.date<today;}).reverse();
-  function row(e){var c=calCatOf(e.cat);
-    return '<div class="cal-item" onclick="calOpenEdit(\''+e.id+'\')">'
-      +'<div class="cal-item-date"><b>'+_calDateLabel(e.date)+'</b>'+(e.time?'<br>'+esc(e.time):'')+'</div>'
-      +'<div style="flex:1;min-width:0"><span class="cal-cattag" style="background:'+c.color+'22;color:'+c.color+'">'+c.icon+' '+c.label+'</span> '
+  function row(e){var c=calCatOf(e.cat);var rep=(e.repeat&&e.repeat!=='none');
+    return '<div class="cal-item" onclick="calOpenEdit(\''+(e._base||e.id)+'\',\''+e.date+'\')">'
+      +'<div class="cal-item-date"><b>'+_calDateLabel(e.date)+'</b>'+(e.time?'<br>'+esc(e.time):'')+(rep?'<br><span style="font-size:11px">🔁'+esc(_calRepLabel(e.repeat,e.date))+'</span>':'')+'</div>'
+      +'<div style="flex:1;min-width:0"><span class="cal-cattag" style="background:'+c.color+'22;color:'+c.color+'">'+calCatSvg(e.cat,13)+' '+c.label+'</span> '
       +'<span class="cal-item-title">'+esc(e.title||'')+'</span>'
       +(e.note?'<div class="cal-item-note">'+esc(e.note)+'</div>':'')
       +(e.by?'<div class="cal-item-by">— '+esc(e.by)+'</div>':'')+'</div></div>';}
   var html='<div class="cal-topbar"><div class="cal-title">近期行程</div><button class="cal-today-btn" onclick="calOpenDay(\''+today+'\')">＋ 新增</button></div>';
-  html+=up.length?up.map(row).join(''):'<div class="game-empty">近期沒有行程，點右上「新增」建立。</div>';
+  html+=up.length?up.slice(0,80).map(row).join(''):'<div class="game-empty">近期沒有行程，點右上「新增」建立。</div>';
   if(past.length)html+='<div class="cal-past-h">— 已過去 —</div>'+past.slice(0,40).map(row).join('');
   host.innerHTML=html;
 }
@@ -4052,46 +4090,57 @@ function _calToggle(mode){ // 'day' | 'form' | 'edit'
   $('cal-form-wrap').style.display=(mode==='day')?'none':'';
   $('cal-save-btn').style.display=(mode==='day')?'none':'';
   $('cal-del-btn').style.display=(mode==='edit')?'':'none';
+  if($('cal-delocc-btn'))$('cal-delocc-btn').style.display='none';
 }
 function calOpenDay(ds){
   window._calEditId=null;
-  var evs=calEvents().filter(function(e){return e.date===ds;}).sort(function(a,b){return (a.time||'').localeCompare(b.time||'');});
-  var list=evs.map(function(e){var c=calCatOf(e.cat);return '<div class="cal-day-ev" onclick="calOpenEdit(\''+e.id+'\')"><span class="cal-cattag" style="background:'+c.color+'22;color:'+c.color+'">'+c.icon+'</span> '+(e.time?'<b>'+esc(e.time)+'</b> ':'')+esc(e.title||c.label)+'</div>';}).join('');
+  var evs=calExpandRange(ds,ds).sort(function(a,b){return (a.time||'').localeCompare(b.time||'');});
+  var list=evs.map(function(e){var c=calCatOf(e.cat);var rep=(e.repeat&&e.repeat!=='none');return '<div class="cal-day-ev" onclick="calOpenEdit(\''+(e._base||e.id)+'\',\''+e.date+'\')"><span class="cal-cattag" style="background:'+c.color+'22;color:'+c.color+'">'+calCatSvg(e.cat,13)+'</span> '+(e.time?'<b>'+esc(e.time)+'</b> ':'')+esc(e.title||c.label)+(rep?' <span style="font-size:11px;color:#b8860b">🔁'+esc(_calRepLabel(e.repeat,e.date))+'</span>':'')+'</div>';}).join('');
   $('cal-modal-title').textContent=_calDateLabel(ds)+' 行程';
   $('cal-day-list').innerHTML=list||'<div class="muted-note">這天還沒有行程。</div>';
   _calFormReset(ds);_calToggle('day');
   $('cal-modal').classList.add('show');
 }
-function calShowForm(){_calToggle('form');}
-function calOpenEdit(id){
+function calShowForm(){_calToggle('form');calRepeatHint();}
+function calOpenEdit(id,occDate){
   var e=calEvents().find(function(x){return x.id===id;});if(!e)return;
-  window._calEditId=id;
-  $('cal-modal-title').textContent='編輯行程';
-  $('cal-f-date').value=e.date;$('cal-f-time').value=e.time||'';$('cal-f-cat').value=e.cat||'todo';$('cal-f-title').value=e.title||'';$('cal-f-note').value=e.note||'';
-  _calToggle('edit');
+  window._calEditId=id;window._calOccDate=occDate||e.date;
+  var isRep=e.repeat&&e.repeat!=='none';
+  $('cal-modal-title').textContent=isRep?'編輯重複行程':'編輯行程';
+  $('cal-f-date').value=e.date;$('cal-f-time').value=e.time||'';$('cal-f-cat').value=e.cat||'todo';$('cal-f-repeat').value=e.repeat||'none';$('cal-f-title').value=e.title||'';$('cal-f-note').value=e.note||'';
+  _calToggle('edit');calRepeatHint();
+  if($('cal-delocc-btn'))$('cal-delocc-btn').style.display=isRep?'':'none';
+  if($('cal-del-btn'))$('cal-del-btn').textContent=isRep?'刪整個重複':'刪除';
   $('cal-modal').classList.add('show');
 }
-function _calFormReset(ds){$('cal-f-date').value=ds||_calToday();$('cal-f-time').value='';$('cal-f-cat').value='todo';$('cal-f-title').value='';$('cal-f-note').value='';}
+function _calFormReset(ds){$('cal-f-date').value=ds||_calToday();$('cal-f-time').value='';$('cal-f-cat').value='todo';if($('cal-f-repeat'))$('cal-f-repeat').value='none';$('cal-f-title').value='';$('cal-f-note').value='';if($('cal-del-btn'))$('cal-del-btn').textContent='刪除';calRepeatHint();}
 function calCloseModal(){$('cal-modal').classList.remove('show');}
 function calSubmit(){
-  var date=$('cal-f-date').value,time=($('cal-f-time').value||'').trim(),cat=$('cal-f-cat').value,title=($('cal-f-title').value||'').trim(),note=($('cal-f-note').value||'').trim();
+  var date=$('cal-f-date').value,time=($('cal-f-time').value||'').trim(),cat=$('cal-f-cat').value,repeat=($('cal-f-repeat')&&$('cal-f-repeat').value)||'none',title=($('cal-f-title').value||'').trim(),note=($('cal-f-note').value||'').trim();
   if(!date){toast('請選日期','red');return;}
   if(!title){toast('請填標題','red');return;}
   var arr=calAllRaw(),now=Date.now();
   if(window._calEditId){
     var i=arr.findIndex(function(x){return x.id===window._calEditId;});
-    if(i>=0)arr[i]=Object.assign({},arr[i],{date:date,time:time,cat:cat,title:title,note:note,ts:now});
+    if(i>=0)arr[i]=Object.assign({},arr[i],{date:date,time:time,cat:cat,repeat:repeat,title:title,note:note,ts:now});
   }else{
-    arr.push({id:_calId(),date:date,time:time,cat:cat,title:title,note:note,by:(CU&&CU.username)||'',ts:now});
+    arr.push({id:_calId(),date:date,time:time,cat:cat,repeat:repeat,title:title,note:note,exdates:[],by:(CU&&CU.username)||'',ts:now});
   }
-  calSaveAll(arr);calCloseModal();toast('✓ 已儲存行程','gold');loadCalendar();
+  calSaveAll(arr);calCloseModal();toast(repeat!=='none'?'✓ 已設定重複行程':'✓ 已儲存行程','gold');loadCalendar();
 }
 function calDelete(){
   if(!window._calEditId)return;
-  if(typeof confirm==='function'&&!confirm('確定刪除這筆行程？'))return;
   var arr=calAllRaw(),i=arr.findIndex(function(x){return x.id===window._calEditId;});
+  var rep=i>=0&&arr[i].repeat&&arr[i].repeat!=='none';
+  if(typeof confirm==='function'&&!confirm(rep?'確定刪除「整個重複」行程？（所有日期都會取消）':'確定刪除這筆行程？'))return;
   if(i>=0)arr[i]=Object.assign({},arr[i],{deleted:true,ts:Date.now()});
   calSaveAll(arr);calCloseModal();toast('已刪除','gold');loadCalendar();
+}
+function calDeleteOccurrence(){
+  if(!window._calEditId||!window._calOccDate)return;
+  var arr=calAllRaw(),i=arr.findIndex(function(x){return x.id===window._calEditId;});
+  if(i>=0){var ex=(arr[i].exdates||[]).slice();if(ex.indexOf(window._calOccDate)<0)ex.push(window._calOccDate);arr[i]=Object.assign({},arr[i],{exdates:ex,ts:Date.now()});}
+  calSaveAll(arr);calCloseModal();toast('已跳過 '+window._calOccDate,'gold');loadCalendar();
 }
 async function loadMenuCost(){
   var wrap=$('mc-wrap'); if(wrap)wrap.innerHTML='<div class="game-empty">載入中…</div>';
