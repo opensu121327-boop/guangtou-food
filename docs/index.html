@@ -1623,33 +1623,36 @@ html,body,button,input,select,textarea,
 
     <!-- CALENDAR TAB（共用行事曆・全員可編輯）-->
     <style>
-    .cal-seg{display:flex;gap:8px;margin-bottom:12px}
-    .cal-seg button{flex:1;padding:9px;border:1px solid var(--border-2,#ddd);background:transparent;color:var(--text-2,#666);border-radius:12px;font-weight:600;cursor:pointer;font-size:14px}
-    .cal-seg button.cal-seg-on{background:#111;color:#fff;border-color:#111}
-    .cal-topbar{display:flex;align-items:center;gap:8px;margin-bottom:10px}
-    .cal-title{font-weight:800;font-size:16px;color:var(--text,#111)}
-    .cal-nav{width:34px;height:34px;border-radius:10px;border:1px solid var(--border-2,#ddd);background:transparent;color:var(--text,#111);font-size:18px;cursor:pointer;line-height:1}
-    .cal-today-btn{margin-left:auto;padding:7px 12px;border-radius:10px;border:1px solid var(--border-2,#ddd);background:transparent;color:var(--text-2,#555);font-size:13px;cursor:pointer}
-    .cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:4px}
-    .cal-dowc{text-align:center;font-size:12px;color:var(--text-3,#999);font-weight:700;padding:4px 0}
-    .cal-cell{min-height:66px;border:1px solid var(--border-2,#eee);border-radius:8px;padding:4px;overflow:hidden;cursor:pointer;background:var(--card,#fff)}
-    .cal-cell.cal-empty{border:none;background:transparent;cursor:default}
-    .cal-cell.cal-today{border-color:#111;box-shadow:inset 0 0 0 1.5px #111}
-    .cal-daynum{font-size:12px;font-weight:700;color:var(--text-2,#666);margin-bottom:2px}
-    .cal-today .cal-daynum{color:#111}
-    .cal-chip{font-size:10px;line-height:1.35;padding:1px 4px;margin-bottom:2px;border-radius:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--text,#111);background:var(--card-2,#f4f4f4)}
-    .cal-more{font-size:10px;color:var(--text-3,#999);padding-left:2px}
-    .cal-legend{display:flex;flex-wrap:wrap;gap:12px;margin-top:14px;font-size:12px;color:var(--text-2,#555)}
-    .cal-legend span{display:inline-flex;align-items:center;gap:5px}
-    .cal-lg-dot{width:10px;height:10px;border-radius:50%;display:inline-block}
-    .cal-item{display:flex;gap:10px;padding:11px;border:1px solid var(--border-2,#eee);border-radius:12px;margin-bottom:8px;cursor:pointer;background:var(--card,#fff)}
-    .cal-item-date{min-width:78px;font-size:13px;color:var(--text-2,#555)}
-    .cal-item-title{font-weight:700;color:var(--text,#111)}
-    .cal-cattag{font-size:11px;padding:2px 8px;border-radius:20px;font-weight:600;white-space:nowrap}
-    .cal-item-note{font-size:12px;color:var(--text-2,#666);margin-top:4px;white-space:pre-wrap}
-    .cal-item-by{font-size:11px;color:var(--text-3,#999);margin-top:4px}
-    .cal-past-h{text-align:center;color:var(--text-3,#999);font-size:12px;margin:16px 0 8px}
-    .cal-day-ev{padding:9px 11px;border:1px solid var(--border-2,#eee);border-radius:10px;margin-bottom:6px;cursor:pointer;color:var(--text,#111);font-size:14px}
+    /* 行事曆固定用亮色（App body 永遠是 #111 深底；var(--text) 在本 App 被覆蓋成 #111 會看不見，故寫死） */
+    #tab-calendar .cal-seg{display:flex;gap:8px;margin-bottom:14px}
+    #tab-calendar .cal-seg button{flex:1;padding:11px;border:1px solid rgba(244,244,244,.20);background:transparent;color:rgba(244,244,244,.7);border-radius:12px;font-weight:700;cursor:pointer;font-size:14.5px}
+    #tab-calendar .cal-seg button.cal-seg-on{background:#f4f4f4;color:#111;border-color:#f4f4f4}
+    #tab-calendar .cal-topbar{display:flex;align-items:center;gap:8px;margin:4px 0 12px}
+    #tab-calendar .cal-title{font-weight:800;font-size:17px;color:#f4f4f4}
+    #tab-calendar .cal-nav{width:36px;height:36px;border-radius:10px;border:1px solid rgba(244,244,244,.20);background:transparent;color:#f4f4f4;font-size:20px;cursor:pointer;line-height:1}
+    #tab-calendar .cal-today-btn{margin-left:auto;padding:8px 14px;border-radius:10px;border:1px solid rgba(244,244,244,.20);background:transparent;color:rgba(244,244,244,.8);font-size:13px;cursor:pointer}
+    #tab-calendar .cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:4px}
+    #tab-calendar .cal-dowc{text-align:center;font-size:12.5px;color:rgba(244,244,244,.55);font-weight:700;padding:5px 0}
+    #tab-calendar .cal-cell{min-height:54px;border:1px solid rgba(244,244,244,.13);border-radius:9px;padding:3px 4px;overflow:hidden;cursor:pointer;background:rgba(244,244,244,.05)}
+    #tab-calendar .cal-cell.cal-empty{border:none;background:transparent;cursor:default;min-height:0}
+    #tab-calendar .cal-cell.cal-today{border-color:#e0b64d;background:rgba(224,182,77,.12);box-shadow:inset 0 0 0 1.5px #e0b64d}
+    #tab-calendar .cal-daynum{font-size:12.5px;font-weight:700;color:rgba(244,244,244,.72);margin-bottom:2px;text-align:right;padding-right:1px}
+    #tab-calendar .cal-cell.cal-today .cal-daynum{color:#e0b64d}
+    #tab-calendar .cal-chip{font-size:9.5px;line-height:1.32;padding:1px 4px;margin-bottom:2px;border-radius:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:#f4f4f4;background:rgba(244,244,244,.14)}
+    #tab-calendar .cal-more{font-size:9.5px;color:rgba(244,244,244,.5);padding-left:2px}
+    #tab-calendar .cal-legend{display:flex;flex-wrap:wrap;gap:12px 16px;margin-top:18px;font-size:12.5px;color:rgba(244,244,244,.8)}
+    #tab-calendar .cal-legend span{display:inline-flex;align-items:center;gap:5px}
+    #tab-calendar .cal-lg-dot{width:10px;height:10px;border-radius:50%;display:inline-block;flex:0 0 auto}
+    .cal-item{display:flex;gap:11px;padding:13px;border:1px solid rgba(244,244,244,.13);border-radius:13px;margin-bottom:9px;cursor:pointer;background:rgba(244,244,244,.05)}
+    .cal-item-date{min-width:82px;font-size:13px;color:rgba(244,244,244,.72);line-height:1.4}
+    .cal-item-title{font-weight:700;color:#f4f4f4}
+    .cal-cattag{font-size:11px;padding:2px 9px;border-radius:20px;font-weight:700;white-space:nowrap;display:inline-block}
+    .cal-item-note{font-size:12px;color:rgba(244,244,244,.68);margin-top:5px;white-space:pre-wrap}
+    .cal-item-by{font-size:11px;color:rgba(244,244,244,.5);margin-top:5px}
+    .cal-past-h{text-align:center;color:rgba(244,244,244,.5);font-size:12px;margin:18px 0 8px}
+    /* 日行程清單在白底彈窗內 → 深色字 */
+    #cal-modal .cal-day-ev{padding:11px;border:1px solid rgba(17,17,17,.14);border-radius:11px;margin-bottom:7px;cursor:pointer;color:#111;font-size:14px}
+    #cal-modal #cal-day-list .muted-note{color:rgba(17,17,17,.55)}
     </style>
     <div class="tab-panel" id="tab-calendar">
       <div class="sec-header"><div class="sec-title">共用行事曆</div><div class="divider"></div><div class="sec-sub">公休・活動・進貨・待辦，全店共享，人人可編輯</div></div>
@@ -1660,10 +1663,10 @@ html,body,button,input,select,textarea,
       <div id="cal-month-wrap"></div>
       <div id="cal-list-wrap" style="display:none"></div>
       <div class="cal-legend">
-        <span><i class="cal-lg-dot" style="background:#3b82f6"></i>待辦提醒</span>
-        <span><i class="cal-lg-dot" style="background:#ef4444"></i>公休/特殊日</span>
-        <span><i class="cal-lg-dot" style="background:#f59e0b"></i>進貨/廠商</span>
-        <span><i class="cal-lg-dot" style="background:#06c167"></i>活動/促銷</span>
+        <span><i class="cal-lg-dot" style="background:#3b82f6"></i>✅ 待辦提醒</span>
+        <span><i class="cal-lg-dot" style="background:#ef4444"></i>🏖️ 公休/特殊日</span>
+        <span><i class="cal-lg-dot" style="background:#f59e0b"></i>📦 進貨/廠商</span>
+        <span><i class="cal-lg-dot" style="background:#06c167"></i>🎉 活動/促銷</span>
       </div>
     </div>
 
@@ -2067,7 +2070,7 @@ html,body,button,input,select,textarea,
 
 <script>
 // ── 自動更新：開啟時比對版本，有新版就自動重載（免無痕）──
-const APP_VER='20260831120000';
+const APP_VER='20260831140000';
 const GT_KEY='gtk_9F3xQ7Lz_pW2rM8kT';  // 後台共用密鑰（階段A：前端帶上；階段B：後台驗證）
 // 是否有「打到一半、還沒送出」的資料（結帳/進貨/交接/申訴的輸入框有值）→ 有的話先別強制重載，免得清掉
 function _hasTypedData(){try{var els=document.querySelectorAll('#tab-revenue input,#tab-revenue textarea,#tab-purchase input,#tab-purchase textarea,#tab-handover input,#tab-handover textarea,#tab-bully input,#tab-bully textarea');for(var i=0;i<els.length;i++){var el=els[i];if(el.type==='date'||el.type==='hidden')continue;if((el.value||'').trim())return true;}return false;}catch(e){return false;}}
