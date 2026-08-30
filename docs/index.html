@@ -1653,6 +1653,20 @@ html,body,button,input,select,textarea,
     /* 日行程清單在白底彈窗內 → 深色字 */
     #cal-modal .cal-day-ev{padding:11px;border:1px solid rgba(17,17,17,.14);border-radius:11px;margin-bottom:7px;cursor:pointer;color:#111;font-size:14px}
     #cal-modal #cal-day-list .muted-note{color:rgba(17,17,17,.55)}
+    /* 菜單毛利：表格直接在深底上、文字是深色 → 看不到。包成白卡讓深色字可見（與 KPI 卡一致） */
+    #tab-menucost #mc-wrap{background:#fff;border:1px solid rgba(17,17,17,.08);border-radius:16px;padding:14px 16px;margin-top:2px}
+    #tab-menucost #mc-wrap a{color:#6b6b6b}
+    #tab-menucost #mc-month-label{color:rgba(244,244,244,.75)!important}
+    /* 首頁「今日·本週行程」卡（白底 .c-card → 深色字） */
+    #home-cal .calh-card{cursor:pointer;padding:18px 20px}
+    #home-cal .calh-title{font-weight:800;font-size:15.5px;color:#111;display:flex;align-items:center;gap:7px;margin-bottom:8px}
+    #home-cal .calh-more{margin-left:auto;font-size:12.5px;color:#6b6b6b;font-weight:600}
+    #home-cal .calh-sec{font-size:12px;color:#8a8a8a;font-weight:700;margin:12px 0 4px;letter-spacing:.02em}
+    #home-cal .calh-day{font-size:12.5px;color:#111;font-weight:700;margin:9px 0 3px}
+    #home-cal .calh-row{display:flex;align-items:center;gap:9px;padding:5px 0}
+    #home-cal .calh-tag{display:inline-flex;align-items:center;padding:4px;border-radius:8px;flex:0 0 auto}
+    #home-cal .calh-t{font-size:14px;color:#222;min-width:0}
+    #home-cal .calh-empty{font-size:13px;color:#a0a0a0;padding:3px 0}
     </style>
     <div class="tab-panel" id="tab-calendar">
       <div class="sec-header"><div class="sec-title">共用行事曆</div><div class="divider"></div><div class="sec-sub">公休・活動・進貨・待辦，全店共享，人人可編輯</div></div>
@@ -1818,6 +1832,7 @@ html,body,button,input,select,textarea,
     <!-- HOME TAB -->
     <div class="tab-panel" id="tab-home">
       <div class="c-card"><div class="home-stage" id="home-stage"></div></div>
+      <div id="home-cal"></div>
     </div>
 
     <!-- EXPENSE TAB -->
@@ -2073,7 +2088,7 @@ html,body,button,input,select,textarea,
 
 <script>
 // ── 自動更新：開啟時比對版本，有新版就自動重載（免無痕）──
-const APP_VER='20260831200000';
+const APP_VER='20260831220000';
 const GT_KEY='gtk_9F3xQ7Lz_pW2rM8kT';  // 後台共用密鑰（階段A：前端帶上；階段B：後台驗證）
 // 是否有「打到一半、還沒送出」的資料（結帳/進貨/交接/申訴的輸入框有值）→ 有的話先別強制重載，免得清掉
 function _hasTypedData(){try{var els=document.querySelectorAll('#tab-revenue input,#tab-revenue textarea,#tab-purchase input,#tab-purchase textarea,#tab-handover input,#tab-handover textarea,#tab-bully input,#tab-bully textarea');for(var i=0;i<els.length;i++){var el=els[i];if(el.type==='date'||el.type==='hidden')continue;if((el.value||'').trim())return true;}return false;}catch(e){return false;}}
@@ -2395,8 +2410,12 @@ const _EMOJI_ICONS={
   '💡':'<path d="M9.5 18h5M10.5 21h3"/><path d="M12 3a6 6 0 013 11c-.5.4-1 1-1 2h-4c0-1-.5-1.6-1-2a6 6 0 013-11z"/>',
   '🔔':'<path d="M6 9a6 6 0 1112 0c0 5 2 6 2 6H4s2-1 2-6z"/><path d="M10 20a2 2 0 004 0"/>',
   '📣':'<path d="M4 10v4l4 .6 3 4h2V5.4l-3 4L4 10z"/><path d="M16 9a4 4 0 010 6"/>',
-  '🍽':'<path d="M5 3v7a2 2 0 002 2v9M7 3v7M17.5 3c-1.3 0-2 3-2 6s.5 3 2 3v8"/>'
+  '🍽':'<path d="M5 3v7a2 2 0 002 2v9M7 3v7M17.5 3c-1.3 0-2 3-2 6s.5 3 2 3v8"/>',
+  '🍱':'<rect x="3.5" y="5.5" width="17" height="13" rx="2.5"/><path d="M12 5.5v13M3.5 12h8.5"/><circle cx="16.3" cy="9.6" r="1.3"/><path d="M14.4 14.6h3.8"/>',
+  '⚠':'<path d="M12 4l8.5 15h-17z"/><path d="M12 10v4"/><path d="M12 16.6v.2"/>',
+  '➕':'<circle cx="12" cy="12" r="8.5"/><path d="M12 8v8M8 12h8"/>'
 };
+function bomIco(emoji,color,size){var p=_EMOJI_ICONS[emoji];if(!p)return '';var s=size||16;return '<svg width="'+s+'" height="'+s+'" viewBox="0 0 24 24" fill="none" stroke="'+(color||'currentColor')+'" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-3px">'+p+'</svg>';}
 function _iconizeTitle(el){
   el.setAttribute('data-icd','1');
   var html=el.innerHTML;var m;try{m=html.match(/^\s*(\p{Extended_Pictographic})️?\s*/u);}catch(e){m=null;}
@@ -4038,6 +4057,26 @@ function loadCalendar(){
   renderCalLegend();
 }
 function renderCalLegend(){var el=$('cal-legend');if(!el)return;el.innerHTML=Object.keys(CAL_CATS).map(function(k){return '<span>'+calCatSvg(k,15)+CAL_CATS[k].label+'</span>';}).join('');}
+// 首頁「今日·本週行程」摘要卡（白底深字）
+function calHomeHtml(){
+  var today=_calToday();
+  var t7=new Date(today+'T00:00:00');t7.setDate(t7.getDate()+7);
+  var evs=calExpandRange(today,_calFmt(t7)).sort(function(a,b){return (a.date+(a.time||'')).localeCompare(b.date+(b.time||''));});
+  var todayEvs=evs.filter(function(e){return e.date===today;});
+  var soon=evs.filter(function(e){return e.date>today;});
+  function line(e){var c=calCatOf(e.cat);var rep=(e.repeat&&e.repeat!=='none');return '<div class="calh-row"><span class="calh-tag" style="background:'+c.color+'1e">'+calCatSvg(e.cat,15)+'</span><span class="calh-t">'+(e.time?'<b>'+esc(e.time)+'</b> ':'')+esc(e.title||c.label)+(rep?' <span style="font-size:11px;color:#8a8a8a">· '+esc(_calRepLabel(e.repeat,e.date))+'</span>':'')+'</span></div>';}
+  var calico='<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#111" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-3px"><rect x="3.5" y="5" width="17" height="15.5" rx="2"/><path d="M3.5 9.5h17M8 3.5v3M16 3.5v3"/></svg>';
+  var html='<div class="c-card calh-card" onclick="goTab(\'calendar\')">'
+    +'<div class="calh-title">'+calico+'今日 · 本週行程<span class="calh-more">全部 ›</span></div>'
+    +'<div class="calh-sec">今日（'+_calDateLabel(today)+'）</div>'
+    +(todayEvs.length?todayEvs.map(line).join(''):'<div class="calh-empty">今天沒有安排</div>');
+  if(soon.length){
+    html+='<div class="calh-sec">接下來 7 天</div>';
+    var byd={},order=[];soon.forEach(function(e){if(!byd[e.date]){byd[e.date]=[];order.push(e.date);}byd[e.date].push(e);});
+    order.slice(0,6).forEach(function(d){html+='<div class="calh-day">'+_calDateLabel(d)+'</div>'+byd[d].map(line).join('');});
+  }
+  return html+'</div>';
+}
 function calSetView(v){_calView=v;LS.set('rm_cal_view',v);loadCalendar();}
 function calNavMonth(delta){_calYM.m+=delta;if(_calYM.m<0){_calYM.m=11;_calYM.y--;}if(_calYM.m>11){_calYM.m=0;_calYM.y++;}renderCalMonth();}
 function calToday(){var d=new Date();_calYM={y:d.getFullYear(),m:d.getMonth()};loadCalendar();}
@@ -5043,6 +5082,7 @@ function renderHome(){
     </div>`;
   stage.className='home-stage stack';
   stage.innerHTML=center;   // 首頁只留角色卡；今日必做／同事叮嚀／表揚卡片已移除
+  try{ if($('home-cal'))$('home-cal').innerHTML=calHomeHtml(); }catch(e){}
 }
 function fillBoardColleagues(){
   const names=LS.get('rm_names',{})||{};
@@ -5340,8 +5380,8 @@ function renderBom(){
         <button class="btn-sm" style="padding:9px 13px;background:#06c167;color:#fff;border:none;border-radius:11px" onclick="bomWriteSheet()">📤 寫入 Google Sheet</button>
       </div></div>`;
   }
-  if(semis.length){html+='<div class="sec-sub" style="margin:6px 2px 4px">🧪 半成品</div>';semis.forEach(rc=>html+=recipeCard(rc,true));}
-  html+='<div class="sec-sub" style="margin:12px 2px 4px">🍱 菜品</div>';
+  if(semis.length){html+='<div class="sec-sub" style="margin:6px 2px 4px">'+bomIco('🧪',null,15)+' 半成品</div>';semis.forEach(rc=>html+=recipeCard(rc,true));}
+  html+='<div class="sec-sub" style="margin:12px 2px 4px">'+bomIco('🍱',null,15)+' 菜品</div>';
   if(!dishes.length)html+='<div class="c-card"><div class="game-empty">尚無菜品</div></div>';
   dishes.forEach(rc=>html+=recipeCard(rc,false));
   wrap.innerHTML=html;
@@ -5419,25 +5459,25 @@ function recipeCard(rc,isSemi){
     const unitInfo=it.semiId?((semi&&parseFloat(semi.yieldQty)>0)?('$'+round2(recipeCost(semi).cost/parseFloat(semi.yieldQty))+'/'+esc(semi.yieldUnit||'')):'半成品'):(cm?('$'+round2(cm.cost)+'/'+esc(cm.unit)):'—');
     return `<div style="background:#f6f6f6;border:1px solid rgba(17,17,17,.12);border-radius:12px;padding:10px 12px;margin-bottom:8px;display:flex;align-items:center;gap:10px">
       <div style="flex:1;min-width:0"><div style="font-weight:700;color:#111111">${esc(it.name)}${it.semiId?' <span style="color:#6b6b6b;font-size:11px">半成品</span>':''}</div><div style="font-size:12px;color:rgba(17,17,17,.55);margin-top:2px">用量 ${it.qty}${esc(it.unit)} ・ 單價 ${unitInfo}</div></div>
-      <div style="text-align:right;flex-shrink:0"><div style="font-weight:800;color:#111111;font-size:15px">${c==null?'⚠️':('$'+round2(c))}</div>${isMgr()?`<button class="btn-sm btn-warn" style="margin-top:5px;padding:3px 10px" onclick="delIngredient('${rc.id}',${idx})">刪</button>`:''}</div>
+      <div style="text-align:right;flex-shrink:0"><div style="font-weight:800;color:#111111;font-size:15px">${c==null?bomIco('⚠','#d97706',17):('$'+round2(c))}</div>${isMgr()?`<button class="btn-sm btn-warn" style="margin-top:5px;padding:3px 10px" onclick="delIngredient('${rc.id}',${idx})">刪</button>`:''}</div>
     </div>`;
   }).join('');
   let summary;
   if(isSemi){
     const per=(parseFloat(rc.yieldQty)>0&&!miss)?('每'+esc(rc.yieldUnit||'')+' ≈ $'+round2(total/parseFloat(rc.yieldQty))):'';
-    summary=`<span style="color:#111111;font-weight:800">總成本 $${round2(total)}</span>${per?(' ・ <span style="color:rgba(17,17,17,.6)">'+per+'</span>'):''}${miss?' ⚠️':''}`;
+    summary=`<span style="color:#111111;font-weight:800">總成本 $${round2(total)}</span>${per?(' ・ <span style="color:rgba(17,17,17,.6)">'+per+'</span>'):''}${miss?' '+bomIco('⚠','#d97706',15):''}`;
   }else{
     const price=parseFloat(rc.price)||0,profit=price-total,margin=price>0?Math.round(profit/price*100):0;
-    summary=`<span style="color:#111111;font-weight:800">成本 $${round2(total)}</span>${price>0?(' ・ 售 $'+round2(price)+' ・ 毛利率 <span style="font-weight:700;color:'+(margin>=50?'#06c167':(margin>=30?'#6b6b6b':'#dc2626'))+'">'+margin+'%</span>'):''}${miss?' ⚠️':''}`;
+    summary=`<span style="color:#111111;font-weight:800">成本 $${round2(total)}</span>${price>0?(' ・ 售 $'+round2(price)+' ・ 毛利率 <span style="font-weight:700;color:'+(margin>=50?'#06c167':(margin>=30?'#6b6b6b':'#dc2626'))+'">'+margin+'%</span>'):''}${miss?' '+bomIco('⚠','#d97706',15):''}`;
   }
   const photo=img
     ? `<img src="${img}" style="width:58px;height:58px;border-radius:12px;object-fit:cover;flex-shrink:0;cursor:pointer" onclick="openPhoto(this.src)">`
-    : (isMgr()?`<button onclick="bomPickImg('${rc.id}')" style="width:58px;height:58px;border-radius:12px;border:1px dashed rgba(17,17,17,.4);background:#f6f6f6;color:#111111;font-size:11px;font-weight:700;flex-shrink:0;cursor:pointer;line-height:1.15">＋<br>照片</button>`:`<div style="width:58px;height:58px;border-radius:12px;background:#f6f6f6;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:22px;color:rgba(17,17,17,.3)">🍽️</div>`);
+    : (isMgr()?`<button onclick="bomPickImg('${rc.id}')" style="width:58px;height:58px;border-radius:12px;border:1px dashed rgba(17,17,17,.4);background:#f6f6f6;color:#111111;font-size:11px;font-weight:700;flex-shrink:0;cursor:pointer;line-height:1.15">＋<br>照片</button>`:`<div style="width:58px;height:58px;border-radius:12px;background:#f6f6f6;flex-shrink:0;display:flex;align-items:center;justify-content:center;color:rgba(17,17,17,.3)">${bomIco('🍽','rgba(17,17,17,.35)',26)}</div>`);
   let html=`<div class="c-card">${isMgr()?`<input type="file" accept="image/*" id="bimg-${rc.id}" style="display:none" onchange="bomImgUpload('${rc.id}',this)">`:''}
     <div style="display:flex;align-items:center;gap:12px">
       ${photo}
       <div style="flex:1;min-width:0;cursor:pointer" onclick="bomToggle('${rc.id}')">
-        <div style="font-weight:800;color:#111111;font-size:16px">${isSemi?'🧪':'🍱'} ${esc(rc.dish)}</div>
+        <div style="font-weight:800;color:#111111;font-size:16px">${isSemi?bomIco('🧪','#111',18):bomIco('🍱','#111',18)} ${esc(rc.dish)}</div>
         <div style="font-size:12.5px;margin-top:3px">${summary}</div>
       </div>
       <button class="btn-sm btn-neutral" style="flex-shrink:0;padding:6px 10px" onclick="bomToggle('${rc.id}')">${open?'收合 ▲':'展開 ▼'}</button>
