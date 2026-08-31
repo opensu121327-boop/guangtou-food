@@ -2106,7 +2106,7 @@ html,body,button,input,select,textarea,
 
 <script>
 // ── 自動更新：開啟時比對版本，有新版就自動重載（免無痕）──
-const APP_VER='20260831300000';
+const APP_VER='20260831310000';
 const GT_KEY='gtk_9F3xQ7Lz_pW2rM8kT';  // 後台共用密鑰（階段A：前端帶上；階段B：後台驗證）
 // 是否有「打到一半、還沒送出」的資料（結帳/進貨/交接/申訴的輸入框有值）→ 有的話先別強制重載，免得清掉
 function _hasTypedData(){try{var els=document.querySelectorAll('#tab-revenue input,#tab-revenue textarea,#tab-purchase input,#tab-purchase textarea,#tab-handover input,#tab-handover textarea,#tab-bully input,#tab-bully textarea');for(var i=0;i<els.length;i++){var el=els[i];if(el.type==='date'||el.type==='hidden')continue;if((el.value||'').trim())return true;}return false;}catch(e){return false;}}
@@ -4585,7 +4585,6 @@ const ALL_TABS=[
   {id:'reports',icon:'📊',label:'數據報表',roles:['BOSS','MGR']},
   {id:'menucost',icon:'💰',label:'菜單毛利',roles:['BOSS','MGR']},
   {id:'bom',icon:'🧮',label:'BOM成本',roles:['BOSS','MGR']},
-  {id:'matcat',icon:'🏷️',label:'物料分類',roles:['BOSS']},
   {id:'handover',icon:'📋',label:'交接表',roles:['BOSS','MGR','EMP']},
   {id:'calendar',icon:'📅',label:'行事曆',roles:['BOSS','MGR','EMP']},
   {id:'tasks',icon:'✅',label:'任務',roles:['BOSS','MGR','EMP']},
