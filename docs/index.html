@@ -1698,6 +1698,32 @@ html,body,button,input,select,textarea,
       <div class="cal-legend" id="cal-legend"></div>
     </div>
 
+    <!-- SCHEDULE TAB（排班表＋換班）-->
+    <style>
+    #tab-schedule .sch-sec{font-weight:800;font-size:14px;color:#f4f4f4;margin:16px 0 8px}
+    #tab-schedule .sch-day{margin-bottom:12px}
+    #tab-schedule .sch-date{font-size:13px;font-weight:700;color:rgba(244,244,244,.85);margin-bottom:5px}
+    #tab-schedule .sch-shift{display:flex;align-items:center;gap:10px;padding:9px 12px;border:1px solid rgba(244,244,244,.13);border-radius:11px;margin-bottom:6px;background:rgba(244,244,244,.05)}
+    #tab-schedule .sch-shift.sch-me{border-color:#e0b64d;background:rgba(224,182,77,.1)}
+    #tab-schedule .sch-role{font-size:12px;color:#111;background:#e8e8e8;padding:2px 9px;border-radius:20px;font-weight:700;flex:0 0 auto;white-space:nowrap}
+    #tab-schedule .sch-person{flex:1;color:#f4f4f4;font-weight:600;min-width:0}
+    #tab-schedule .sch-swap-btn{border:1px solid #e0b64d;background:transparent;color:#e0b64d;font-size:12px;font-weight:700;padding:5px 12px;border-radius:9px;cursor:pointer;flex:0 0 auto}
+    #tab-schedule .sch-swap{border:1px solid rgba(224,182,77,.5);background:rgba(224,182,77,.08);border-radius:12px;padding:12px 14px;margin-bottom:8px;color:#f4f4f4;font-size:13.5px;line-height:1.55}
+    #tab-schedule .sch-swap.sch-pend{border-color:rgba(244,244,244,.2);background:rgba(244,244,244,.05)}
+    #tab-schedule .sch-swap b{color:#e0b64d}
+    #tab-schedule .sch-swap-btns{display:flex;gap:8px;margin-top:10px;justify-content:flex-end}
+    #tab-schedule .sch-hist{display:flex;justify-content:space-between;gap:8px;padding:9px 12px;border-bottom:1px solid rgba(244,244,244,.1);font-size:12.5px;color:rgba(244,244,244,.72)}
+    #tab-schedule .sch-hist .st{font-weight:700;white-space:nowrap}
+    #sch-modal .sch-mode-seg{display:flex;gap:0;background:#f0f0f0;border-radius:10px;padding:3px}
+    #sch-modal .sch-mode-seg button{flex:1;border:none;background:transparent;color:#666;font-weight:700;font-size:12.5px;padding:9px 6px;border-radius:8px;cursor:pointer}
+    #sch-modal .sch-mode-seg button.on{background:#111;color:#fff}
+    </style>
+    <div class="tab-panel" id="tab-schedule">
+      <div class="sec-header"><div class="sec-title">排班表</div><div class="divider"></div><div class="sec-sub">看班表・線上換班（雙方確認後同步 Google Sheet）</div></div>
+      <div style="display:flex;gap:8px;align-items:center;margin-bottom:6px"><button class="refresh-btn" onclick="loadSchedule()" style="margin-left:auto">↻ 重新整理</button></div>
+      <div id="sch-wrap"><div class="game-empty">載入中…</div></div>
+    </div>
+
     <!-- SETTINGS TAB（制度設定・老闆限定）-->
     <div class="tab-panel" id="tab-settings">
       <div class="sec-header">
@@ -2043,6 +2069,25 @@ html,body,button,input,select,textarea,
   </div>
 </div>
 
+<div id="sch-modal" class="subform-overlay">
+  <div class="subform-card">
+    <div class="subform-title">換班 / 代班申請</div>
+    <div id="sch-a-info" class="muted-note" style="margin-bottom:10px"></div>
+    <div class="form-group"><label class="form-label">方式</label>
+      <div class="sch-mode-seg" id="sch-mode-seg">
+        <button data-m="swap" class="on" onclick="schSetMode('swap')">換班（互換兩班）</button>
+        <button data-m="cover" onclick="schSetMode('cover')">代班（請人代這班）</button>
+      </div>
+    </div>
+    <div class="form-group"><label class="form-label" id="sch-person-label">要跟誰換</label><select class="form-input" id="sch-b-person" onchange="schFillBShifts()"></select></div>
+    <div class="form-group" id="sch-bshift-row"><label class="form-label">換對方哪一班</label><select class="form-input" id="sch-b-shift"></select></div>
+    <div style="display:flex;gap:10px;margin-top:14px">
+      <button class="btn-sm btn-neutral" style="padding:12px 16px" onclick="$('sch-modal').classList.remove('show')">取消</button>
+      <button class="btn-action" style="flex:1;justify-content:center" onclick="schSubmitSwap()">送出換班申請</button>
+    </div>
+  </div>
+</div>
+
 <div id="subform" class="subform-overlay">
   <div class="subform-card">
     <div class="subform-title" id="subform-title"></div>
@@ -2108,7 +2153,7 @@ html,body,button,input,select,textarea,
 
 <script>
 // ── 自動更新：開啟時比對版本，有新版就自動重載（免無痕）──
-const APP_VER='20260831320000';
+const APP_VER='20260831340000';
 const GT_KEY='gtk_9F3xQ7Lz_pW2rM8kT';  // 後台共用密鑰（階段A：前端帶上；階段B：後台驗證）
 // 是否有「打到一半、還沒送出」的資料（結帳/進貨/交接/申訴的輸入框有值）→ 有的話先別強制重載，免得清掉
 function _hasTypedData(){try{var els=document.querySelectorAll('#tab-revenue input,#tab-revenue textarea,#tab-purchase input,#tab-purchase textarea,#tab-handover input,#tab-handover textarea,#tab-bully input,#tab-bully textarea');for(var i=0;i<els.length;i++){var el=els[i];if(el.type==='date'||el.type==='hidden')continue;if((el.value||'').trim())return true;}return false;}catch(e){return false;}}
@@ -2301,7 +2346,7 @@ function initApp() {
 
   // build nav
   // 員工與店長暫時只開放：每日結帳／進貨記錄／BOM成本／交接表（老闆維持全部）。要復原把此白名單移除即可。
-  const NONBOSS_TABS=['revenue','purchase','bom','handover','calendar','bully'];
+  const NONBOSS_TABS=['revenue','purchase','bom','handover','calendar','schedule','bully'];
   // 期末盤點/食材率依角色 roles 開放給非老闆（endinv 給店長+員工、foodcost 只給店長）
   const tabs=(CU.role==='BOSS')?ALL_TABS.filter(t=>t.roles.includes(CU.role)):ALL_TABS.filter(t=>NONBOSS_TABS.indexOf(t.id)>=0||(['endinv','foodcost'].indexOf(t.id)>=0&&t.roles.includes(CU.role))||(['reports','menucost'].indexOf(t.id)>=0&&CU.role==='MGR'));   // 數據報表/菜單毛利開放給店長(MGR)
   $('main-nav').innerHTML=tabs.map((t,i)=>
@@ -2336,6 +2381,7 @@ function switchTab(name,btn) {
   if(name==='reports')loadReports();
   if(name==='menucost')loadMenuCost();
   if(name==='calendar')loadCalendar();
+  if(name==='schedule')loadSchedule();
   if(name==='endinv')renderEndInv();
   if(name==='foodcost')renderFoodCost();
   if(name==='purchase'){loadMaterials().then(fillMatCatSelect);renderRecentPurchases();fillPuUnitSelect();fillPuPackuSelect();}
@@ -2396,7 +2442,8 @@ const ICONS={
   foodcost:_svg('<path d="M4 4v16h16"/><path d="M8 9l3 4 3-3 4 6"/>'),
   matcat:_svg('<path d="M4 12l8-8h6v6l-8 8z"/><circle cx="14.5" cy="9.5" r="1.3"/>'),
   menucost:_svg('<circle cx="12" cy="12" r="8.5"/><path d="M12 7.3v9.4"/><path d="M14.5 9.4c-.5-.9-1.4-1.4-2.5-1.4-1.4 0-2.5.8-2.5 1.9 0 2.6 5 1.4 5 4.1 0 1.1-1.1 1.9-2.6 1.9-1.1 0-2.1-.5-2.6-1.4"/>'),
-  calendar:_svg('<rect x="3.5" y="5" width="17" height="15.5" rx="2"/><path d="M3.5 9.5h17M8 3.5v3M16 3.5v3"/><circle cx="8" cy="13.5" r=".95" fill="currentColor"/><circle cx="12" cy="13.5" r=".95" fill="currentColor"/><circle cx="16" cy="13.5" r=".95" fill="currentColor"/>')
+  calendar:_svg('<rect x="3.5" y="5" width="17" height="15.5" rx="2"/><path d="M3.5 9.5h17M8 3.5v3M16 3.5v3"/><circle cx="8" cy="13.5" r=".95" fill="currentColor"/><circle cx="12" cy="13.5" r=".95" fill="currentColor"/><circle cx="16" cy="13.5" r=".95" fill="currentColor"/>'),
+  schedule:_svg('<rect x="3.5" y="4.5" width="17" height="16" rx="2"/><path d="M3.5 9h17M9 9v11.5M15 9v11.5"/>')
 };
 function tabIcon(id){return ICONS[id]||'';}
 // 🎨 卡片標題 emoji → 線條圖示 自動替換（全 App 分頁內小圖統一風格）
@@ -4167,6 +4214,138 @@ function calDeleteOccurrence(){
   if(i>=0){var ex=(arr[i].exdates||[]).slice();if(ex.indexOf(window._calOccDate)<0)ex.push(window._calOccDate);arr[i]=Object.assign({},arr[i],{exdates:ex,ts:Date.now()});}
   calSaveAll(arr);calCloseModal();toast('已跳過 '+window._calOccDate,'gold');loadCalendar();
 }
+// ═══════ 排班表 + 換班/代班（雲端共享 rm_shift_swaps，雙方確認後同步 Google Sheet）═══════
+var _schData=null,_schMode='swap';
+function schSetMode(m){_schMode=m;var seg=$('sch-mode-seg');if(seg)seg.querySelectorAll('button').forEach(function(b){b.classList.toggle('on',b.dataset.m===m);});if($('sch-bshift-row'))$('sch-bshift-row').style.display=(m==='cover')?'none':'';if($('sch-person-label'))$('sch-person-label').textContent=(m==='cover')?'請誰代班':'要跟誰換';}
+function schSwapsRaw(){var a=LS.get('rm_shift_swaps',[]);return Array.isArray(a)?a:[];}
+function schSwaps(){return schSwapsRaw().filter(function(s){return s&&s.id&&!s.deleted;});}
+function schSaveSwaps(a){LS.set('rm_shift_swaps',a);if(typeof cloudPush==='function')cloudPush('rm_shift_swaps');}
+function _schId(){return 'sw_'+Date.now().toString(36)+Math.random().toString(36).slice(2,6);}
+function _schMe(){return (CU&&CU.name)||(CU&&CU.username)||'';}
+function _schD(ds){var p=String(ds||'').split('-');if(p.length<3)return ds;var w=['日','一','二','三','四','五','六'][new Date(+p[0],+p[1]-1,+p[2]).getDay()];return (+p[1])+'/'+(+p[2])+'（'+w+'）';}
+async function loadSchedule(){
+  var host=$('sch-wrap'); if(host&&!_schData)host.innerHTML='<div class="game-empty">載入中…</div>';
+  try{
+    var d=await apiGetCached('query_schedule');
+    var rows=(d&&d.rows)?d.rows:[]; var shifts=[];
+    for(var i=1;i<rows.length;i++){var r=rows[i]; var nm=String(r[1]||'').trim(); var ds=String(r[0]||'').slice(0,10);
+      if(!nm||!/^\d{4}-\d\d-\d\d$/.test(ds))continue;
+      shifts.push({row:i+1,date:ds,name:nm,role:(String(r[9]||'').split('｜')[0].trim())||'—',hours:Number(r[6])||0,rate:Number(r[7])||0});
+    }
+    _schData={shifts:shifts}; renderSchedule();
+  }catch(e){ if(host)host.innerHTML='<div class="game-empty">載入失敗：'+esc(e.message)+'</div>'; }
+}
+function renderSchedule(){
+  var host=$('sch-wrap'); if(!host||!_schData)return;
+  var me=_schMe(), today=_calToday(), sw=schSwaps();
+  var forMe=sw.filter(function(s){return s.status==='pending'&&s.toName===me;});
+  var mine=sw.filter(function(s){return s.status==='pending'&&s.fromName===me;});
+  var html='';
+  if(forMe.length){
+    html+='<div class="sch-sec">待你確認的換班</div>';
+    forMe.forEach(function(s){
+      var body=(s.mode==='cover')
+        ? '<b>'+esc(s.fromName)+'</b> 請你代班：<b>'+_schD(s.aDate)+' '+esc(s.aRole)+'</b>'
+        : '<b>'+esc(s.fromName)+'</b> 想跟你換班：<br>你的 <b>'+_schD(s.bDate)+' '+esc(s.bRole)+'</b> ⇄ 他的 <b>'+_schD(s.aDate)+' '+esc(s.aRole)+'</b>';
+      html+='<div class="sch-swap"><div>'+body+'</div>'
+        +'<div class="sch-swap-btns"><button class="btn-sm btn-neutral" style="padding:8px 14px" onclick="schRespond(\''+s.id+'\',false)">拒絕</button><button class="btn-action btn-sm" style="padding:8px 16px" onclick="schRespond(\''+s.id+'\',true)">'+(s.mode==='cover'?'同意代班':'同意換班')+'</button></div></div>';
+    });
+  }
+  if(mine.length){
+    html+='<div class="sch-sec">你送出的換班（等待中）</div>';
+    mine.forEach(function(s){
+      var body=(s.mode==='cover')
+        ? '請 <b>'+esc(s.toName)+'</b> 代班：'+_schD(s.aDate)+' '+esc(s.aRole)
+        : '跟 <b>'+esc(s.toName)+'</b> 換班：你的 '+_schD(s.aDate)+' '+esc(s.aRole)+' ⇄ 他的 '+_schD(s.bDate)+' '+esc(s.bRole);
+      html+='<div class="sch-swap sch-pend"><div>'+body+'　<span class="muted-note">等待確認</span></div>'
+        +'<div class="sch-swap-btns"><button class="btn-sm btn-neutral" style="padding:7px 14px" onclick="schCancel(\''+s.id+'\')">取消申請</button></div></div>';
+    });
+  }
+  var future=_schData.shifts.filter(function(x){return x.date>=today;}).sort(function(a,b){return a.date.localeCompare(b.date)||a.role.localeCompare(b.role);});
+  html+='<div class="sch-sec">班表（今天起）</div>';
+  if(!future.length){html+='<div class="game-empty">今天起沒有排班資料</div>';}
+  else{
+    var byd={},order=[];
+    future.forEach(function(x){if(!byd[x.date]){byd[x.date]=[];order.push(x.date);}byd[x.date].push(x);});
+    order.forEach(function(ds){
+      html+='<div class="sch-day"><div class="sch-date">'+_schD(ds)+'</div>';
+      byd[ds].forEach(function(x){
+        var isMe=(x.name===me);
+        html+='<div class="sch-shift'+(isMe?' sch-me':'')+'"><span class="sch-role">'+esc(x.role)+'</span><span class="sch-person">'+esc(x.name)+(x.hours?' · '+x.hours+'h':'')+'</span>'
+          +(isMe?'<button class="sch-swap-btn" onclick="schOpenSwap('+x.row+')">換班</button>':'')+'</div>';
+      });
+      html+='</div>';
+    });
+  }
+  // 換班/代班紀錄（已處理的，全店可見）
+  var hist=sw.filter(function(s){return s.status&&s.status!=='pending';}).sort(function(a,b){return (b.ts||0)-(a.ts||0);}).slice(0,25);
+  if(hist.length){
+    html+='<div class="sch-sec">換班 / 代班紀錄</div>';
+    var stMap={accepted:'✔ 完成',declined:'✕ 已拒絕',cancelled:'已取消'},stCol={accepted:'#06c167',declined:'#dc2626',cancelled:'#8a8a8a'};
+    hist.forEach(function(s){
+      var desc=(s.mode==='cover')
+        ? esc(s.fromName)+' → '+esc(s.toName)+' 代班　'+_schD(s.aDate)+' '+esc(s.aRole)
+        : esc(s.fromName)+' ⇄ '+esc(s.toName)+' 換班　'+_schD(s.aDate);
+      html+='<div class="sch-hist"><span>'+desc+'</span><span class="st" style="color:'+(stCol[s.status]||'#888')+'">'+(stMap[s.status]||s.status)+'</span></div>';
+    });
+  }
+  host.innerHTML=html;
+}
+function schOpenSwap(row){
+  var a=_schData.shifts.find(function(x){return x.row===row;}); if(!a)return;
+  window._schA=a;
+  var me=_schMe(), today=_calToday(), others=[], seen={};
+  _schData.shifts.forEach(function(x){if(x.name!==me&&x.date>=today&&!seen[x.name]){seen[x.name]=1;others.push(x.name);}});
+  if(!others.length){toast('目前沒有可換班的同事','red');return;}
+  $('sch-a-info').innerHTML='你要換掉/請人代的班：<b style="color:#111">'+_schD(a.date)+' '+esc(a.role)+(a.hours?' · '+a.hours+'h':'')+'</b>';
+  $('sch-b-person').innerHTML=others.map(function(n){return '<option value="'+esc(n)+'">'+esc(n)+'</option>';}).join('');
+  schSetMode('swap'); schFillBShifts();
+  $('sch-modal').classList.add('show');
+}
+function schFillBShifts(){
+  var b=$('sch-b-person')&&$('sch-b-person').value; var today=_calToday();
+  var list=_schData.shifts.filter(function(x){return x.name===b&&x.date>=today;}).sort(function(a,c){return a.date.localeCompare(c.date);});
+  $('sch-b-shift').innerHTML=list.length?list.map(function(x){return '<option value="'+x.row+'">'+_schD(x.date)+' '+esc(x.role)+(x.hours?' · '+x.hours+'h':'')+'</option>';}).join(''):'<option value="">（對方今天起沒有班）</option>';
+}
+function schSubmitSwap(){
+  var a=window._schA; if(!a)return;
+  var bName=$('sch-b-person').value;
+  if(!bName){toast('請選對方','red');return;}
+  var arr=schSwapsRaw(), me=_schMe();
+  if(_schMode==='cover'){
+    var rb=0; var bs=_schData.shifts.find(function(x){return x.name===bName;}); if(bs)rb=bs.rate||0;   // 代班人時薪
+    arr.push({id:_schId(),mode:'cover',fromName:me,toName:bName,aRow:a.row,aDate:a.date,aRole:a.role,rateB:rb,status:'pending',ts:Date.now()});
+    schSaveSwaps(arr); $('sch-modal').classList.remove('show');
+    toast('✓ 已請 '+bName+' 代班','gold'); renderSchedule(); return;
+  }
+  var bRow=parseInt($('sch-b-shift').value);
+  if(!bRow){toast('請選對方的班別','red');return;}
+  var b=_schData.shifts.find(function(x){return x.row===bRow;}); if(!b)return;
+  arr.push({id:_schId(),mode:'swap',fromName:me,toName:bName,aRow:a.row,aDate:a.date,aRole:a.role,bRow:b.row,bDate:b.date,bRole:b.role,status:'pending',ts:Date.now()});
+  schSaveSwaps(arr); $('sch-modal').classList.remove('show');
+  toast('✓ 已送出換班申請給 '+bName,'gold'); renderSchedule();
+}
+async function schRespond(id,accept){
+  var arr=schSwapsRaw(), i=arr.findIndex(function(x){return x.id===id;}); if(i<0)return; var s=arr[i];
+  if(!accept){ arr[i]=Object.assign({},s,{status:'declined',ts:Date.now()}); schSaveSwaps(arr); toast('已拒絕','gold'); renderSchedule(); return; }
+  var isCover=(s.mode==='cover');
+  if(typeof confirm==='function'&&!confirm(isCover?('確定同意代班？「'+s.fromName+'」的班會改由你上，並更新 Google Sheet。'):'確定同意換班？兩人的班會互換並更新 Google Sheet。'))return;
+  toast((isCover?'代班':'換班')+'處理中…','gold');
+  try{
+    var d=isCover
+      ? await authApi({type:'schedule_swap',mode:'cover',rowA:s.aRow,nameA:s.fromName,coverName:s.toName,rateB:s.rateB})
+      : await authApi({type:'schedule_swap',rowA:s.aRow,rowB:s.bRow,nameA:s.fromName,nameB:s.toName});
+    if(d&&(d.status==='ok'||d.status==='success')){
+      arr[i]=Object.assign({},s,{status:'accepted',ts:Date.now()}); schSaveSwaps(arr);
+      if(typeof invalidateQ==='function')invalidateQ('query_schedule');
+      toast('✓ 換班完成，已更新班表','gold'); _schData=null; loadSchedule();
+    }else{ toast('換班失敗：'+((d&&d.message)||'後端需更新程式'),'red'); }
+  }catch(e){ toast('換班失敗（後端需先加 schedule_swap 端點）','red'); }
+}
+function schCancel(id){
+  var arr=schSwapsRaw(), i=arr.findIndex(function(x){return x.id===id;}); if(i<0)return;
+  arr[i]=Object.assign({},arr[i],{status:'cancelled',ts:Date.now()}); schSaveSwaps(arr); toast('已取消','gold'); renderSchedule();
+}
 async function loadMenuCost(){
   var wrap=$('mc-wrap'); if(wrap)wrap.innerHTML='<div class="game-empty">載入中…</div>';
   try{
@@ -4417,7 +4596,7 @@ const LS={
 };
 
 // ════════ 跨裝置同步層（填上 SYNC_URL 才啟動）════════
-const SYNC_URL='https://script.google.com/macros/s/AKfycbwo6t4jqCx9apfSdO86iKuF42wU3GBFTM-gQosKbVJUlOpxLzdwGKoFwKujaht1RXMBBQ/exec';  // 後端改指向 o6t4(已把 SSOZDN 非照片資料搬過來；o6t4 已部署新版無鎖程式，快)
+const SYNC_URL='https://script.google.com/macros/s/AKfycbw2V4lNiaj3ETVMlVkOClwouuE8a5bEx5MGoJikzaUKYqK8AVaJUPJUMLT8eKY2NUro9g/exec';  // 後端改指向 o6t4(已把 SSOZDN 非照片資料搬過來；o6t4 已部署新版無鎖程式，快)
 function syncOn(){return !!SYNC_URL;}
 function kv(type,extra){return fetch(SYNC_URL,{method:'POST',body:JSON.stringify(Object.assign({type:type,key:GT_KEY,auth:GT_KEY},extra||{})),headers:{'Content-Type':'text/plain'}}).then(r=>r.json());}
 let _pushTimers={};
@@ -4440,11 +4619,11 @@ function mergeNames(key,cloudVal){try{var loc=JSON.parse(localStorage.getItem(ke
 function mergeArrUnion(key,cloudVal){try{var loc=JSON.parse(localStorage.getItem(key)||'[]')||[];var cl=JSON.parse(cloudVal||'[]')||[];var seen={},out=[];loc.concat(cl).forEach(function(x){var s=String(x);if(!seen[s]){seen[s]=1;out.push(x);}});localStorage.setItem(key,JSON.stringify(out));}catch(e){localStorage.setItem(key,cloudVal);}}
 // 行事曆合併（多人同時編輯）：以 id 聯集，同 id 取 ts 較新者（含刪除旗標），避免整包互蓋
 function mergeCalendar(key,cloudVal){try{var loc=JSON.parse(localStorage.getItem(key)||'[]')||[];var cl=JSON.parse(cloudVal||'[]')||[];var by={},order=[];loc.concat(cl).forEach(function(e){if(!e||!e.id)return;if(!(e.id in by)){by[e.id]=e;order.push(e.id);}else if((e.ts||0)>=(by[e.id].ts||0)){by[e.id]=e;}});localStorage.setItem(key,JSON.stringify(order.map(function(id){return by[id];})));}catch(e){localStorage.setItem(key,cloudVal);}}
-function cloudPull(light){if(!syncOn())return Promise.resolve();return kv('kv_all',light?{light:1}:{}).then(function(res){if(res&&res.status==='ok'&&res.data){for(var k in res.data){if(k.indexOf('rm_')!==0||res.data[k]==null)continue;if(k==='rm_submissions'||k==='rm_redemptions')mergeLogArr(k,res.data[k]);else if(k==='rm_names'||k==='rm_material_pack')mergeNames(k,res.data[k]);else if(k==='rm_pu_units'||k==='rm_pu_packunits')mergeArrUnion(k,res.data[k]);else if(k==='rm_calendar')mergeCalendar(k,res.data[k]);else localStorage.setItem(k,res.data[k]);}}}).catch(function(){});}
+function cloudPull(light){if(!syncOn())return Promise.resolve();return kv('kv_all',light?{light:1}:{}).then(function(res){if(res&&res.status==='ok'&&res.data){for(var k in res.data){if(k.indexOf('rm_')!==0||res.data[k]==null)continue;if(k==='rm_submissions'||k==='rm_redemptions')mergeLogArr(k,res.data[k]);else if(k==='rm_names'||k==='rm_material_pack')mergeNames(k,res.data[k]);else if(k==='rm_pu_units'||k==='rm_pu_packunits')mergeArrUnion(k,res.data[k]);else if(k==='rm_calendar'||k==='rm_shift_swaps')mergeCalendar(k,res.data[k]);else localStorage.setItem(k,res.data[k]);}}}).catch(function(){});}
 function isTyping(){var a=document.activeElement;if(!a)return false;var t=(a.tagName||'').toUpperCase();return t==='INPUT'||t==='TEXTAREA'||t==='SELECT'||a.isContentEditable===true;}
 // 使用者正在操作中（輸入／彈窗開著／送出鈕處理中）→ 背景同步先別重刷畫面，避免手上的操作被打斷或閃動
 function _busyUI(){return isTyping()||!!document.querySelector('.subform-overlay.show,.btn-busy');}
-function reRenderTab(id){const map={home:renderHome,reports:loadReports,handover:renderHandover,tasks:renderTasks,leaderboard:renderLeaderboard,character:renderCharacter,bully:renderBully,calendar:loadCalendar};if(map[id]){try{map[id]();}catch(e){}}if(id==='accounts'){try{loadPending();loadAccounts();}catch(e){}}}
+function reRenderTab(id){const map={home:renderHome,reports:loadReports,handover:renderHandover,tasks:renderTasks,leaderboard:renderLeaderboard,character:renderCharacter,bully:renderBully,calendar:loadCalendar,schedule:loadSchedule};if(map[id]){try{map[id]();}catch(e){}}if(id==='accounts'){try{loadPending();loadAccounts();}catch(e){}}}
 // 輪詢：平時走輕量(不抓照片)，每 5 次(約100秒)才連照片一起抓一次
 function startSyncPoll(){if(!syncOn()||window._syncPoll)return;window._syncPoll=setInterval(function(){
   if(window._syncBusy)return;                     // 上一次同步還沒回來就跳過，避免重疊堆疊、打爆後端
@@ -4598,6 +4777,7 @@ const ALL_TABS=[
   {id:'bom',icon:'🧮',label:'BOM成本',roles:['BOSS','MGR']},
   {id:'handover',icon:'📋',label:'交接表',roles:['BOSS','MGR','EMP']},
   {id:'calendar',icon:'📅',label:'行事曆',roles:['BOSS','MGR','EMP']},
+  {id:'schedule',icon:'📅',label:'排班表',roles:['BOSS','MGR','EMP']},
   {id:'tasks',icon:'✅',label:'任務',roles:['BOSS','MGR','EMP']},
   {id:'leaderboard',icon:'🏆',label:'排行榜',roles:['BOSS','MGR','EMP']},
   {id:'character',icon:'🎮',label:'我的角色',roles:['BOSS','MGR','EMP']},
