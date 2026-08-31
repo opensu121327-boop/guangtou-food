@@ -1653,10 +1653,21 @@ html,body,button,input,select,textarea,
     /* 日行程清單在白底彈窗內 → 深色字 */
     #cal-modal .cal-day-ev{padding:11px;border:1px solid rgba(17,17,17,.14);border-radius:11px;margin-bottom:7px;cursor:pointer;color:#111;font-size:14px}
     #cal-modal #cal-day-list .muted-note{color:rgba(17,17,17,.55)}
-    /* 菜單毛利：表格直接在深底上、文字是深色 → 看不到。包成白卡讓深色字可見（與 KPI 卡一致） */
-    #tab-menucost #mc-wrap{background:#fff;border:1px solid rgba(17,17,17,.08);border-radius:16px;padding:14px 16px;margin-top:2px}
-    #tab-menucost #mc-wrap a{color:#6b6b6b}
+    /* 菜單毛利：卡片式（每道一張白卡、深字） */
+    #tab-menucost #mc-wrap{background:transparent}
     #tab-menucost #mc-month-label{color:rgba(244,244,244,.75)!important}
+    #tab-menucost .mc-sortbar{font-size:13px;color:rgba(244,244,244,.7);margin:2px 0 12px}
+    #tab-menucost .mc-sortbar a{color:rgba(244,244,244,.7);text-decoration:none}
+    #tab-menucost .mc-sortbar a.on{color:#f4f4f4;font-weight:800;text-decoration:underline}
+    #tab-menucost .mc-card{background:#fff;border-radius:16px;padding:14px 16px;margin-bottom:10px}
+    #tab-menucost .mc-card-top{display:flex;align-items:baseline;gap:10px;margin-bottom:10px}
+    #tab-menucost .mc-name{font-weight:800;font-size:16px;color:#111;flex:1;min-width:0}
+    #tab-menucost .mc-qty{font-size:12px;color:#6b6b6b;white-space:nowrap;flex:0 0 auto}
+    #tab-menucost .mc-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px}
+    #tab-menucost .mc-metric{background:#f6f6f6;border-radius:10px;padding:8px 6px;text-align:center}
+    #tab-menucost .mc-metric .lbl{font-size:10.5px;color:#8a8a8a;line-height:1.45}
+    #tab-menucost .mc-metric .val{font-size:17px;font-weight:800;line-height:1.3}
+    #tab-menucost .mc-foot{margin-top:10px;font-size:12.5px;color:#555}
     /* 首頁「今日·本週行程」卡（白底 .c-card → 深色字） */
     #home-cal .calh-card{cursor:pointer;padding:18px 20px}
     #home-cal .calh-title{font-weight:800;font-size:15.5px;color:#111;display:flex;align-items:center;gap:7px;margin-bottom:8px}
@@ -1694,8 +1705,9 @@ html,body,button,input,select,textarea,
           <div class="form-group"><label class="form-label">TWQR (%)</label><input class="form-input" id="set-fee-twqr" type="number" min="0" step="0.01" placeholder="2.2"></div>
           <div class="form-group"><label class="form-label">Foodpanda 抽成 (%)</label><input class="form-input" id="set-fee-fp" type="number" min="0" step="0.1" placeholder="31"></div>
           <div class="form-group"><label class="form-label">UberEats 抽成 (%)</label><input class="form-input" id="set-fee-ue" type="number" min="0" step="0.1" placeholder="35"></div>
+          <div class="form-group"><label class="form-label">FP 活動額外抽成 (%)</label><input class="form-input" id="set-fee-fppromo" type="number" min="0" step="0.1" placeholder="0"></div>
         </div>
-        <div style="font-size:12px;color:#9a9a9a;line-height:1.5;margin-top:2px">Foodpanda 抽 31%（交易金額）、UberEats 抽 35%（未稅銷售）。</div>
+        <div style="font-size:12px;color:#9a9a9a;line-height:1.5;margin-top:2px">Foodpanda 抽 31%（交易金額）、UberEats 抽 35%（未稅銷售）。<b>參加 FP 活動</b>時，把活動多抽的%填「FP 活動額外抽成」→ 菜單毛利的 FP 毛利率會用「31%＋活動%」計算。</div>
       </div>
       <div class="c-card">
         <div class="c-card-title">📣 Foodpanda 當月額外費（實際金額）</div>
@@ -2088,7 +2100,7 @@ html,body,button,input,select,textarea,
 
 <script>
 // ── 自動更新：開啟時比對版本，有新版就自動重載（免無痕）──
-const APP_VER='20260831250000';
+const APP_VER='20260831270000';
 const GT_KEY='gtk_9F3xQ7Lz_pW2rM8kT';  // 後台共用密鑰（階段A：前端帶上；階段B：後台驗證）
 // 是否有「打到一半、還沒送出」的資料（結帳/進貨/交接/申訴的輸入框有值）→ 有的話先別強制重載，免得清掉
 function _hasTypedData(){try{var els=document.querySelectorAll('#tab-revenue input,#tab-revenue textarea,#tab-purchase input,#tab-purchase textarea,#tab-handover input,#tab-handover textarea,#tab-bully input,#tab-bully textarea');for(var i=0;i<els.length;i++){var el=els[i];if(el.type==='date'||el.type==='hidden')continue;if((el.value||'').trim())return true;}return false;}catch(e){return false;}}
@@ -2440,7 +2452,7 @@ const CICON_OPTS='<option value="check">完成 / 打勾</option><option value="c
 
 // ── 手續費費率（可調整，變動時老闆在結帳頁設定）──
 // ── 制度設定（獎勵制度所有參數，老闆可改；單一設定物件 rm_reward_cfg）──
-const REWARD_DEFAULT={baseWage:196,poolPct:20,penaltyPct:1,fee:{card:2.2,twqr:2.2,delivery:31,fpComm:31,ueComm:35}};  // 費率校正：刷卡/TWQR 2.2；外送分開 FP 31%(交易額)、UE 35%(未稅銷售)；delivery 保留為舊相容鍵。成本改由 Google Sheet 即時計算；創辦攤提存 rm_founding
+const REWARD_DEFAULT={baseWage:196,poolPct:20,penaltyPct:1,fee:{card:2.2,twqr:2.2,delivery:31,fpComm:31,ueComm:35,fpPromo:0}};  // 費率校正：刷卡/TWQR 2.2；外送分開 FP 31%(交易額)、UE 35%(未稅銷售)；delivery 保留為舊相容鍵。成本改由 Google Sheet 即時計算；創辦攤提存 rm_founding
 function rewardCfg(){
   const num=(x,def)=>{const n=parseFloat(x);return isFinite(n)&&n>=0?n:def;};
   const d=LS.get('rm_reward_cfg',null); const c=(d&&typeof d==='object')?d:{};
@@ -2457,13 +2469,14 @@ function rewardCfg(){
         twqr:num(f.twqr,num(lf.twqr,REWARD_DEFAULT.fee.twqr)),
         delivery:dv,
         fpComm:num(f.fpComm,num(lf.fpComm,dv)),                              // Foodpanda 抽成%（無設定則沿用舊統一費率）
-        ueComm:num(f.ueComm,num(lf.ueComm,REWARD_DEFAULT.fee.ueComm))        // UberEats 抽成%
+        ueComm:num(f.ueComm,num(lf.ueComm,REWARD_DEFAULT.fee.ueComm)),       // UberEats 抽成%
+        fpPromo:num(f.fpPromo,num(lf.fpPromo,REWARD_DEFAULT.fee.fpPromo))    // FP 活動額外抽成%（參加活動時，菜單毛利用 fpComm+fpPromo 計）
       };
     })()
   };
 }
 function feePct(){return rewardCfg().fee;}                 // 百分比（顯示用）
-function feeRates(){const p=feePct();return {card:p.card/100,twqr:p.twqr/100,delivery:p.delivery/100,fpComm:p.fpComm/100,ueComm:p.ueComm/100};}   // 小數（計算用）
+function feeRates(){const p=feePct();return {card:p.card/100,twqr:p.twqr/100,delivery:p.delivery/100,fpComm:p.fpComm/100,ueComm:p.ueComm/100,fpPromo:p.fpPromo/100};}   // 小數（計算用）
 // 外送手續費（分平台）：FP 用 fpComm、UE 用 ueComm
 function deliveryFeeCalc(fp,ue){var r=feeRates();return Math.round((Number(fp)||0)*r.fpComm+(Number(ue)||0)*r.ueComm);}
 // FP 當月額外費（廣告曝光＋期租＋拒單）實際金額，依月份存 rm_fp_extra {'2026-08':金額}
@@ -2473,7 +2486,7 @@ function renderSettings(){   // 制度設定頁：填入目前值（僅老闆）
   if(!(CU&&CU.role==='BOSS'))return;
   const c=rewardCfg(); const set=(id,v)=>{if($(id))$(id).value=v;};
   set('set-wage',c.baseWage);set('set-pool',c.poolPct);set('set-penalty',c.penaltyPct);
-  set('set-fee-card',c.fee.card);set('set-fee-twqr',c.fee.twqr);set('set-fee-fp',c.fee.fpComm);set('set-fee-ue',c.fee.ueComm);
+  set('set-fee-card',c.fee.card);set('set-fee-twqr',c.fee.twqr);set('set-fee-fp',c.fee.fpComm);set('set-fee-ue',c.fee.ueComm);set('set-fee-fppromo',c.fee.fpPromo);
   renderFpExtraList();
   renderFounding();renderProfitPreview();renderTreeEditor();renderAwardParams();an_fixedStaffRender();
 }
@@ -2620,11 +2633,11 @@ function renderProfitPreview(){
 function saveRewardCfg(){
   if(!(CU&&CU.role==='BOSS')){toast('僅老闆可設定','red');return;}
   const g=id=>parseFloat($(id)?$(id).value:'');
-  const wage=g('set-wage'),pool=g('set-pool'),pen=g('set-penalty'),fc=g('set-fee-card'),ft=g('set-fee-twqr'),ffp=g('set-fee-fp'),fue=g('set-fee-ue');
+  const wage=g('set-wage'),pool=g('set-pool'),pen=g('set-penalty'),fc=g('set-fee-card'),ft=g('set-fee-twqr'),ffp=g('set-fee-fp'),fue=g('set-fee-ue'),fpp=g('set-fee-fppromo')||0;
   const famt=Math.max(0,Math.round(g('fnd-amount'))||0),fyr=Math.max(0,g('fnd-years')||0);
-  if(![wage,pool,pen,fc,ft,ffp,fue].every(x=>isFinite(x)&&x>=0)){toast('所有欄位請填 0 或以上的數字','red');return;}
-  LS.set('rm_reward_cfg',{baseWage:wage,poolPct:pool,penaltyPct:pen,fee:{card:fc,twqr:ft,delivery:ffp,fpComm:ffp,ueComm:fue}});
-  LS.set('rm_fee_rates',{card:fc,twqr:ft,delivery:ffp,fpComm:ffp,ueComm:fue});   // 同步舊鍵，維持相容
+  if(![wage,pool,pen,fc,ft,ffp,fue,fpp].every(x=>isFinite(x)&&x>=0)){toast('所有欄位請填 0 或以上的數字','red');return;}
+  LS.set('rm_reward_cfg',{baseWage:wage,poolPct:pool,penaltyPct:pen,fee:{card:fc,twqr:ft,delivery:ffp,fpComm:ffp,ueComm:fue,fpPromo:fpp}});
+  LS.set('rm_fee_rates',{card:fc,twqr:ft,delivery:ffp,fpComm:ffp,ueComm:fue,fpPromo:fpp});   // 同步舊鍵，維持相容
   LS.set('rm_founding',{amount:famt,years:fyr});
   if(typeof cloudPush==='function')cloudPush();
   toast('✓ 制度設定已更新','gold');
@@ -4153,6 +4166,7 @@ function renderMenuCost(){
   // 菜單表：品項0 FP價1 UE價2 內用價3 食材成本4 更新時間5 狀態6
   var items={};
   for(var i=1;i<menu.length;i++){ var r=menu[i]; var nm=String(r[0]||'').trim(); if(!nm||/ZZTEST/i.test(nm))continue; if(String(r[6]||'').trim()==='已下架')continue;
+    if(/^\$?\d+(\.\d+)?\s*元?$/.test(nm))continue;   // 濾掉「1元/10元/100元/1000元」這種 POS 快捷金額品項
     items[nm]={name:nm, fp:_mcNum(r[1]), ue:_mcNum(r[2]), dine:_mcNum(r[3]), cost:_mcNum(r[4]), qtyTot:0, amtTot:0}; }
   // 銷售份數：月份0 品項1 …合計份5 …合計額9；取最新月
   var latest='';
@@ -4161,47 +4175,48 @@ function renderMenuCost(){
   var arr=Object.keys(items).map(function(k){return items[k];});
   // BOM 配方索引（品名→配方，僅成品）：食材成本優先用 BOM 自動換算，其次才用菜單表手填值
   var _bomIdx={}; (LS.get('rm_recipes',[])||[]).forEach(function(r){ if(r&&!r.isSemi){ var d=String(r.dish||'').trim(); if(d&&!_bomIdx[d])_bomIdx[d]=r; } });
+  var _fr=feeRates();   // 含 fpComm/ueComm（外送抽成小數）
   arr.forEach(function(it){
-    it.markFp=(it.dine>0&&it.fp>0)?(it.fp/it.dine-1)*100:null;
-    it.markUe=(it.dine>0&&it.ue>0)?(it.ue/it.dine-1)*100:null;
     var rc=_bomIdx[it.name];
     if(rc){ var cc=recipeCost(rc); if(cc&&cc.cost>0){ it.cost=Math.round(cc.cost*100)/100; it.costSrc=cc.miss?'BOM部分':'BOM'; } }
     it.margin=(it.dine>0&&it.cost>0)?(it.dine-it.cost)/it.dine*100:null;
+    // 外送平台毛利率＝(平台價 − 平台抽成 − 食材成本) ÷ 平台價；FP 另扣活動額外抽成
+    it.fpMargin=(it.fp>0&&it.cost>0)?(it.fp*(1-_fr.fpComm-_fr.fpPromo)-it.cost)/it.fp*100:null;
+    it.ueMargin=(it.ue>0&&it.cost>0)?(it.ue*(1-_fr.ueComm)-it.cost)/it.ue*100:null;
   });
   arr.sort(function(a,b){ return _mcSort==='margin'?((b.margin==null?-1:b.margin)-(a.margin==null?-1:a.margin)):(b.qtyTot-a.qtyTot); });
-  // 摘要卡
   var totAmt=arr.reduce(function(s,x){return s+x.amtTot;},0);
   var wm=arr.filter(function(x){return x.margin!=null;});
   var avgMargin=wm.length?wm.reduce(function(s,x){return s+x.margin;},0)/wm.length:null;
-  var wk=arr.filter(function(x){return x.markFp!=null||x.markUe!=null;});
-  var avgMark=wk.length?wk.reduce(function(s,x){return s+(x.markFp!=null?x.markFp:x.markUe);},0)/wk.length:null;
+  var dmv=arr.map(function(x){return x.fpMargin!=null?x.fpMargin:x.ueMargin;}).filter(function(v){return v!=null;});
+  var avgDeliv=dmv.length?dmv.reduce(function(s,v){return s+v;},0)/dmv.length:null;
   var noCost=arr.filter(function(x){return x.margin==null&&x.dine>0;}).length;
   var bomCnt=arr.filter(function(x){return x.costSrc==='BOM'||x.costSrc==='BOM部分';}).length;
-  if($('mc-month-label'))$('mc-month-label').textContent='統計月份：'+(latest||'—')+'　共 '+arr.length+' 品項'+(bomCnt>0?'（'+bomCnt+' 個由 BOM 配方自動算成本）':'')+(noCost>0?'（'+noCost+' 個待建 BOM 配方）':'');
+  if($('mc-month-label'))$('mc-month-label').textContent='統計月份：'+(latest||'—')+'　共 '+arr.length+' 品項'+(bomCnt>0?'（'+bomCnt+' 個由 BOM 自動算成本）':'')+(noCost>0?'（'+noCost+' 個待建配方）':'');
   if($('mc-cards'))$('mc-cards').innerHTML=
     _mcCard('本月營收','$'+Math.round(totAmt).toLocaleString(),'各通路合計')+
     _mcCard('平均內用毛利率',avgMargin!=null?avgMargin.toFixed(0)+'%':'—',wm.length+' 個有成本')+
-    _mcCard('平均外送加價',avgMark!=null?avgMark.toFixed(0)+'%':'—','平台價 vs 內用價')+
+    _mcCard('平均外送毛利率',avgDeliv!=null?avgDeliv.toFixed(0)+'%':'—','已扣平台抽成')+
     _mcCard('在售品項',String(arr.length),'菜單表');
-  var rows=arr.map(function(it){
-    var mk=''; if(it.markFp!=null)mk+='FP +'+Math.round(it.markFp)+'%'; if(it.markUe!=null)mk+=(mk?'　':'')+'UE +'+Math.round(it.markUe)+'%'; if(!mk)mk='<span style="color:var(--text-3)">—</span>';
-    var mg=it.margin!=null?('<span style="color:'+(it.margin>=50?GREEN:it.margin>=30?AMBER:RED)+';font-weight:700">'+it.margin.toFixed(0)+'%</span>'):'<span style="color:var(--text-3)">建配方</span>';
-    var costCell=it.cost>0?('$'+it.cost+(it.costSrc==='BOM'?' <span style="font-size:10px;color:'+GREEN+'">BOM</span>':it.costSrc==='BOM部分'?' <span style="font-size:10px;color:'+AMBER+'" title="部分食材缺單價">BOM*</span>':'')):'<span style="color:var(--text-3)">—</span>';
-    return '<tr><td style="font-weight:600">'+esc(it.name)+'</td>'
-      +'<td style="text-align:right">'+(it.dine>0?'$'+it.dine:'—')+'</td>'
-      +'<td style="font-size:12px">'+mk+'</td>'
-      +'<td style="text-align:right">'+costCell+'</td>'
-      +'<td style="text-align:center">'+mg+'</td>'
-      +'<td style="text-align:right;font-weight:700">'+it.qtyTot+'</td>'
-      +'<td style="text-align:right">$'+Math.round(it.amtTot).toLocaleString()+'</td></tr>';
+  function _pct(v){ if(v==null)return '<span style="color:#b0b0b0">—</span>'; var c=v>=50?GREEN:(v>=30?AMBER:RED); return '<span style="color:'+c+'">'+Math.round(v)+'%</span>'; }
+  var _fpLbl=_fr.fpPromo>0?('FP 毛利<span style="color:'+AMBER+'">*</span>'):'Foodpanda 毛利';
+  var cards=arr.map(function(it){
+    var costTag=it.cost>0?('$'+it.cost+(it.costSrc==='BOM'?' <span style="font-size:10px;color:'+GREEN+'">BOM</span>':it.costSrc==='BOM部分'?' <span style="font-size:10px;color:'+AMBER+'">BOM*</span>':'')):'<span style="color:#b0b0b0">待建配方</span>';
+    return '<div class="mc-card"><div class="mc-card-top"><span class="mc-name">'+esc(it.name)+'</span>'
+      +'<span class="mc-qty">本月 '+it.qtyTot+' 份'+(it.amtTot>0?' · $'+Math.round(it.amtTot).toLocaleString():'')+'</span></div>'
+      +'<div class="mc-grid">'
+      +'<div class="mc-metric"><div class="lbl">內用毛利率</div><div class="val">'+_pct(it.margin)+'</div><div class="lbl">'+(it.dine>0?'售 $'+it.dine:'—')+'</div></div>'
+      +'<div class="mc-metric"><div class="lbl">'+_fpLbl+'</div><div class="val">'+_pct(it.fpMargin)+'</div><div class="lbl">'+(it.fp>0?'售 $'+it.fp:'—')+'</div></div>'
+      +'<div class="mc-metric"><div class="lbl">UberEats 毛利</div><div class="val">'+_pct(it.ueMargin)+'</div><div class="lbl">'+(it.ue>0?'售 $'+it.ue:'—')+'</div></div>'
+      +'</div>'
+      +'<div class="mc-foot">食材成本 '+costTag+'</div></div>';
   }).join('');
   if($('mc-wrap'))$('mc-wrap').innerHTML=
-    '<div style="margin-bottom:8px;font-size:12px;color:var(--text-3)">排序：'
-    +'<a href="#" onclick="_mcSetSort(\'qty\');return false" style="'+(_mcSort==='qty'?'font-weight:700;color:var(--text)':'')+'">銷量</a> ／ '
-    +'<a href="#" onclick="_mcSetSort(\'margin\');return false" style="'+(_mcSort==='margin'?'font-weight:700;color:var(--text)':'')+'">毛利率</a></div>'
-    +'<div style="overflow-x:auto"><table class="data-table"><thead><tr>'
-    +'<th>品項</th><th>內用價</th><th>外送加價</th><th>食材成本</th><th>內用毛利率</th><th>本月份數</th><th>本月營收</th>'
-    +'</tr></thead><tbody>'+rows+'</tbody></table></div>';
+    '<div class="mc-sortbar">排序：'
+    +'<a href="#" onclick="_mcSetSort(\'qty\');return false" class="'+(_mcSort==='qty'?'on':'')+'">銷量</a> ／ '
+    +'<a href="#" onclick="_mcSetSort(\'margin\');return false" class="'+(_mcSort==='margin'?'on':'')+'">內用毛利率</a></div>'
+    +(_fr.fpPromo>0?'<div style="font-size:11.5px;color:'+AMBER+';margin:-4px 0 10px">＊FP 毛利已扣「抽成 '+feePct().fpComm+'％＋活動 '+feePct().fpPromo+'％」</div>':'')
+    +(cards||'<div class="game-empty">尚無資料</div>');
 }
 
 async function loadReports() {
