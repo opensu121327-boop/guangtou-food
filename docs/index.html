@@ -2153,7 +2153,7 @@ html,body,button,input,select,textarea,
 
 <script>
 // ── 自動更新：開啟時比對版本，有新版就自動重載（免無痕）──
-const APP_VER='20260831340000';
+const APP_VER='20260831350000';
 const GT_KEY='gtk_9F3xQ7Lz_pW2rM8kT';  // 後台共用密鑰（階段A：前端帶上；階段B：後台驗證）
 // 是否有「打到一半、還沒送出」的資料（結帳/進貨/交接/申訴的輸入框有值）→ 有的話先別強制重載，免得清掉
 function _hasTypedData(){try{var els=document.querySelectorAll('#tab-revenue input,#tab-revenue textarea,#tab-purchase input,#tab-purchase textarea,#tab-handover input,#tab-handover textarea,#tab-bully input,#tab-bully textarea');for(var i=0;i<els.length;i++){var el=els[i];if(el.type==='date'||el.type==='hidden')continue;if((el.value||'').trim())return true;}return false;}catch(e){return false;}}
@@ -4223,6 +4223,8 @@ function schSaveSwaps(a){LS.set('rm_shift_swaps',a);if(typeof cloudPush==='funct
 function _schId(){return 'sw_'+Date.now().toString(36)+Math.random().toString(36).slice(2,6);}
 function _schMe(){return (CU&&CU.name)||(CU&&CU.username)||'';}
 function _schD(ds){var p=String(ds||'').split('-');if(p.length<3)return ds;var w=['日','一','二','三','四','五','六'][new Date(+p[0],+p[1]-1,+p[2]).getDay()];return (+p[1])+'/'+(+p[2])+'（'+w+'）';}
+function _schTime(v){var m=String(v||'').match(/T(\d\d):(\d\d)/);if(!m)return '';var h=(parseInt(m[1],10)+8)%24;return (h<10?'0':'')+h+':'+m[2];}   // 排班表時間為UTC，+8=台灣
+function _schSpan(x){return (x&&x.start&&x.end)?(x.start+'–'+x.end):((x&&x.hours)?x.hours+'h':'');}
 async function loadSchedule(){
   var host=$('sch-wrap'); if(host&&!_schData)host.innerHTML='<div class="game-empty">載入中…</div>';
   try{
@@ -4230,7 +4232,7 @@ async function loadSchedule(){
     var rows=(d&&d.rows)?d.rows:[]; var shifts=[];
     for(var i=1;i<rows.length;i++){var r=rows[i]; var nm=String(r[1]||'').trim(); var ds=String(r[0]||'').slice(0,10);
       if(!nm||!/^\d{4}-\d\d-\d\d$/.test(ds))continue;
-      shifts.push({row:i+1,date:ds,name:nm,role:(String(r[9]||'').split('｜')[0].trim())||'—',hours:Number(r[6])||0,rate:Number(r[7])||0});
+      shifts.push({row:i+1,date:ds,name:nm,role:(String(r[9]||'').split('｜')[0].trim())||'—',hours:Number(r[6])||0,rate:Number(r[7])||0,start:_schTime(r[2]),end:_schTime(r[3])});
     }
     _schData={shifts:shifts}; renderSchedule();
   }catch(e){ if(host)host.innerHTML='<div class="game-empty">載入失敗：'+esc(e.message)+'</div>'; }
@@ -4271,7 +4273,7 @@ function renderSchedule(){
       html+='<div class="sch-day"><div class="sch-date">'+_schD(ds)+'</div>';
       byd[ds].forEach(function(x){
         var isMe=(x.name===me);
-        html+='<div class="sch-shift'+(isMe?' sch-me':'')+'"><span class="sch-role">'+esc(x.role)+'</span><span class="sch-person">'+esc(x.name)+(x.hours?' · '+x.hours+'h':'')+'</span>'
+        html+='<div class="sch-shift'+(isMe?' sch-me':'')+'"><span class="sch-role">'+esc(x.role)+'</span><span class="sch-person">'+esc(x.name)+(_schSpan(x)?' · '+_schSpan(x):'')+'</span>'
           +(isMe?'<button class="sch-swap-btn" onclick="schOpenSwap('+x.row+')">換班</button>':'')+'</div>';
       });
       html+='</div>';
@@ -4297,7 +4299,7 @@ function schOpenSwap(row){
   var me=_schMe(), today=_calToday(), others=[], seen={};
   _schData.shifts.forEach(function(x){if(x.name!==me&&x.date>=today&&!seen[x.name]){seen[x.name]=1;others.push(x.name);}});
   if(!others.length){toast('目前沒有可換班的同事','red');return;}
-  $('sch-a-info').innerHTML='你要換掉/請人代的班：<b style="color:#111">'+_schD(a.date)+' '+esc(a.role)+(a.hours?' · '+a.hours+'h':'')+'</b>';
+  $('sch-a-info').innerHTML='你要換掉/請人代的班：<b style="color:#111">'+_schD(a.date)+' '+esc(a.role)+(_schSpan(a)?' · '+_schSpan(a):'')+'</b>';
   $('sch-b-person').innerHTML=others.map(function(n){return '<option value="'+esc(n)+'">'+esc(n)+'</option>';}).join('');
   schSetMode('swap'); schFillBShifts();
   $('sch-modal').classList.add('show');
@@ -4305,7 +4307,7 @@ function schOpenSwap(row){
 function schFillBShifts(){
   var b=$('sch-b-person')&&$('sch-b-person').value; var today=_calToday();
   var list=_schData.shifts.filter(function(x){return x.name===b&&x.date>=today;}).sort(function(a,c){return a.date.localeCompare(c.date);});
-  $('sch-b-shift').innerHTML=list.length?list.map(function(x){return '<option value="'+x.row+'">'+_schD(x.date)+' '+esc(x.role)+(x.hours?' · '+x.hours+'h':'')+'</option>';}).join(''):'<option value="">（對方今天起沒有班）</option>';
+  $('sch-b-shift').innerHTML=list.length?list.map(function(x){return '<option value="'+x.row+'">'+_schD(x.date)+' '+esc(x.role)+(_schSpan(x)?' · '+_schSpan(x):'')+'</option>';}).join(''):'<option value="">（對方今天起沒有班）</option>';
 }
 function schSubmitSwap(){
   var a=window._schA; if(!a)return;
