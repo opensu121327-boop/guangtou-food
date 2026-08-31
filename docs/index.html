@@ -2153,7 +2153,7 @@ html,body,button,input,select,textarea,
 
 <script>
 // ── 自動更新：開啟時比對版本，有新版就自動重載（免無痕）──
-const APP_VER='20260831350000';
+const APP_VER='20260831420000';
 const GT_KEY='gtk_9F3xQ7Lz_pW2rM8kT';  // 後台共用密鑰（階段A：前端帶上；階段B：後台驗證）
 // 是否有「打到一半、還沒送出」的資料（結帳/進貨/交接/申訴的輸入框有值）→ 有的話先別強制重載，免得清掉
 function _hasTypedData(){try{var els=document.querySelectorAll('#tab-revenue input,#tab-revenue textarea,#tab-purchase input,#tab-purchase textarea,#tab-handover input,#tab-handover textarea,#tab-bully input,#tab-bully textarea');for(var i=0;i<els.length;i++){var el=els[i];if(el.type==='date'||el.type==='hidden')continue;if((el.value||'').trim())return true;}return false;}catch(e){return false;}}
@@ -4223,7 +4223,7 @@ function schSaveSwaps(a){LS.set('rm_shift_swaps',a);if(typeof cloudPush==='funct
 function _schId(){return 'sw_'+Date.now().toString(36)+Math.random().toString(36).slice(2,6);}
 function _schMe(){return (CU&&CU.name)||(CU&&CU.username)||'';}
 function _schD(ds){var p=String(ds||'').split('-');if(p.length<3)return ds;var w=['日','一','二','三','四','五','六'][new Date(+p[0],+p[1]-1,+p[2]).getDay()];return (+p[1])+'/'+(+p[2])+'（'+w+'）';}
-function _schTime(v){var m=String(v||'').match(/T(\d\d):(\d\d)/);if(!m)return '';var h=(parseInt(m[1],10)+8)%24;return (h<10?'0':'')+h+':'+m[2];}   // 排班表時間為UTC，+8=台灣
+function _schTime(v){var m=String(v||'').match(/T(\d\d):(\d\d)/);if(!m)return '';var h=(parseInt(m[1],10)+16)%24;return (h<10?'0':'')+h+':'+m[2];}   // 排班表時間欄存成UTC+16（來源時區疊了兩次），故+16還原台灣時間；%24處理跨午夜(收店00:00~02:00)
 function _schSpan(x){return (x&&x.start&&x.end)?(x.start+'–'+x.end):((x&&x.hours)?x.hours+'h':'');}
 async function loadSchedule(){
   var host=$('sch-wrap'); if(host&&!_schData)host.innerHTML='<div class="game-empty">載入中…</div>';
