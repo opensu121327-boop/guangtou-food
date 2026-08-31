@@ -1835,46 +1835,6 @@ html,body,button,input,select,textarea,
       <button class="btn-action" onclick="saveAwardParams()">✓ 儲存加分參數</button>
     </div>
 
-    <!-- 主推商品設定（老闆限定）-->
-    <div class="tab-panel" id="tab-focuscfg">
-      <div class="sec-header"><div class="sec-title">主推商品設定</div><div class="divider"></div><div class="sec-sub">設定期間主推品項與達標階梯（老闆限定）</div></div>
-      <div class="c-card">
-        <div class="c-card-title">🎯 新增主推商品</div>
-        <div class="form-group"><label class="form-label">品項名稱</label><input class="form-input" id="mp-name" type="text" placeholder="例：炙燒比目魚"></div>
-        <div class="form-row">
-          <div class="form-group"><label class="form-label">起始日</label><input class="form-input" id="mp-start" type="date"></div>
-          <div class="form-group"><label class="form-label">結束日</label><input class="form-input" id="mp-end" type="date"></div>
-        </div>
-        <div style="font-size:12px;color:#6b6b6b;margin:2px 0 6px">達標階梯（份數）</div>
-        <div class="grid-3">
-          <div class="form-group"><label class="form-label">階梯1(份)</label><input class="form-input" id="mp-t1" type="number" min="0" placeholder="1"></div>
-          <div class="form-group"><label class="form-label">階梯2(份)</label><input class="form-input" id="mp-t2" type="number" min="0" placeholder="2"></div>
-          <div class="form-group"><label class="form-label">階梯3(份)</label><input class="form-input" id="mp-t3" type="number" min="0" placeholder="3"></div>
-        </div>
-        <div class="grid-3" id="mp-points-row">
-          <div class="form-group"><label class="form-label">階梯1點數</label><input class="form-input" id="mp-p1" type="number" min="0" placeholder="3"></div>
-          <div class="form-group"><label class="form-label">階梯2點數</label><input class="form-input" id="mp-p2" type="number" min="0" placeholder="8"></div>
-          <div class="form-group"><label class="form-label">階梯3點數</label><input class="form-input" id="mp-p3" type="number" min="0" placeholder="15"></div>
-        </div>
-        <div class="muted-note" id="mp-points-note" style="display:none;margin-bottom:8px">階梯點數由老闆設定；店長新增的品項先套用預設點數（3/8/15），老闆可再調整。</div>
-        <button class="btn-action" onclick="addFocusCfg()">✓ 新增主推商品</button>
-      </div>
-      <div class="c-card">
-        <div class="c-card-title">📋 目前主推商品</div>
-        <div id="focuscfg-list"></div>
-      </div>
-    </div>
-
-    <!-- 營收達標門檻（老闆/店長）-->
-    <div class="tab-panel" id="tab-revthr">
-      <div class="sec-header"><div class="sec-title">營收達標門檻</div><div class="divider"></div><div class="sec-sub">近 8 週各星期中位數 × 係數 = 本月門檻</div></div>
-      <div class="c-card">
-        <div class="c-card-title">📈 本月營收門檻</div>
-        <div id="revthr-body"><div class="loading-state"><div class="spin"></div>載入中</div></div>
-        <button class="refresh-btn" onclick="renderRevThreshold(true)" style="margin-top:10px">↻ 立即重新計算</button>
-      </div>
-    </div>
-
     <!-- HOME TAB -->
     <div class="tab-panel" id="tab-home">
       <div class="c-card"><div class="home-stage" id="home-stage"></div></div>
@@ -2153,7 +2113,7 @@ html,body,button,input,select,textarea,
 
 <script>
 // ── 自動更新：開啟時比對版本，有新版就自動重載（免無痕）──
-const APP_VER='20260831430000';
+const APP_VER='20260831450000';
 const GT_KEY='gtk_9F3xQ7Lz_pW2rM8kT';  // 後台共用密鑰（階段A：前端帶上；階段B：後台驗證）
 // 是否有「打到一半、還沒送出」的資料（結帳/進貨/交接/申訴的輸入框有值）→ 有的話先別強制重載，免得清掉
 function _hasTypedData(){try{var els=document.querySelectorAll('#tab-revenue input,#tab-revenue textarea,#tab-purchase input,#tab-purchase textarea,#tab-handover input,#tab-handover textarea,#tab-bully input,#tab-bully textarea');for(var i=0;i<els.length;i++){var el=els[i];if(el.type==='date'||el.type==='hidden')continue;if((el.value||'').trim())return true;}return false;}catch(e){return false;}}
@@ -3703,6 +3663,11 @@ function renderEndInv(){var wrap=$('endinv-wrap');if(!wrap||!CU)return;
   });
 }
 function invStopPoll(){if(_invPoll){clearInterval(_invPoll);_invPoll=null;}}
+// 折疊狀態：儲位分區＋單列詳細（⋯）
+var _invZoneOpen=null,_invItemOpen={};
+function invRepaint(){if(_invSess)invPaintCount(_invSess,null,window._invLastSummary||null);}
+function invZoneToggle(zone){if(!_invZoneOpen)_invZoneOpen={};_invZoneOpen[zone]=!_invZoneOpen[zone];invRepaint();}
+function invItemToggle(c){_invItemOpen[c]=!_invItemOpen[c];invRepaint();}
 
 // ── 首頁（無進行中場次）＝也是上次完成頁 ──
 function invPaintHome(last,rows){invStopPoll();var wrap=$('endinv-wrap');if(!wrap)return;
@@ -3740,6 +3705,7 @@ function invItemDone(e){return !!(e&&(e.none||(e.store!==''&&e.store!=null)||(e.
 function invItemAmt(it,e){var price=(e&&e.price!=null)?e.price:it.price;return Math.round(invItemQty(e)*invDNum(price));}
 function invDraftTotals(sid,items){var d=invDraft(sid);var total=0,done=0,zone={};items.forEach(function(it){var c=it.code||it.name;var e=d[c];if(invItemDone(e)){done++;var a=invItemAmt(it,e);total+=a;zone[it.zone]=(zone[it.zone]||0)+a;}});return {total:total,done:done,tot:items.length,zone:zone};}
 function invPaintCount(sess,rows,last){var wrap=$('endinv-wrap');if(!wrap)return;
+  if(!_invZoneOpen){_invZoneOpen={};INV_ZONES.forEach(function(z,zi){_invZoneOpen[z]=(zi===0);});}   // 預設只展開第一區
   var items=invItems();var d=invDraft(sess.sessionId);
   items.forEach(function(it){var c=it.code||it.name;if(!d[c])d[c]={};if(d[c].price==null)d[c].price=it.price;});invSaveDraft(sess.sessionId,d);
   window._invLastSummary=last;
@@ -3764,35 +3730,51 @@ function invZoneHtml(zone,zi,items,sess,last){
   var done=0;zitems.forEach(function(it){if(invItemDone(d[it.code||it.name]))done++;});
   var claimer=sess.zoneClaims?sess.zoneClaims[zone]:null;var mine=claimer===CU.username;
   var claimerName=claimer?(LS.get('rm_names',{})[claimer]||claimer):'';
-  var head='<div class="c-card-title" style="display:flex;justify-content:space-between;align-items:center"><span>'+['①','②','③','④'][zi]+' '+esc(zone)+' <span style="color:var(--text-3);font-weight:400">'+done+'/'+zitems.length+'</span></span>';
-  if(!claimer)head+='<button class="btn-sm btn-neutral" onclick="invClaimZone(\''+esc(zone)+'\')">認領</button>';
-  else if(mine)head+='<button class="btn-sm btn-neutral" onclick="invReleaseZone(\''+esc(zone)+'\')">放棄</button>';
+  var open=_invZoneOpen?!!_invZoneOpen[zone]:(zi===0);var allDone=zitems.length>0&&done>=zitems.length;
+  var head='<div class="c-card-title" style="display:flex;justify-content:space-between;align-items:center;cursor:pointer;margin:0" onclick="invZoneToggle(\''+esc(zone)+'\')">'
+    +'<span>'+['①','②','③','④'][zi]+' '+esc(zone)+' <span style="font-weight:700;color:'+(allDone?'#06c167':'var(--text-3)')+'">'+done+'/'+zitems.length+'</span></span>'
+    +'<span style="display:flex;align-items:center;gap:8px">';
+  if(!claimer)head+='<button class="btn-sm btn-neutral" style="padding:5px 10px" onclick="event.stopPropagation();invClaimZone(\''+esc(zone)+'\')">認領</button>';
+  else if(mine)head+='<button class="btn-sm btn-neutral" style="padding:5px 10px" onclick="event.stopPropagation();invReleaseZone(\''+esc(zone)+'\')">放棄</button>';
   else head+='<span class="pill" style="background:#eee;color:#666">🔒 '+esc(claimerName)+'</span>';
-  head+='</div>';
+  head+='<span style="color:var(--text-3);font-size:13px;font-weight:700">'+(open?'▲':'▼')+'</span></span></div>';
+  if(!open)return '<div class="c-card" style="padding-top:14px;padding-bottom:14px">'+head+'</div>';
   var lastMap=(last&&last.byCode)||{};var body='';
   if(mine||!claimer){zitems.forEach(function(it){body+=invItemRowHtml(it,sess.sessionId,lastMap);});}
   else body='<div class="muted-note">由 '+esc(claimerName)+' 負責</div>';
-  return '<div class="c-card">'+head+'<div>'+body+'</div></div>';
+  return '<div class="c-card">'+head+'<div style="margin-top:6px">'+body+'</div></div>';
 }
 function invItemRowHtml(it,sid,lastMap){
   var c=it.code||it.name;var e=invDraft(sid)[c]||{};
   var price=(e.price!=null?e.price:it.price);var amt=invItemAmt(it,e);
-  var lastQ=lastMap[c]?lastMap[c].qty:null;var lastTxt=(lastQ!=null)?('上次 '+lastQ):'首次盤點';
+  var done=invItemDone(e);
+  var lastQ=lastMap[c]?lastMap[c].qty:null;var lastTxt=(lastQ!=null)?('上次 '+lastQ):'首次';
   var mm=it.mismatch?(' <span title="物料總表登記為'+esc(it.mismatch.master)+'，盤點以'+esc(it.unit)+'計'+(it.mismatch.note?('（'+esc(it.mismatch.note)+'）'):'')+'" style="cursor:help">ⓘ</span>'):'';
   var uncoded=it.uncoded?(' <span class="pill" style="background:#fff7ed;color:#b45309">未建檔</span>'):'';
-  var warn=invAnomaly(invItemQty(e),lastQ,e)?('<div class="muted-note" style="color:#b45309;background:#fff7ed;padding:6px 8px;border-radius:8px;margin-top:4px">⚠️ 上次盤 '+lastQ+'，這次 '+(invItemDone(e)?invItemQty(e):'—')+'，差很多。確認單位或算錯？<div style="margin-top:4px"><a href="#" onclick="invQuickNote(\''+esc(c)+'\',\'已用完\');return false">已用完</a>・<a href="#" onclick="invQuickNote(\''+esc(c)+'\',\'大量進貨\');return false">大量進貨</a>・<a href="#" onclick="invQuickNote(\''+esc(c)+'\',\'單位不同\');return false">單位不同</a></div></div>'):'';
-  var priceRow=invCanPrice()?'<label class="muted-note">單價 <input class="form-input" style="width:84px;display:inline-block;padding:6px" type="number" value="'+price+'" onchange="invPriceChange(\''+esc(c)+'\',this.value)"></label>':'<span class="muted-note">單價 '+price+'（唯讀）</span>';
-  return '<div class="sub-row" style="flex-direction:column;align-items:stretch;gap:6px;padding:10px 0;border-bottom:1px solid #f0f0f0">'
-    +'<div style="display:flex;align-items:center;gap:6px">'
-    +'<div style="flex:1;min-width:0"><div class="tc-title" style="font-size:14px">'+esc(it.name)+mm+uncoded+'</div><div class="xp-text">'+esc(it.unit)+' ・ '+lastTxt+'</div></div>'
-    +'<div style="text-align:center"><div class="xp-text" style="font-size:10px">店</div><input class="form-input" id="inv-q-'+esc(c)+'" type="number" inputmode="decimal" step="0.1" min="0" placeholder="0" value="'+(e.store!=null?e.store:'')+'" style="width:64px;text-align:center;padding:8px" onchange="invStoreChange(\''+esc(c)+'\',this.value)"></div>'
-    +'<div style="text-align:center"><div class="xp-text" style="font-size:10px">外倉</div><input class="form-input" id="inv-w-'+esc(c)+'" type="number" inputmode="decimal" step="0.1" min="0" placeholder="—" value="'+(e.wh!=null?e.wh:'')+'" style="width:58px;text-align:center;padding:8px" onchange="invWhChange(\''+esc(c)+'\',this.value)"></div>'
-    +'<div style="width:66px;text-align:right"><div class="xp-text">金額</div><b id="inv-amt-'+esc(c)+'">$'+Math.round(amt).toLocaleString()+'</b></div></div>'
-    +'<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap">'
-    +'<label class="muted-note" style="cursor:pointer"><input type="checkbox" '+(e.none?'checked':'')+' onchange="invToggleNone(\''+esc(c)+'\',this.checked)"> 無此品項</label>'
-    +priceRow+(it.uncoded?'<button class="btn-sm btn-neutral" onclick="invCreateUncoded(\''+esc(c)+'\')">＋建檔</button>':'')+'</div>'
-    +'<input class="form-input" id="inv-note-'+esc(c)+'" placeholder="備註（選填）" value="'+esc(e.note||'')+'" onchange="invNoteSet(\''+esc(c)+'\',this.value)" style="padding:6px">'
-    +warn+'</div>';
+  var noneTag=e.none?' <span class="pill" style="background:#eee;color:#666">無</span>':'';
+  var warn=invAnomaly(invItemQty(e),lastQ,e)?('<div class="muted-note" style="color:#b45309;background:#fff7ed;padding:6px 8px;border-radius:8px;margin-top:6px">⚠️ 上次 '+lastQ+'，這次 '+(done?invItemQty(e):'—')+'，差很多，確認單位或算錯？</div>'):'';
+  var open=!!_invItemOpen[c];
+  // ── 主列：品名 ｜ 店 ｜ 外倉 ｜ 金額 ｜ ⋯ ──
+  var main='<div style="display:flex;align-items:center;gap:6px">'
+    +'<div style="flex:1;min-width:0"><div class="tc-title" style="font-size:14px'+(done?';color:#06c167':'')+'">'+(done?'✓ ':'')+esc(it.name)+mm+uncoded+noneTag+'</div><div class="xp-text" style="font-size:11px">'+esc(it.unit)+' ・ '+lastTxt+'</div></div>'
+    +'<div style="text-align:center"><div class="xp-text" style="font-size:10px">店</div><input class="form-input" id="inv-q-'+esc(c)+'" type="number" inputmode="decimal" step="0.1" min="0" placeholder="0" value="'+(e.store!=null?e.store:'')+'" style="width:58px;text-align:center;padding:8px" onchange="invStoreChange(\''+esc(c)+'\',this.value)"></div>'
+    +'<div style="text-align:center"><div class="xp-text" style="font-size:10px">外倉</div><input class="form-input" id="inv-w-'+esc(c)+'" type="number" inputmode="decimal" step="0.1" min="0" placeholder="—" value="'+(e.wh!=null?e.wh:'')+'" style="width:52px;text-align:center;padding:8px" onchange="invWhChange(\''+esc(c)+'\',this.value)"></div>'
+    +'<div style="width:58px;text-align:right"><div class="xp-text" style="font-size:10px">金額</div><b id="inv-amt-'+esc(c)+'" style="font-size:13px">$'+Math.round(amt).toLocaleString()+'</b></div>'
+    +'<button class="btn-sm btn-neutral" style="padding:6px 9px;flex-shrink:0;font-size:13px" title="更多" onclick="invItemToggle(\''+esc(c)+'\')">'+(open?'▲':'⋯')+'</button>'
+    +'</div>';
+  // ── 展開：無此品項／單價／備註／建檔 ──
+  var detail='';
+  if(open){
+    detail='<div style="margin-top:8px;padding-top:8px;border-top:1px dashed #e5e5e5;display:flex;flex-direction:column;gap:8px">'
+      +'<label class="muted-note" style="cursor:pointer"><input type="checkbox" '+(e.none?'checked':'')+' onchange="invToggleNone(\''+esc(c)+'\',this.checked)"> 無此品項（盤 0）</label>'
+      +(invCanPrice()
+        ?'<label class="muted-note">單價 <input class="form-input" style="width:88px;display:inline-block;padding:6px" type="number" value="'+price+'" onchange="invPriceChange(\''+esc(c)+'\',this.value)"> 元/'+esc(it.unit)+'</label>'
+        :'<span class="muted-note">單價 '+price+' 元/'+esc(it.unit)+'（唯讀）</span>')
+      +'<input class="form-input" id="inv-note-'+esc(c)+'" placeholder="備註（選填）" value="'+esc(e.note||'')+'" onchange="invNoteSet(\''+esc(c)+'\',this.value)" style="padding:6px">'
+      +(it.uncoded?'<button class="btn-sm btn-neutral" style="align-self:flex-start" onclick="invCreateUncoded(\''+esc(c)+'\')">＋建檔到物料總表</button>':'')
+      +'</div>';
+  }
+  return '<div class="sub-row" style="flex-direction:column;align-items:stretch;gap:0;padding:10px 0;border-bottom:1px solid #f0f0f0">'+main+detail+warn+'</div>';
 }
 function invAnomaly(qty,lastQ,e){if(lastQ==null||!invItemDone(e))return false;var q=invDNum(qty),l=invDNum(lastQ);if(l===0)return q>0;return Math.abs(q-l)/l>0.5;}
 
@@ -4786,8 +4768,6 @@ const ALL_TABS=[
   {id:'bully',icon:'🛡️',label:'霸凌申訴',roles:['BOSS','MGR','EMP']},
   {id:'accounts',icon:'👥',label:'帳號管理',roles:['BOSS']},
   {id:'audit',icon:'🔍',label:'稽核紀錄',roles:['BOSS']},
-  {id:'focuscfg',icon:'🎯',label:'主推商品設定',roles:['BOSS','MGR']},
-  {id:'revthr',icon:'📈',label:'營收達標門檻',roles:['BOSS','MGR']},
   {id:'endinv',icon:'📦',label:'期末盤點',roles:['BOSS','MGR','EMP']},
   {id:'foodcost',icon:'📉',label:'食材率',roles:['BOSS','MGR']},
   {id:'settings',icon:'⚙️',label:'制度設定',roles:['BOSS']},
