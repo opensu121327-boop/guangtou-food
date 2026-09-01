@@ -2113,7 +2113,7 @@ html,body,button,input,select,textarea,
 
 <script>
 // ── 自動更新：開啟時比對版本，有新版就自動重載（免無痕）──
-const APP_VER='20260831450000';
+const APP_VER='20260831460000';
 const GT_KEY='gtk_9F3xQ7Lz_pW2rM8kT';  // 後台共用密鑰（階段A：前端帶上；階段B：後台驗證）
 // 是否有「打到一半、還沒送出」的資料（結帳/進貨/交接/申訴的輸入框有值）→ 有的話先別強制重載，免得清掉
 function _hasTypedData(){try{var els=document.querySelectorAll('#tab-revenue input,#tab-revenue textarea,#tab-purchase input,#tab-purchase textarea,#tab-handover input,#tab-handover textarea,#tab-bully input,#tab-bully textarea');for(var i=0;i<els.length;i++){var el=els[i];if(el.type==='date'||el.type==='hidden')continue;if((el.value||'').trim())return true;}return false;}catch(e){return false;}}
@@ -3571,47 +3571,85 @@ const INV_ZONES=['超低溫冷凍庫','冷凍庫','冷藏冷台','乾貨米酒�
 // A 類 41 必盤品項種子（依 2026 5–8 月採購額排序，涵蓋約 85% 金額）。price＝最近一次實際進貨單價。
 // mismatch＝物料總表基本單位與實際進貨單位不一致，盤點一律用 unit（實際），mismatch.master 供提示與 TODO。
 const END_INV_SEED=[
+  // ── 超低溫冷凍庫（生魚片主料）──
   {code:'SE007',name:'8/9挪威鮭魚菲力',unit:'公斤',price:720,zone:'超低溫冷凍庫'},
   {code:'SE028',name:'8/9挪威鮭魚（整尾）',unit:'公斤',price:460,zone:'超低溫冷凍庫'},
   {code:'SE012',name:'大目鮪',unit:'公斤',price:320,zone:'超低溫冷凍庫'},
   {code:'SE036',name:'黃鰭鮪',unit:'台斤',price:243,zone:'超低溫冷凍庫'},
   {code:'SE019',name:'旗魚',unit:'公斤',price:400,zone:'超低溫冷凍庫'},
-  {code:'',name:'三角仔',unit:'公斤',price:350,zone:'超低溫冷凍庫',uncoded:true},
-  {code:'SE040',name:'竹午',unit:'公斤',price:350,zone:'超低溫冷凍庫'},
   {code:'SE008',name:'海鱺(整尾)',unit:'公斤',price:500,zone:'超低溫冷凍庫'},
-  {code:'SE037',name:'油串',unit:'公斤',price:300,zone:'超低溫冷凍庫'},
-  {code:'SE038',name:'鸚哥魚',unit:'公斤',price:230,zone:'超低溫冷凍庫'},
   {code:'SE010',name:'黑鮪魚赤身',unit:'公斤',price:417,zone:'超低溫冷凍庫'},
   {code:'SE009',name:'黑鮪魚皮油',unit:'公斤',price:1250,zone:'超低溫冷凍庫'},
-  {code:'ME002',name:'牛板腱骰子(200克)',unit:'包',price:120,zone:'冷凍庫',mismatch:{master:'公斤'}},
-  {code:'ME026',name:'嫩煎骰子牛(200克)',unit:'包',price:110,zone:'冷凍庫'},
-  {code:'ME010',name:'元氣豬肋眼(1KG)',unit:'包',price:280,zone:'冷凍庫'},
-  {code:'ME007',name:'台畜里肌條肉(3KG)',unit:'包',price:720,zone:'冷凍庫',mismatch:{master:'份'}},
-  {code:'ME003',name:'牛肉片-前腿(全)',unit:'公斤',price:235,zone:'冷凍庫'},
+  {code:'SE041',name:'三角仔',unit:'隻',price:58.8,zone:'超低溫冷凍庫',note:'進貨$12,880÷219隻'},
+  {code:'SE040',name:'竹午',unit:'份',price:82.6,zone:'超低溫冷凍庫',note:'進貨$7,595÷92份'},
+  {code:'SE038',name:'鸚哥魚',unit:'隻',price:60.5,zone:'超低溫冷凍庫',note:'進貨$2,300÷38隻'},
+  {code:'SE037',name:'油串',unit:'公斤',price:300,zone:'超低溫冷凍庫'},
+  // ── 冷凍庫（肉串／調理）──
+  {code:'ME003',name:'牛肉片-原裝(3公斤)',unit:'包',price:705,zone:'冷凍庫',note:'3公斤×$235'},
+  {code:'ME003P',name:'牛肉片-出餐包',unit:'包',price:35,zone:'冷凍庫',note:'150克×$235'},
+  {code:'ME011',name:'豬肉片-出餐包',unit:'包',price:20,zone:'冷凍庫',note:'136克×$150'},
+  {code:'ME007',name:'豬里肌-出餐包',unit:'包',price:48,zone:'冷凍庫',note:'1完整包=15出餐包'},
+  {code:'ME010',name:'十三香豬肋眼',unit:'包',price:280,zone:'冷凍庫'},
+  {code:'ME026',name:'骰子牛(嫩煎)',unit:'包',price:110,zone:'冷凍庫'},
+  {code:'ME002',name:'牛板腱骰子(200克)',unit:'包',price:120,zone:'冷凍庫'},
   {code:'ME012',name:'雞腿',unit:'支',price:50,zone:'冷凍庫'},
-  {code:'ME009',name:'雞皮串',unit:'包',price:180,zone:'冷凍庫',mismatch:{master:'支',note:'1 包＝10 串'}},
-  {code:'ME013',name:"7''特製雞(10串)",unit:'包',price:175,zone:'冷凍庫'},
-  {code:'ME019',name:"7''肥腸串(10串)",unit:'包',price:230,zone:'冷凍庫'},
-  {code:'ME017',name:"7''雞心(10串)",unit:'包',price:160,zone:'冷凍庫'},
-  {code:'ME005',name:'烤肉串-羊',unit:'支',price:22,zone:'冷凍庫'},
+  {code:'ME009',name:'雞皮串',unit:'包',price:180,zone:'冷凍庫',note:'1包=10隻'},
+  {code:'ME013',name:'特製雞',unit:'包',price:175,zone:'冷凍庫',note:'1包=10串'},
+  {code:'ME017',name:'雞心',unit:'包',price:160,zone:'冷凍庫',note:'1包=10串'},
+  {code:'ME019',name:'肥腸串',unit:'包',price:230,zone:'冷凍庫',note:'1包=10串'},
+  {code:'ME018',name:'七里香串',unit:'包',price:200,zone:'冷凍庫',note:'1包=10串'},
+  {code:'ME023',name:'雞脖子',unit:'包',price:120,zone:'冷凍庫',note:'1包=10串'},
+  {code:'ME020',name:'雞胗',unit:'包',price:140,zone:'冷凍庫',note:'雞胗串·1包10串'},
+  {code:'ME029',name:'味噌豚雪花',unit:'包',price:115,zone:'冷凍庫'},
+  {code:'ME005',name:'羊肉串',unit:'包',price:220,zone:'冷凍庫',note:'1包=10支×$22'},
   {code:'ME004',name:'烤肉串-厚切牛肉串',unit:'支',price:22,zone:'冷凍庫'},
   {code:'ME001',name:'烤肉串-照燒雞腿串',unit:'支',price:22,zone:'冷凍庫'},
-  {code:'SE002',name:'蒲燒鰻魚20P(500克)',unit:'公斤',price:720,zone:'冷凍庫'},
-  {code:'SE006',name:'花枝文甲(德) 35隻',unit:'盒',price:700,zone:'冷凍庫'},
-  {code:'SE035',name:'蒜香奶油螃蟹',unit:'包',price:145,zone:'冷凍庫'},
-  {code:'SE032',name:'白蝦2號',unit:'盒',price:215,zone:'冷凍庫'},
-  {code:'SE018',name:'甜蝦',unit:'台斤',price:300,zone:'冷藏冷台',mismatch:{master:'斤'}},
-  {code:'SE005',name:'日本帶子 (4S 干貝)',unit:'盒',price:1520,zone:'冷藏冷台'},
-  {code:'SE004',name:'醬油漬鮭魚卵 (500G)',unit:'盒',price:1040,zone:'冷藏冷台'},
+  {code:'SE002',name:'蒲燒鰻魚',unit:'隻',price:360,zone:'冷凍庫',note:'1隻約500克·出2份'},
+  {code:'SE006',name:'文甲花枝',unit:'盒',price:700,zone:'冷凍庫'},
+  {code:'SE035',name:'白酒奶油螃蟹',unit:'包',price:145,zone:'冷凍庫'},
+  {code:'SE026',name:'鯖魚一夜干',unit:'尾',price:123,zone:'冷凍庫',note:'250-270克/尾'},
+  {code:'SE003',name:'紅蝦',unit:'盤',price:250,zone:'冷凍庫',note:'1盒=1盤·天使紅蝦5L/20P'},
+  {code:'HALF004',name:'龍蝦沙拉',unit:'包',price:160,zone:'冷凍庫',note:'500克'},
+  {code:'HALF013',name:'字母薯餅',unit:'包',price:130,zone:'冷凍庫'},
+  {code:'ICE012',name:'薯條',unit:'包',price:200,zone:'冷凍庫',note:'薯條3/8·2.05KG'},
+  {code:'MADE-KHZ',name:'烤的花枝',unit:'包',price:50,zone:'冷凍庫',note:'自製固定價'},
+  {code:'MADE-JMJ',name:'椒麻雞',unit:'包',price:50,zone:'冷凍庫',note:'自製固定價'},
+  {code:'MADE-MDJ',name:'迷迭雞',unit:'包',price:50,zone:'冷凍庫',note:'自製固定價'},
+  {code:'MADE-SXX',name:'蒜香奶油蝦',unit:'包',price:108,zone:'冷凍庫',note:'白蝦$215÷22×11隻'},
+  {code:'MADE-YJX',name:'鹽焗白蝦',unit:'包',price:49,zone:'冷凍庫',note:'白蝦$215÷22×5隻'},
+  {code:'MADE-MYX',name:'墨魚香腸',unit:'包',price:0,zone:'冷凍庫',noCost:true,note:'不計成本·1包5隻'},
+  {code:'MADE-GTD',name:'鬼頭刀香腸',unit:'份',price:0,zone:'冷凍庫',noCost:true,note:'不計成本'},
+  {code:'MADE-DZD',name:'佃煮秋刀魚',unit:'份',price:0,zone:'冷凍庫',noCost:true,note:'不計成本'},
+  {code:'MADE-NYX',name:'奶油杏鮑菇',unit:'包',price:0,zone:'冷凍庫',pending:true,note:'成本待BOM'},
+  // ── 冷藏冷台 ──
+  {code:'SE005',name:'干貝',unit:'盒',price:1520,zone:'冷藏冷台'},
+  {code:'SE004',name:'鮭魚卵',unit:'盒',price:1040,zone:'冷藏冷台'},
   {code:'HALF003',name:'呈冠帶殼溫泉蛋(10粒)',unit:'盒',price:130,zone:'冷藏冷台'},
   {code:'ICE002',name:'山葵章魚',unit:'包',price:690,zone:'冷藏冷台'},
-  {code:'SE016',name:'日本生蠔2L兵庫縣',unit:'公斤',price:320,zone:'冷藏冷台'},
-  {code:'SE034',name:'海膽醬',unit:'包',price:89,zone:'冷藏冷台'},
-  {code:'SE015',name:'尼信',unit:'盒',price:846,zone:'冷藏冷台'},
+  {code:'SE016',name:'生蠔',unit:'顆',price:0,zone:'冷藏冷台',pending:true,note:'成本待BOM'},
+  {code:'SE034',name:'味噌海膽醬',unit:'包',price:89,zone:'冷藏冷台'},
+  {code:'SE015',name:'尼信',unit:'條',price:141,zone:'冷藏冷台',note:'1盒=6條（$846÷6）'},
+  {code:'SE018',name:'甜蝦',unit:'台斤',price:300,zone:'冷藏冷台'},
+  {code:'SE032',name:'白蝦2號',unit:'盒',price:215,zone:'冷藏冷台',note:'1盒約22隻'},
+  {code:'HALF007',name:'壽司蝦蝦',unit:'盤',price:180,zone:'冷藏冷台',note:'1盒=1盤'},
+  {code:'ICE010',name:'玉子燒',unit:'條',price:130,zone:'冷藏冷台'},
+  {code:'HALF002',name:'甜薑',unit:'包',price:60,zone:'冷藏冷台'},
+  {code:'ICE011',name:'豆皮',unit:'包',price:125,zone:'冷藏冷台'},
+  {code:'ICE009',name:'辣味鳳螺',unit:'包',price:125,zone:'冷藏冷台'},
+  {code:'SE039',name:'鳳螺',unit:'包',price:46,zone:'冷藏冷台'},
+  {code:'SE001',name:'海瓜子',unit:'包',price:56,zone:'冷藏冷台'},
+  // ── 乾貨米酒水 ──
   {code:'VE003',name:'壽司米',unit:'袋',price:1560,zone:'乾貨米酒水'},
   {code:'DR003',name:'生啤酒(30L)',unit:'桶',price:1800,zone:'乾貨米酒水'},
   {code:'DR006',name:'紫蘇梅梅酒(750ML)',unit:'瓶',price:800,zone:'乾貨米酒水'},
-  {code:'DR004',name:'冰塊',unit:'袋',price:100,zone:'乾貨米酒水'}
+  {code:'DR004',name:'冰塊',unit:'袋',price:100,zone:'乾貨米酒水'},
+  {code:'DRY005',name:'甘醇醬油',unit:'罐',price:110,zone:'乾貨米酒水'},
+  {code:'DRY001',name:'鰹魚粉',unit:'包',price:310,zone:'乾貨米酒水'},
+  {code:'HALF011',name:'四切海苔',unit:'包',price:140,zone:'乾貨米酒水'},
+  {code:'DRY004',name:'海苔碎',unit:'包',price:380,zone:'乾貨米酒水',note:'海苔酥300G'},
+  {code:'ICE008',name:'毛豆',unit:'包',price:100,zone:'乾貨米酒水'},
+  {code:'ICE005',name:'和風蘿蔔',unit:'包',price:275,zone:'乾貨米酒水'},
+  {code:'MADE-WL',name:'味霖(味醂)',unit:'瓶',price:0,zone:'乾貨米酒水',pending:true,note:'待補每瓶價'}
 ];
 // 可編輯品項清單：首次用種子並回寫 KV(rm_inv_endlist)；之後可編輯
 function invItems(){var a=LS.get('rm_inv_endlist',null);if(!Array.isArray(a)||!a.length){a=END_INV_SEED.map(function(x){return Object.assign({},x);});_seedLS('rm_inv_endlist',a);}return a;}   // 種子只寫本機、不推雲端(避免蓋掉 KV 真實清單)
@@ -3663,11 +3701,18 @@ function renderEndInv(){var wrap=$('endinv-wrap');if(!wrap||!CU)return;
   });
 }
 function invStopPoll(){if(_invPoll){clearInterval(_invPoll);_invPoll=null;}}
-// 折疊狀態：儲位分區＋單列詳細（⋯）
-var _invZoneOpen=null,_invItemOpen={};
-function invRepaint(){if(_invSess)invPaintCount(_invSess,null,window._invLastSummary||null);}
-function invZoneToggle(zone){if(!_invZoneOpen)_invZoneOpen={};_invZoneOpen[zone]=!_invZoneOpen[zone];invRepaint();}
+// 單列詳細（⋯）展開狀態＋搜尋字串（不分儲位，一個清單）
+var _invItemOpen={},_invSearch='';
+// 只換清單與上方累計，保留捲動位置與搜尋框焦點；清單不存在才整頁重繪
+function invRepaint(){if(!_invSess)return;var el=$('inv-list');if(el){el.innerHTML=invListHtml(_invSess,window._invLastSummary||null);var t=$('inv-top');if(t)t.innerHTML=invTopHtml(_invSess,invItems());}else invPaintCount(_invSess,null,window._invLastSummary||null);}
 function invItemToggle(c){_invItemOpen[c]=!_invItemOpen[c];invRepaint();}
+function invSearchSet(v){_invSearch=v;var el=$('inv-list');if(el)el.innerHTML=invListHtml(_invSess,window._invLastSummary||null);}
+function invListHtml(sess,last){
+  var items=invItems();var q=(_invSearch||'').trim().toLowerCase();var lastMap=(last&&last.byCode)||{};
+  var list=q?items.filter(function(it){return String(it.name||'').toLowerCase().indexOf(q)>=0||String(it.code||'').toLowerCase().indexOf(q)>=0;}):items;
+  if(!list.length)return '<div class="game-empty" style="color:#666">找不到「'+esc(_invSearch)+'」</div>';
+  var body='';list.forEach(function(it){body+=invItemRowHtml(it,sess.sessionId,lastMap);});return body;
+}
 
 // ── 首頁（無進行中場次）＝也是上次完成頁 ──
 function invPaintHome(last,rows){invStopPoll();var wrap=$('endinv-wrap');if(!wrap)return;
@@ -3705,17 +3750,17 @@ function invItemDone(e){return !!(e&&(e.none||(e.store!==''&&e.store!=null)||(e.
 function invItemAmt(it,e){var price=(e&&e.price!=null)?e.price:it.price;return Math.round(invItemQty(e)*invDNum(price));}
 function invDraftTotals(sid,items){var d=invDraft(sid);var total=0,done=0,zone={};items.forEach(function(it){var c=it.code||it.name;var e=d[c];if(invItemDone(e)){done++;var a=invItemAmt(it,e);total+=a;zone[it.zone]=(zone[it.zone]||0)+a;}});return {total:total,done:done,tot:items.length,zone:zone};}
 function invPaintCount(sess,rows,last){var wrap=$('endinv-wrap');if(!wrap)return;
-  if(!_invZoneOpen){_invZoneOpen={};INV_ZONES.forEach(function(z,zi){_invZoneOpen[z]=(zi===0);});}   // 預設只展開第一區
   var items=invItems();var d=invDraft(sess.sessionId);
   items.forEach(function(it){var c=it.code||it.name;if(!d[c])d[c]={};if(d[c].price==null)d[c].price=it.price;});invSaveDraft(sess.sessionId,d);
   window._invLastSummary=last;
-  var joinBanner=(sess.startedBy!==CU.username)?'<div class="c-card" style="background:#e3f7ea;border-color:#86efac"><b>🟢 '+esc(sess.startedByName||sess.startedBy)+'</b> 正在盤點中,你可認領儲位一起盤（各自離線盤,最後各自上傳）。</div>':'';
+  var joinBanner=(sess.startedBy!==CU.username)?'<div class="c-card" style="background:#e3f7ea;border-color:#86efac;color:#111111"><b>🟢 '+esc(sess.startedByName||sess.startedBy)+'</b> 正在盤點中,你也可以一起盤（各自填、最後各自上傳）。</div>':'';
   var top='<div class="c-card" id="inv-top" style="position:sticky;top:0;z-index:5">'+invTopHtml(sess,items)+'</div>';
   var offline='<div class="muted-note" style="margin:-4px 2px 8px;color:#06c167">✓ 離線作業中：填數不需等待,全部盤完再按下方一次上傳。資料已存在手機,關掉 App 也不會不見。</div>';
-  var zones='';INV_ZONES.forEach(function(z,zi){zones+=invZoneHtml(z,zi,items,sess,last);});
+  var search='<div class="c-card" style="padding:10px 12px;position:sticky;top:74px;z-index:4"><input class="form-input" id="inv-search" type="search" placeholder="🔍 搜尋品項名稱…" value="'+esc(_invSearch||'')+'" oninput="invSearchSet(this.value)" style="padding:11px;color:#111111"></div>';
+  var listCard='<div class="c-card"><div id="inv-list">'+invListHtml(sess,last)+'</div></div>';
   var upBtn='<button class="btn-action" style="width:100%;margin-top:14px" onclick="invUploadMine()">💾 完成並上傳我的盤點</button>';
   var endBtn=invCanEnd()?'<button class="btn-action" style="width:100%;margin-top:8px;background:#b45309!important" onclick="endInvSession()">⏹ 結束盤點並結算</button>':'<div class="muted-note" style="margin-top:8px">（結算由店長以上執行）</div>';
-  wrap.innerHTML=joinBanner+top+offline+zones+upBtn+endBtn;
+  wrap.innerHTML=joinBanner+top+offline+search+listCard+upBtn+endBtn;
   invStartPoll();
 }
 function invTopHtml(sess,items){var t=invDraftTotals(sess.sessionId,items);
@@ -3756,8 +3801,8 @@ function invItemRowHtml(it,sid,lastMap){
   var open=!!_invItemOpen[c];
   // ── 主列：品名 ｜ 店 ｜ 外倉 ｜ 金額 ｜ ⋯ ──
   var main='<div style="display:flex;align-items:center;gap:6px">'
-    +'<div style="flex:1;min-width:0"><div class="tc-title" style="font-size:14px'+(done?';color:#06c167':'')+'">'+(done?'✓ ':'')+esc(it.name)+mm+uncoded+noneTag+'</div><div class="xp-text" style="font-size:11px">'+esc(it.unit)+' ・ '+lastTxt+'</div></div>'
-    +'<div style="text-align:center"><div class="xp-text" style="font-size:10px">店</div><input class="form-input" id="inv-q-'+esc(c)+'" type="number" inputmode="decimal" step="0.1" min="0" placeholder="0" value="'+(e.store!=null?e.store:'')+'" style="width:58px;text-align:center;padding:8px" onchange="invStoreChange(\''+esc(c)+'\',this.value)"></div>'
+    +'<div style="flex:1;min-width:0"><div class="tc-title" style="font-size:14px'+(done?';color:#06c167':'')+'">'+(done?'✓ ':'')+esc(it.name)+mm+uncoded+noneTag+'</div><div class="xp-text" style="font-size:11px">'+esc(it.unit)+' ・ '+lastTxt+(it.note?'　<span style="color:#b45309">'+esc(it.note)+'</span>':'')+'</div></div>'
+    +'<div style="text-align:center"><div class="xp-text" style="font-size:10px">內倉</div><input class="form-input" id="inv-q-'+esc(c)+'" type="number" inputmode="decimal" step="0.1" min="0" placeholder="0" value="'+(e.store!=null?e.store:'')+'" style="width:58px;text-align:center;padding:8px" onchange="invStoreChange(\''+esc(c)+'\',this.value)"></div>'
     +'<div style="text-align:center"><div class="xp-text" style="font-size:10px">外倉</div><input class="form-input" id="inv-w-'+esc(c)+'" type="number" inputmode="decimal" step="0.1" min="0" placeholder="—" value="'+(e.wh!=null?e.wh:'')+'" style="width:52px;text-align:center;padding:8px" onchange="invWhChange(\''+esc(c)+'\',this.value)"></div>'
     +'<div style="width:58px;text-align:right"><div class="xp-text" style="font-size:10px">金額</div><b id="inv-amt-'+esc(c)+'" style="font-size:13px">$'+Math.round(amt).toLocaleString()+'</b></div>'
     +'<button class="btn-sm btn-neutral" style="padding:6px 9px;flex-shrink:0;font-size:13px" title="更多" onclick="invItemToggle(\''+esc(c)+'\')">'+(open?'▲':'⋯')+'</button>'
