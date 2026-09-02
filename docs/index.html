@@ -2113,7 +2113,7 @@ html,body,button,input,select,textarea,
 
 <script>
 // ── 自動更新：開啟時比對版本，有新版就自動重載（免無痕）──
-const APP_VER='20260902110000';
+const APP_VER='20260902120000';
 const GT_KEY='gtk_9F3xQ7Lz_pW2rM8kT';  // 後台共用密鑰（階段A：前端帶上；階段B：後台驗證）
 // 是否有「打到一半、還沒送出」的資料（結帳/進貨/交接/申訴的輸入框有值）→ 有的話先別強制重載，免得清掉
 function _hasTypedData(){try{var els=document.querySelectorAll('#tab-revenue input,#tab-revenue textarea,#tab-purchase input,#tab-purchase textarea,#tab-handover input,#tab-handover textarea,#tab-bully input,#tab-bully textarea');for(var i=0;i<els.length;i++){var el=els[i];if(el.type==='date'||el.type==='hidden')continue;if((el.value||'').trim())return true;}return false;}catch(e){return false;}}
@@ -3686,7 +3686,7 @@ var _invPoll=null,_invSess=null,_invRows2=null,_invLocal={},_invSig='';
 function invRole(){return (CU&&CU.role)||'EMP';}
 function invCanPrice(){return invRole()==='BOSS'||invRole()==='MGR';}
 function invCanEnd(){return invRole()==='BOSS'||invRole()==='MGR';}
-function invCanEditItems(){return invRole()==='BOSS';}
+function invCanEditItems(){return true;}   // 新增/刪除盤點品項：開放全體員工與店長（老闆本就可）
 function invSessDate(sid){var m=String(sid||'').match(/INV-(\d{4})(\d{2})(\d{2})/);return m?(m[1]+'-'+m[2]+'-'+m[3]):bizDay();}
 function invPad(n){return String(n).padStart(2,'0');}
 function invNewId(){var d=new Date();return 'INV-'+d.getFullYear()+invPad(d.getMonth()+1)+invPad(d.getDate())+'-'+invPad(d.getHours())+invPad(d.getMinutes())+invPad(d.getSeconds());}
