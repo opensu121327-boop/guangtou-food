@@ -2113,7 +2113,7 @@ html,body,button,input,select,textarea,
 
 <script>
 // ── 自動更新：開啟時比對版本，有新版就自動重載（免無痕）──
-const APP_VER='20260831460000';
+const APP_VER='20260902100000';
 const GT_KEY='gtk_9F3xQ7Lz_pW2rM8kT';  // 後台共用密鑰（階段A：前端帶上；階段B：後台驗證）
 // 是否有「打到一半、還沒送出」的資料（結帳/進貨/交接/申訴的輸入框有值）→ 有的話先別強制重載，免得清掉
 function _hasTypedData(){try{var els=document.querySelectorAll('#tab-revenue input,#tab-revenue textarea,#tab-purchase input,#tab-purchase textarea,#tab-handover input,#tab-handover textarea,#tab-bully input,#tab-bully textarea');for(var i=0;i<els.length;i++){var el=els[i];if(el.type==='date'||el.type==='hidden')continue;if((el.value||'').trim())return true;}return false;}catch(e){return false;}}
@@ -2719,9 +2719,20 @@ async function submitRev() {
   // 立即回饋、雲端背景寫入；若失敗自動還原欄位避免資料遺失
   // 送出中：保留表單、鎖住按鈕，確認成功才清空；失敗保留原樣（不清空不回填，不會「跳回來」）
   const _rvIds=['rv-cash','rv-card','rv-twqr','rv-fp','rv-ue','rv-off','rv-note'];
-  const _rvBtn=$('rv-submit');const _rvLbl=_rvBtn?_rvBtn.textContent:'';
-  if(_rvBtn){_rvBtn.disabled=true;_rvBtn.textContent='送出中…';}
+  const _rvBtn=$('rv-submit');const _rvLbl=(_rvBtn&&_rvBtn.textContent&&_rvBtn.textContent.indexOf('中…')<0)?_rvBtn.textContent:'✓ 確認送出';
   const _rvEnd=function(){if(_rvBtn){_rvBtn.disabled=false;_rvBtn.textContent=_rvLbl;}};
+  // ① 防同日重複：送出前先查雲端該日是否已有結帳；有的話要員工確認才續送（查詢失敗不擋，照舊寫入）
+  if(_rvBtn){_rvBtn.disabled=true;_rvBtn.textContent='檢查中…';}
+  try{
+    const _chk=await apiGet('query_revenue');
+    const _crows=(_chk&&_chk.rows)?_chk.rows.slice(1):[];
+    if(_crows.some(function(r){return r&&normDate(r[0])===normDate(date);})){
+      _rvEnd();
+      if(!confirm(normDate(date)+' 這天已經有一筆結帳了。\n\n若是要「修改」，請按取消，到下面清單找那天按『修改』。\n\n真的要「再新增一筆」嗎？')){return;}
+    }
+  }catch(_e){}
+  // ② 送出（鎖按鈕，確認成功才清空）
+  if(_rvBtn){_rvBtn.disabled=true;_rvBtn.textContent='送出中…';}
   const _rvOk=function(){_rvIds.forEach(id=>{if($(id))$(id).value='';});calcRev();toast('✓ 營收已儲存','gold');invalidateQ('query_revenue');_rvEnd();};
   const _rvFail=function(msg){toast(msg||'⚠️ 營收未寫入，資料已保留請重送','red');_rvEnd();};
   authApi({type:'revenue',rows:[row]}).then(function(d){if(d&&(d.status==='success'||d.status==='ok'))_rvOk();else _rvVerifyRevenue(row,_rvOk,_rvFail);}).catch(function(){_rvVerifyRevenue(row,_rvOk,_rvFail);});
@@ -5738,6 +5749,15 @@ function biNameSuggest(rid){
   const el=$('bi-name-'+rid),box=$('bi-confirm-'+rid);if(!el||!box)return;
   const q=(el.value||'').trim();
   if(!q){box.innerHTML='';return;}
+  if(!_materials||!_materials.length){   // 物料庫沒載到（載入失敗/被快取成空）→ 強制重載後再比對，避免「打字完全沒反應」
+    box.innerHTML='<div class="muted-note">載入物料庫中…</div>';
+    if(typeof loadMaterials==='function')loadMaterials(true).then(function(){
+      var cc=$('bi-cats-'+rid);if(cc)cc.innerHTML=biCatChips(rid);
+      var sel=$('bi-mat-'+rid);if(sel)sel.innerHTML=biMatOptions(rid);
+      biNameSuggest(rid);
+    }).catch(function(){box.innerHTML='<div class="muted-note" style="color:#b45309">物料庫載入失敗，請確認網路後重開此頁</div>';});
+    return;
+  }
   const ex=_materials.find(m=>_matNorm(m.name)===_matNorm(q));
   let i=-1,exact=false;
   if(ex){i=_materials.indexOf(ex);exact=true;}else{const b=bestMaterial(q);if(b)i=b.i;}
