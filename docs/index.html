@@ -2113,7 +2113,7 @@ html,body,button,input,select,textarea,
 
 <script>
 // ── 自動更新：開啟時比對版本，有新版就自動重載（免無痕）──
-const APP_VER='20260902100000';
+const APP_VER='20260902110000';
 const GT_KEY='gtk_9F3xQ7Lz_pW2rM8kT';  // 後台共用密鑰（階段A：前端帶上；階段B：後台驗證）
 // 是否有「打到一半、還沒送出」的資料（結帳/進貨/交接/申訴的輸入框有值）→ 有的話先別強制重載，免得清掉
 function _hasTypedData(){try{var els=document.querySelectorAll('#tab-revenue input,#tab-revenue textarea,#tab-purchase input,#tab-purchase textarea,#tab-handover input,#tab-handover textarea,#tab-bully input,#tab-bully textarea');for(var i=0;i<els.length;i++){var el=els[i];if(el.type==='date'||el.type==='hidden')continue;if((el.value||'').trim())return true;}return false;}catch(e){return false;}}
@@ -3724,6 +3724,38 @@ function invListHtml(sess,last){
   if(!list.length)return '<div class="game-empty" style="color:#666">找不到「'+esc(_invSearch)+'」</div>';
   var body='';list.forEach(function(it){body+=invItemRowHtml(it,sess.sessionId,lastMap);});return body;
 }
+// ── 品項增刪（老闆）：改 rm_inv_endlist，LS.set 對 rm_ 會自動同步 KV ──
+var _invAddOpen=false;
+function invAddToggle(){_invAddOpen=!_invAddOpen;invPaintCount(_invSess,null,window._invLastSummary||null);}
+function invAddItemHtml(){
+  if(!_invAddOpen)return '<div class="c-card" style="padding:12px"><button class="btn-sm btn-neutral" style="width:100%;padding:12px;font-size:14px;font-weight:700" onclick="invAddToggle()">＋ 新增盤點品項</button></div>';
+  return '<div class="c-card"><div class="c-card-title">➕ 新增盤點品項</div>'
+    +'<div class="form-group"><label class="form-label">品項名稱</label><input class="form-input" id="inv-add-name" placeholder="例：炙燒比目魚"></div>'
+    +'<div class="form-row"><div class="form-group"><label class="form-label">單位</label><input class="form-input" id="inv-add-unit" placeholder="盒 / 包 / 隻 / 公斤…"></div>'
+    +'<div class="form-group"><label class="form-label">單價（每單位成本）</label><input class="form-input" id="inv-add-price" type="number" min="0" placeholder="0"></div></div>'
+    +'<div style="display:flex;gap:8px;margin-top:6px"><button class="btn-sm btn-neutral" style="flex:0 0 auto;padding:11px 16px" onclick="invAddToggle()">取消</button>'
+    +'<button class="btn-action" style="flex:1" onclick="invAddItem()">✓ 加入清單</button></div></div>';
+}
+function invAddItem(){
+  var name=(($('inv-add-name')&&$('inv-add-name').value)||'').trim();
+  if(!name){toast('請輸入品項名稱','red');return;}
+  var unit=(($('inv-add-unit')&&$('inv-add-unit').value)||'').trim()||'份';
+  var price=parseFloat($('inv-add-price')&&$('inv-add-price').value)||0;
+  var arr=invItems().slice();
+  if(arr.some(function(x){return String(x.name||'').trim()===name;})){toast('清單已經有「'+name+'」了','red');return;}
+  arr.push({code:'CUS-'+Date.now().toString(36),name:name,unit:unit,price:price,zone:'',note:'手動新增'});
+  LS.set('rm_inv_endlist',arr);   // 自動同步 KV
+  _invAddOpen=false;_invSearch='';
+  toast('✓ 已新增「'+name+'」','gold');
+  invPaintCount(_invSess,null,window._invLastSummary||null);
+}
+function invDelItem(c){
+  var arr=invItems();var it=arr.find(function(x){return (x.code||x.name)===c;});if(!it)return;
+  if(!confirm('確定要從盤點清單移除「'+it.name+'」嗎？\n（只是移出清單，不影響已上傳的盤點紀錄）'))return;
+  LS.set('rm_inv_endlist',arr.filter(function(x){return (x.code||x.name)!==c;}));
+  toast('已移除「'+it.name+'」','red');
+  invPaintCount(_invSess,null,window._invLastSummary||null);
+}
 
 // ── 首頁（無進行中場次）＝也是上次完成頁 ──
 function invPaintHome(last,rows){invStopPoll();var wrap=$('endinv-wrap');if(!wrap)return;
@@ -3769,9 +3801,10 @@ function invPaintCount(sess,rows,last){var wrap=$('endinv-wrap');if(!wrap)return
   var offline='<div class="muted-note" style="margin:-4px 2px 8px;color:#06c167">✓ 離線作業中：填數不需等待,全部盤完再按下方一次上傳。資料已存在手機,關掉 App 也不會不見。</div>';
   var search='<div class="c-card" style="padding:10px 12px;position:sticky;top:74px;z-index:4"><input class="form-input" id="inv-search" type="search" placeholder="🔍 搜尋品項名稱…" value="'+esc(_invSearch||'')+'" oninput="invSearchSet(this.value)" style="padding:11px;color:#111111"></div>';
   var listCard='<div class="c-card"><div id="inv-list">'+invListHtml(sess,last)+'</div></div>';
+  var addUI=invCanEditItems()?invAddItemHtml():'';   // 新增品項卡（老闆）
   var upBtn='<button class="btn-action" style="width:100%;margin-top:14px" onclick="invUploadMine()">💾 完成並上傳我的盤點</button>';
   var endBtn=invCanEnd()?'<button class="btn-action" style="width:100%;margin-top:8px;background:#b45309!important" onclick="endInvSession()">⏹ 結束盤點並結算</button>':'<div class="muted-note" style="margin-top:8px">（結算由店長以上執行）</div>';
-  wrap.innerHTML=joinBanner+top+offline+search+listCard+upBtn+endBtn;
+  wrap.innerHTML=joinBanner+top+offline+search+listCard+addUI+upBtn+endBtn;
   invStartPoll();
 }
 function invTopHtml(sess,items){var t=invDraftTotals(sess.sessionId,items);
@@ -3828,6 +3861,7 @@ function invItemRowHtml(it,sid,lastMap){
         :'<span class="muted-note">單價 '+price+' 元/'+esc(it.unit)+'（唯讀）</span>')
       +'<input class="form-input" id="inv-note-'+esc(c)+'" placeholder="備註（選填）" value="'+esc(e.note||'')+'" onchange="invNoteSet(\''+esc(c)+'\',this.value)" style="padding:6px">'
       +(it.uncoded?'<button class="btn-sm btn-neutral" style="align-self:flex-start" onclick="invCreateUncoded(\''+esc(c)+'\')">＋建檔到物料總表</button>':'')
+      +(invCanEditItems()?'<button class="btn-sm btn-warn" style="align-self:flex-start;padding:8px 14px" onclick="invDelItem(\''+esc(c)+'\')">🗑 從盤點清單刪除此品項</button>':'')
       +'</div>';
   }
   return '<div class="sub-row" style="flex-direction:column;align-items:stretch;gap:0;padding:10px 0;border-bottom:1px solid #f0f0f0">'+main+detail+warn+'</div>';
