@@ -1470,26 +1470,7 @@ html,body,button,input,select,textarea,
         </div>
       </div>
 
-      <!-- 異常日標註（老闆/店長；標了就從星期別基準排除）-->
-      <div id="annot-card" class="c-card" style="margin-top:14px;display:none">
-        <div class="c-card-title">🚩 異常日標註</div>
-        <div class="muted-note" style="margin-bottom:10px">把颱風、公休、包場、補給等「非常態」日子標起來，就不會污染上面的「星期別中位數」基準。</div>
-        <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
-          <input class="form-input" id="annot-date" type="date" style="flex:0 0 auto;width:auto">
-          <select class="form-input" id="annot-reason" style="flex:1;min-width:110px">
-            <option value="颱風/天災">颱風/天災</option>
-            <option value="公休">公休</option>
-            <option value="包場">包場</option>
-            <option value="補給日">補給日</option>
-            <option value="店休整修">店休整修</option>
-            <option value="大型活動">大型活動</option>
-            <option value="資料異常">資料異常</option>
-            <option value="__other">其他（自訂）…</option>
-          </select>
-          <button type="button" class="btn-sm btn-neutral" style="padding:0 14px" onclick="an_annotMark()">標註</button>
-        </div>
-        <div id="annot-list" style="margin-top:12px"></div>
-      </div>
+      <!-- 異常日標註已移除：改由「每日結帳」的備註判斷（平日/假日=常態基準；特殊活動/天氣/包場等=排除基準）-->
 
       <!-- 進階分析（預設收起，展開時重繪圖表）-->
       <details class="adv-details" ontoggle="if(this.open)setTimeout(loadReports,60)" style="margin-top:18px">
@@ -2113,7 +2094,7 @@ html,body,button,input,select,textarea,
 
 <script>
 // ── 自動更新：開啟時比對版本，有新版就自動重載（免無痕）──
-const APP_VER='20260902120000';
+const APP_VER='20260903120000';
 const GT_KEY='gtk_9F3xQ7Lz_pW2rM8kT';  // 後台共用密鑰（階段A：前端帶上；階段B：後台驗證）
 // 是否有「打到一半、還沒送出」的資料（結帳/進貨/交接/申訴的輸入框有值）→ 有的話先別強制重載，免得清掉
 function _hasTypedData(){try{var els=document.querySelectorAll('#tab-revenue input,#tab-revenue textarea,#tab-purchase input,#tab-purchase textarea,#tab-handover input,#tab-handover textarea,#tab-bully input,#tab-bully textarea');for(var i=0;i<els.length;i++){var el=els[i];if(el.type==='date'||el.type==='hidden')continue;if((el.value||'').trim())return true;}return false;}catch(e){return false;}}
@@ -3166,16 +3147,17 @@ function an_laborPick(actual,est){
 
 // ── 星期別基準（中位數）＋今日對比 ──
 function an_median(arr){if(!arr||!arr.length)return 0;var a=arr.slice().sort(function(x,y){return x-y;});var m=Math.floor(a.length/2);return a.length%2?a[m]:(a[m-1]+a[m])/2;}
-// 某星期別(0=日..6=六)各日「當日總營業額」，排除補給日與已標異常日
+// 常態基準日判斷：只有「平日/假日」(或空備註)算常態；特殊活動/促銷/天氣/包場/補給…等特殊備註排除，不污染星期別基準。改由結帳備註判斷，不再另外標註。
+function an_isBaselineDay(note){var n=String(note||'').trim();return n===''||n==='平日'||n==='假日';}
+// 某星期別(0=日..6=六)各日「當日總營業額」，只取常態日(依結帳備註)
 function an_weekdayTotals(wd){
   var map={};
   (_allRevData||[]).forEach(function(r){
     var d=normDate(r.date); if(!d) return;
     var t=Number(r.total)||0; if(t<=0) return;
     if(new Date(d).getDay()!==wd) return;
-    if(String(r.note||'').indexOf('補給')>=0) return;   // 補給日不列入常態基準
-    if(String(r.reason||'').trim()) return;             // 已標異常日(U欄)不列入
-    map[d]=(map[d]||0)+t;                                // 同日多筆合併
+    if(!an_isBaselineDay(r.note)) return;   // 特殊備註日(活動/天氣/包場/補給…)不列入常態基準
+    map[d]=(map[d]||0)+t;                    // 同日多筆合併
   });
   return Object.keys(map).map(function(k){return map[k];});
 }
@@ -3378,12 +3360,14 @@ function an_buildAlerts(ctx){
     var foodR=(cc['食材']||0)/totalRev*100;
     if(foodR>38) out.push({id:'rate-food@'+bd,sev:75,icon:'🥬',text:'食材率 '+foodR.toFixed(0)+'%（>38%，進貨基礎）偏高'});
   }
-  // 異常營收日：近30天，偏離同星期別中位數 >40%、未標註、非補給
-  var dayMap={},dayNote={},dayReason={};
-  (_allRevData||[]).forEach(function(r){var d=normDate(r.date);if(!d)return;dayMap[d]=(dayMap[d]||0)+(Number(r.total)||0);if(String(r.note||'').indexOf('補給')>=0)dayNote[d]=1;if(String(r.reason||'').trim())dayReason[d]=1;});
+  // 異常營收日：近30天，備註為「常態(平日/假日)」卻仍偏離同星期別中位數 >40%。特殊備註日(活動/天氣/包場/補給…)已由備註說明，不提示。
+  var dayMap={},dayRoutine={},dayNoteTxt={};
+  (_allRevData||[]).forEach(function(r){var d=normDate(r.date);if(!d)return;dayMap[d]=(dayMap[d]||0)+(Number(r.total)||0);
+    var nt=String(r.note||'').trim(); if(nt)dayNoteTxt[d]=nt;
+    dayRoutine[d]=(dayRoutine[d]!==false)&&an_isBaselineDay(r.note);});
   var cutoff=normDate(new Date(new Date(bd).getTime()-30*86400000));
   Object.keys(dayMap).forEach(function(d){
-    if(d<cutoff||d>bd||dayReason[d]||dayNote[d])return;
+    if(d<cutoff||d>bd||!dayRoutine[d])return;   // 只提示備註為常態日卻異常偏離者
     var t=dayMap[d]; if(t<=0)return;
     var wd=new Date(d).getDay(), med=an_median(an_weekdayTotals(wd));
     if(med<=0)return;
@@ -3391,7 +3375,7 @@ function an_buildAlerts(ctx){
     if(Math.abs(dev)>0.4){
       var p=d.split('-');
       out.push({id:'dev@'+d,sev:40+Math.min(28,Math.abs(dev)*40),icon:dev>0?'📈':'📉',date:d,
-        text:p[1]+'/'+p[2]+' 營收 $'+Math.round(t).toLocaleString()+'，偏離週'+WN[wd]+'中位數 '+(dev>0?'+':'')+Math.round(dev*100)+'%（可標為異常日）'});
+        text:p[1]+'/'+p[2]+' 營收 $'+Math.round(t).toLocaleString()+'，偏離週'+WN[wd]+'中位數 '+(dev>0?'+':'')+Math.round(dev*100)+'%（備註:'+esc(dayNoteTxt[d]||'無')+'，可到結帳修改）'});
     }
   });
   out.sort(function(a,b){return b.sev-a.sev;});
@@ -3407,7 +3391,7 @@ function an_renderAlerts(list){
   card.style.display='';
   var cnt=$('alert-count'); if(cnt)cnt.textContent='（'+show.length+'）';
   $('alert-body').innerHTML=show.map(function(a){
-    var mkBtn=a.date?'<button type="button" class="btn-sm btn-neutral" style="padding:0 10px" onclick="an_annotFromAlert(\''+a.date+'\')">標為異常</button>':'';
+    var mkBtn='';   // 異常標註已移除，改由結帳備註判斷
     var bar=a.sev>=80?'#dc2626':(a.sev>=60?'#f59e0b':'var(--line-soft)');
     return '<div style="display:flex;align-items:center;gap:8px;padding:9px 11px;background:var(--surface-2);border:1px solid var(--line-soft);border-left:4px solid '+bar+';border-radius:10px;margin-bottom:6px">'
       +'<span style="font-size:15px">'+a.icon+'</span>'
