@@ -2094,7 +2094,7 @@ html,body,button,input,select,textarea,
 
 <script>
 // ── 自動更新：開啟時比對版本，有新版就自動重載（免無痕）──
-const APP_VER='20260903140000';
+const APP_VER='20260903150000';
 const GT_KEY='gtk_9F3xQ7Lz_pW2rM8kT';  // 後台共用密鑰（階段A：前端帶上；階段B：後台驗證）
 // 是否有「打到一半、還沒送出」的資料（結帳/進貨/交接/申訴的輸入框有值）→ 有的話先別強制重載，免得清掉
 function _hasTypedData(){try{var els=document.querySelectorAll('#tab-revenue input,#tab-revenue textarea,#tab-purchase input,#tab-purchase textarea,#tab-handover input,#tab-handover textarea,#tab-bully input,#tab-bully textarea');for(var i=0;i<els.length;i++){var el=els[i];if(el.type==='date'||el.type==='hidden')continue;if((el.value||'').trim())return true;}return false;}catch(e){return false;}}
@@ -5548,8 +5548,10 @@ async function loadRecipeCosts(){
 // 單位換算（同維度才可換算）：重量→克、容量→毫升
 const W2G={'克':1,'公克':1,'g':1,'公斤':1000,'kg':1000,'台斤':600,'斤':600,'兩':37.5};
 const V2ML={'cc':1,'ml':1,'毫升':1,'公升':1000,'l':1000,'L':1000};
+// 計數類單位：同一品項的 隻/尾/片/份/個… 一律視為 1:1（1片=1份=1隻），讓「用片、定價用份」也算得出成本
+const CNT_U={'隻':1,'尾':1,'片':1,'份':1,'個':1,'顆':1,'支':1,'條':1,'張':1,'粒':1,'塊':1,'球':1,'尾巴':1};
 function weightKg(u){return (W2G[u]!=null)?W2G[u]/1000:null;}
-function convFactor(fromU,toU){fromU=fromU||'';toU=toU||'';if(fromU===toU)return 1;if(W2G[fromU]!=null&&W2G[toU]!=null)return W2G[fromU]/W2G[toU];if(V2ML[fromU]!=null&&V2ML[toU]!=null)return V2ML[fromU]/V2ML[toU];return null;}
+function convFactor(fromU,toU){fromU=fromU||'';toU=toU||'';if(fromU===toU)return 1;if(W2G[fromU]!=null&&W2G[toU]!=null)return W2G[fromU]/W2G[toU];if(V2ML[fromU]!=null&&V2ML[toU]!=null)return V2ML[fromU]/V2ML[toU];if(CNT_U[fromU]!=null&&CNT_U[toU]!=null)return 1;return null;}
 // 從品名解析包裝規格（如「(1KG)」「(500克)」「(1.6L)」「250G*2/盒」），回傳換算成 克 或 毫升 的總量
 function parsePack(name){
   if(!name)return null;
