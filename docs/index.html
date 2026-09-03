@@ -2094,7 +2094,7 @@ html,body,button,input,select,textarea,
 
 <script>
 // ── 自動更新：開啟時比對版本，有新版就自動重載（免無痕）──
-const APP_VER='20260903130000';
+const APP_VER='20260903140000';
 const GT_KEY='gtk_9F3xQ7Lz_pW2rM8kT';  // 後台共用密鑰（階段A：前端帶上；階段B：後台驗證）
 // 是否有「打到一半、還沒送出」的資料（結帳/進貨/交接/申訴的輸入框有值）→ 有的話先別強制重載，免得清掉
 function _hasTypedData(){try{var els=document.querySelectorAll('#tab-revenue input,#tab-revenue textarea,#tab-purchase input,#tab-purchase textarea,#tab-handover input,#tab-handover textarea,#tab-bully input,#tab-bully textarea');for(var i=0;i<els.length;i++){var el=els[i];if(el.type==='date'||el.type==='hidden')continue;if((el.value||'').trim())return true;}return false;}catch(e){return false;}}
@@ -5815,12 +5815,15 @@ function biNameSuggest(rid){
   var sm=semis.find(function(s){return _matNorm(s.dish)===qn;});var sExact=!!sm;
   if(!sm)sm=semis.find(function(s){var n=_matNorm(s.dish);return n&&(n.indexOf(qn)>=0||qn.indexOf(n)>=0);});
   if(sm){box.innerHTML=_biBtn(rid,'s:'+sm.id,'🧪 '+sm.dish+'（半成品）',sExact);return;}
-  // 2) 物料比對(需要物料庫；沒載到先重載)
+  // 2) 物料比對(需要物料庫；沒載到先重載，最多重試2次避免無限迴圈)
   if(!_materials||!_materials.length){
+    if((window._biMatFails||0)>=2){box.innerHTML='<div class="muted-note" style="color:#b45309">物料庫載入失敗，請確認網路後重開此頁（半成品仍可搜尋/下拉挑選）</div>';return;}
+    window._biMatFails=(window._biMatFails||0)+1;
     box.innerHTML='<div class="muted-note">載入物料庫中…</div>';
     if(typeof loadMaterials==='function')loadMaterials(true).then(function(){var sel=$('bi-mat-'+rid);if(sel)sel.innerHTML=biMatOptions(rid);biNameSuggest(rid);}).catch(function(){box.innerHTML='<div class="muted-note" style="color:#b45309">物料庫載入失敗，請確認網路後重開此頁</div>';});
     return;
   }
+  window._biMatFails=0;   // 物料有資料→重置
   var em=_materials.find(function(m){return _matNorm(m.name)===qn;});
   if(em){box.innerHTML=_biBtn(rid,'m:'+_materials.indexOf(em),em.name+(em.code?' ('+em.code+')':''),true);return;}
   var b=bestMaterial(q);
