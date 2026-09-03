@@ -5527,8 +5527,11 @@ function maybeForceRec(){if(isMgr()&&!recGet()){const i=$('rec-modal-input');if(
 function monthKey(){return bizDay().slice(0,7);}
 
 // ── BOM 成本表 ──
-let _costMap={},_costByName={};
+let _costMap={},_costByName={},_invCostByName={};
+// 期末盤點清單(rm_inv_endlist)也是成本來源：像竹午(份$82.6)、三角(隻$58.8)這種「按份/隻定價」的，進貨表(公斤)換算不了，用這個接上。
+function buildInvCost(){try{var inv=LS.get('rm_inv_endlist',null);if(!Array.isArray(inv))return;var im={};inv.forEach(function(x){var nm=String(x&&x.name||'').trim();var p=parseFloat(x&&x.price);var u=String(x&&x.unit||'').trim();if(nm&&!isNaN(p)&&p>0)im[nm]={cost:p,unit:u,name:nm};});_invCostByName=im;}catch(e){}}
 async function loadRecipeCosts(){
+  buildInvCost();
   try{
     let d=null;
     for(let i=0;i<4;i++){   // 帶重試：進貨表偶發抓不到就重抓，避免成本串不起來
@@ -5585,16 +5588,23 @@ function itemCost(it,stack){
   // 水／自來水：免費，成本以 $0 計（不顯示無成本⚠️、不拖累總成本）
   const _wm=_materials.find(x=>x.code&&x.code===it.code);
   if(it.name==='水'||(_wm&&(_wm.name==='水'||_wm.supplier==='自來水')))return 0;
-  const m=_costMap[it.code]||(it.name&&_costByName[it.name])||null;if(!m||isNaN(m.cost))return null;const q=parseFloat(it.qty)||0;
-  const f=convFactor(it.unit,m.unit);if(f!=null)return q*f*m.cost;
-  // 優先用進貨填的「單位克數/容量」，其次解析品名
+  const q=parseFloat(it.qty)||0;
+  // 候選成本來源：進貨(編號)→進貨(名稱)→期末盤點清單(名稱，含份/隻等定價)。單位可換算者優先。
+  const cands=[];
+  if(_costMap[it.code])cands.push(_costMap[it.code]);
+  if(it.name&&_costByName[it.name])cands.push(_costByName[it.name]);
+  if(it.name&&_invCostByName[it.name])cands.push(_invCostByName[it.name]);
+  if(!cands.length)return null;
+  for(let ci=0;ci<cands.length;ci++){const m=cands[ci];if(!m||isNaN(m.cost))continue;const f=convFactor(it.unit,m.unit);if(f!=null)return q*f*m.cost;}
+  // 單位無法直接換算 → 用包裝規格(parsePack)換算，以第一個候選成本為準
+  const m0=cands[0];
   const packStr=(LS.get('rm_material_pack',{})||{})[it.code];
-  let pk=packStr?parsePack(packStr):null; if(!pk)pk=parsePack(m.name);
+  let pk=packStr?parsePack(packStr):null; if(!pk)pk=parsePack(m0.name);
   if(!pk){const mm=_materials.find(x=>x.code&&x.code===it.code);if(mm)pk=parsePack(mm.name)||parsePack(mm.note);}
   if(pk&&pk.amount>0){
     let ib=toBase(q,it.unit,pk.base);
-    if(ib==null){const alt=pk.base==='ml'?'g':'ml';ib=toBase(q,it.unit,alt);} // 廚房液體：1克≈1毫升，跨重量/容量估算
-    if(ib!=null)return (ib/pk.amount)*m.cost;
+    if(ib==null){const alt=pk.base==='ml'?'g':'ml';ib=toBase(q,it.unit,alt);}
+    if(ib!=null)return (ib/pk.amount)*m0.cost;
   }
   return null;
 }
@@ -5622,6 +5632,7 @@ function bomUnitSet(id,u){var sel=$(id);if(!sel||!u)return;var f=false;for(var i
 function _bomScroll(fn){var c=document.querySelector('.content');var y=c?c.scrollTop:0;fn();if(c)c.scrollTop=y;}
 function renderBom(){
   const wrap=$('bom-wrap');if(!wrap)return;
+  buildInvCost();   // 期末盤點清單的份/隻定價也接進成本(竹午/三角等)
   const _c=document.querySelector('.content');const _sy=_c?_c.scrollTop:0;
   const recipes=LS.get('rm_recipes',[])||[];
   const dishes=recipes.filter(r=>!r.isSemi),semis=recipes.filter(r=>r.isSemi);
@@ -5716,7 +5727,7 @@ function recipeCard(rc,isSemi){
   const r=recipeCost(rc);const total=r.cost,miss=r.miss;
   const open=!!_bomOpen[rc.id];
   const rows=(rc.items||[]).map((it,idx)=>{
-    const c=itemCost(it);const cm=it.semiId?null:(_costMap[it.code]||(it.name&&_costByName[it.name])||null);const semi=it.semiId?findRecipe(it.semiId):null;
+    const c=itemCost(it);const cm=it.semiId?null:(function(){var cs=[_costMap[it.code],it.name&&_costByName[it.name],it.name&&_invCostByName[it.name]].filter(Boolean);if(!cs.length)return null;for(var k=0;k<cs.length;k++){if(convFactor(it.unit,cs[k].unit)!=null)return cs[k];}return cs[0];})();const semi=it.semiId?findRecipe(it.semiId):null;
     const unitInfo=it.semiId?((semi&&parseFloat(semi.yieldQty)>0)?('$'+round2(recipeCost(semi).cost/parseFloat(semi.yieldQty))+'/'+esc(semi.yieldUnit||'')):'半成品'):(cm?('$'+round2(cm.cost)+'/'+esc(cm.unit)):'—');
     return `<div style="background:#f6f6f6;border:1px solid rgba(17,17,17,.12);border-radius:12px;padding:10px 12px;margin-bottom:8px;display:flex;align-items:center;gap:10px">
       <div style="flex:1;min-width:0"><div style="font-weight:700;color:#111111">${esc(it.name)}${it.semiId?' <span style="color:#6b6b6b;font-size:11px">半成品</span>':''}</div><div style="font-size:12px;color:rgba(17,17,17,.55);margin-top:2px">用量 ${it.qty}${esc(it.unit)} ・ 單價 ${unitInfo}</div></div>
@@ -5765,21 +5776,16 @@ function biCatChips(rid){
   return chip('','全部')+chip('__semi','🧪半成品')+cats.map(c=>chip(c,c)).join('');
 }
 function biMatOptions(rid){
-  const cur=_biCat[rid]||'';
-  if(cur==='__semi'){
-    const semis=(LS.get('rm_recipes',[])||[]).filter(r=>r.isSemi&&r.id!==rid);
-    return '<option value="">選半成品…</option>'+semis.map(s=>`<option value="s:${s.id}">${esc(s.dish)}</option>`).join('');
-  }
-  const opts=[];_materials.forEach((m,i)=>{if(!cur||m.cat===cur)opts.push(`<option value="m:${i}">${esc((m.code?m.code+' ':'')+m.name)}</option>`);});
-  return '<option value="">選物料…</option>'+opts.join('');
+  const semis=(LS.get('rm_recipes',[])||[]).filter(r=>r.isSemi&&r.id!==rid);
+  const semiOpts=semis.map(s=>`<option value="s:${s.id}">🧪 ${esc(s.dish)}（半成品）</option>`).join('');
+  const matOpts=_materials.map((m,i)=>`<option value="m:${i}">${esc((m.code?m.code+' ':'')+m.name)}</option>`).join('');
+  return '<option value="">選食材／半成品…</option>'+semiOpts+matOpts;
 }
 function ingredientAdder(rid){
   return `<div style="margin-top:14px;border-top:1px dashed rgba(17,17,17,.2);padding-top:12px">
-    <label class="form-label">1️⃣ 選分類</label>
-    <div class="chips" id="bi-cats-${rid}" style="margin:4px 0 12px">${biCatChips(rid)}</div>
-    <label class="form-label">2️⃣ 選食材（依分類顯示）</label>
+    <label class="form-label">選食材／半成品</label>
     <select class="form-input" id="bi-mat-${rid}" onchange="biUnit('${rid}')">${biMatOptions(rid)}</select>
-    <label class="form-label" style="margin-top:12px">或 ✍️ 手動輸入食材名稱（打字自動比對）</label>
+    <label class="form-label" style="margin-top:12px">或 ✍️ 手動輸入名稱（食材與半成品都會比對）</label>
     <input class="form-input" id="bi-name-${rid}" placeholder="輸入正確或相似的名稱…" oninput="biNameSuggest('${rid}')" autocomplete="off">
     <div id="bi-confirm-${rid}" style="margin-top:6px"></div>
     <div class="form-row" style="margin-top:12px"><div class="form-group"><label class="form-label">用量</label><input class="form-input" id="bi-qty-${rid}" type="number" min="0" placeholder="0"></div><div class="form-group"><label class="form-label">單位</label>${bomUnitSelect('bi-unit-'+rid,'')}</div></div>
@@ -5795,31 +5801,40 @@ function biNameSuggest(rid){
   const el=$('bi-name-'+rid),box=$('bi-confirm-'+rid);if(!el||!box)return;
   const q=(el.value||'').trim();
   if(!q){box.innerHTML='';return;}
-  if(!_materials||!_materials.length){   // 物料庫沒載到（載入失敗/被快取成空）→ 強制重載後再比對，避免「打字完全沒反應」
+  if(!_materials||!_materials.length){   // 物料庫沒載到→強制重載後再比對，避免「打字沒反應」
     box.innerHTML='<div class="muted-note">載入物料庫中…</div>';
     if(typeof loadMaterials==='function')loadMaterials(true).then(function(){
-      var cc=$('bi-cats-'+rid);if(cc)cc.innerHTML=biCatChips(rid);
       var sel=$('bi-mat-'+rid);if(sel)sel.innerHTML=biMatOptions(rid);
       biNameSuggest(rid);
     }).catch(function(){box.innerHTML='<div class="muted-note" style="color:#b45309">物料庫載入失敗，請確認網路後重開此頁</div>';});
     return;
   }
-  const ex=_materials.find(m=>_matNorm(m.name)===_matNorm(q));
-  let i=-1,exact=false;
-  if(ex){i=_materials.indexOf(ex);exact=true;}else{const b=bestMaterial(q);if(b)i=b.i;}
-  if(i>=0){const m=_materials[i];
-    box.innerHTML=`<button class="btn-sm" style="background:#06c167;color:#fff;border:none;border-radius:8px;padding:8px 14px;cursor:pointer" onclick="biConfirmName('${rid}',${i})">✓ 確認：${esc(m.name)}${m.code?(' ('+esc(m.code)+')'):''}${exact?'':' ？'}</button>`;
-  }else{
-    box.innerHTML='<div class="muted-note">查無相符物料——請改用上方分類挑選，或確認名稱是否正確。</div>';
+  const semis=(LS.get('rm_recipes',[])||[]).filter(r=>r.isSemi&&r.id!==rid);
+  const qn=_matNorm(q);
+  // 1) 先比對半成品(精準→子字串)，不需要物料庫
+  var sm=semis.find(function(s){return _matNorm(s.dish)===qn;});var sExact=!!sm;
+  if(!sm)sm=semis.find(function(s){var n=_matNorm(s.dish);return n&&(n.indexOf(qn)>=0||qn.indexOf(n)>=0);});
+  if(sm){box.innerHTML=_biBtn(rid,'s:'+sm.id,'🧪 '+sm.dish+'（半成品）',sExact);return;}
+  // 2) 物料比對(需要物料庫；沒載到先重載)
+  if(!_materials||!_materials.length){
+    box.innerHTML='<div class="muted-note">載入物料庫中…</div>';
+    if(typeof loadMaterials==='function')loadMaterials(true).then(function(){var sel=$('bi-mat-'+rid);if(sel)sel.innerHTML=biMatOptions(rid);biNameSuggest(rid);}).catch(function(){box.innerHTML='<div class="muted-note" style="color:#b45309">物料庫載入失敗，請確認網路後重開此頁</div>';});
+    return;
   }
+  var em=_materials.find(function(m){return _matNorm(m.name)===qn;});
+  if(em){box.innerHTML=_biBtn(rid,'m:'+_materials.indexOf(em),em.name+(em.code?' ('+em.code+')':''),true);return;}
+  var b=bestMaterial(q);
+  if(b){box.innerHTML=_biBtn(rid,'m:'+b.i,b.m.name+(b.m.code?' ('+b.m.code+')':''),false);return;}
+  box.innerHTML='<div class="muted-note">查無相符的食材或半成品——請確認名稱，或用上方下拉挑選。</div>';
 }
-function biConfirmName(rid,i){
-  const m=_materials[i];if(!m)return;
-  _biCat[rid]=m.cat||'';
-  const cc=$('bi-cats-'+rid);if(cc)cc.innerHTML=biCatChips(rid);
-  const sel=$('bi-mat-'+rid);if(sel){sel.innerHTML=biMatOptions(rid);sel.value='m:'+i;}
-  const ui=$('bi-unit-'+rid);if(ui&&!ui.value&&m.unit)bomUnitSet('bi-unit-'+rid,m.unit);
-  const box=$('bi-confirm-'+rid);if(box)box.innerHTML='<div class="muted-note" style="color:#06c167;font-weight:600">✓ 已接住「'+esc(m.name)+'」'+(m.code?('（'+esc(m.code)+'）'):'')+'，填用量即可加入</div>';
+function _biBtn(rid,val,label,exact){return '<button class="btn-sm" style="background:#06c167;color:#fff;border:none;border-radius:8px;padding:8px 14px;cursor:pointer" onclick="biConfirmPick(\''+rid+'\',\''+val+'\')">✓ 確認：'+esc(label)+(exact?'':' ？')+'</button>';}
+function biConfirmPick(rid,val){
+  const sel=$('bi-mat-'+rid);if(sel)sel.value=val;   // 下拉已含全部食材＋半成品，直接選中
+  biUnit(rid);                                        // 自動帶單位(食材=進貨單位；半成品=產出單位)
+  var label='';
+  if(String(val).charAt(0)==='s'){var s=findRecipe(String(val).slice(2));if(s)label='🧪 '+s.dish+'（半成品）';}
+  else{var m=_materials[parseInt(String(val).slice(2))];if(m)label=m.name+(m.code?('（'+m.code+'）'):'');}
+  const box=$('bi-confirm-'+rid);if(box)box.innerHTML='<div class="muted-note" style="color:#06c167;font-weight:600">✓ 已接住「'+esc(label)+'」，填用量即可加入</div>';
 }
 function biUnit(rid){const v=$('bi-mat-'+rid)&&$('bi-mat-'+rid).value;if(!v)return;const ui=$('bi-unit-'+rid);if(!ui||ui.value)return;var u='';if(v.charAt(0)==='m'){const m=_materials[parseInt(v.slice(2))];if(m)u=m.unit||'';}else if(v.charAt(0)==='s'){const s=findRecipe(v.slice(2));if(s)u=s.yieldUnit||'克';}if(u)bomUnitSet('bi-unit-'+rid,u);}
 function addRecipe(){const dish=($('bom-dish')&&$('bom-dish').value.trim())||'';if(!dish){toast('請輸入名稱','red');return;}const isSemi=!!($('bom-issemi')&&$('bom-issemi').checked);const rs=LS.get('rm_recipes',[])||[];rs.push({id:'rc'+Date.now(),dish:dish,items:[],isSemi:isSemi,price:null,yieldQty:null,yieldUnit:isSemi?'克':null});LS.set('rm_recipes',rs);if($('bom-dish'))$('bom-dish').value='';if($('bom-issemi'))$('bom-issemi').checked=false;toast('✓ 已建立'+(isSemi?'半成品':'菜品'),'gold');bomSheetSyncSoon();renderBom();}
