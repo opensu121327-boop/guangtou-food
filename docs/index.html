@@ -8,8 +8,10 @@
 <link rel="apple-touch-icon" href="logo.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Noto+Sans+TC:wght@300;400;500;600;700;800&family=Noto+Serif+TC:wght@500;600;700;900&family=Fredoka:wght@500;600;700&display=swap" rel="stylesheet">
-<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/pinyin-pro@3.26.0/dist/index.js"></script>
+<link rel="preconnect" href="https://cdnjs.cloudflare.com"><link rel="preconnect" href="https://cdn.jsdelivr.net">
+<!-- Chart.js(只報表用)、pinyin-pro(只BOM用)改 defer：不擋登入畫面出現，登入時本來就用不到 -->
+<script defer src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/pinyin-pro@3.26.0/dist/index.js"></script>
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 :root{
@@ -2077,7 +2079,7 @@ html,body,button,input,select,textarea,
 
 <!-- 登入→進入系統：開場載入動畫（全螢幕開場影片 intro） -->
 <div id="app-loading">
-  <video id="alx-video" src="loading.mp4" autoplay muted playsinline preload="auto"></video>
+  <video id="alx-video" src="loading.mp4" autoplay muted playsinline preload="none"></video>
 </div>
 
 <!-- 缺欄位提醒卡片 -->
@@ -2094,7 +2096,7 @@ html,body,button,input,select,textarea,
 
 <script>
 // ── 自動更新：開啟時比對版本，有新版就自動重載（免無痕）──
-const APP_VER='20260903150000';
+const APP_VER='20260929130000';
 const GT_KEY='gtk_9F3xQ7Lz_pW2rM8kT';  // 後台共用密鑰（階段A：前端帶上；階段B：後台驗證）
 // 是否有「打到一半、還沒送出」的資料（結帳/進貨/交接/申訴的輸入框有值）→ 有的話先別強制重載，免得清掉
 function _hasTypedData(){try{var els=document.querySelectorAll('#tab-revenue input,#tab-revenue textarea,#tab-purchase input,#tab-purchase textarea,#tab-handover input,#tab-handover textarea,#tab-bully input,#tab-bully textarea');for(var i=0;i<els.length;i++){var el=els[i];if(el.type==='date'||el.type==='hidden')continue;if((el.value||'').trim())return true;}return false;}catch(e){return false;}}
@@ -2230,7 +2232,7 @@ function alxFade(){
 }
 function hideAppLoading(){
   var el=$('app-loading');if(!el)return;
-  var waited=Date.now()-(window._alxShownAt||0),delay=Math.max(0,5000-waited);   // 至少顯示 5 秒
+  var waited=Date.now()-(window._alxShownAt||0),delay=Math.max(0,1500-waited);   // 進場動畫至少顯示 1.5 秒(原 5 秒，為登入提速縮短)
   setTimeout(function(){
     clearTimeout(window._alxSafety);
     el.style.pointerEvents='none';   // 淡出期間就不再擋點擊
@@ -2243,6 +2245,7 @@ function hideAppLoading(){
 }
 
 async function enterApp() {
+  saveSession(CU);   // 記住登入(7天)：每次進場刷新，讓常用者持續免登入
   $('auth-screen').classList.add('hidden');
   showAppLoading();   // 顯示開場載入動畫
   // 最多等 1.5 秒抓雲端資料，超時就先進 App（其餘背景補），避免登入卡 7~8 秒
@@ -2266,6 +2269,7 @@ async function enterApp() {
 // ── LOGOUT ──
 function doLogout() {
   CU=null;
+  clearSession();   // 清掉記住登入，下次要重打帳密
   $('app').classList.remove('visible');
   $('auth-screen').classList.remove('hidden');
   $('l-user').value='';$('l-pass').value='';
@@ -6283,6 +6287,22 @@ function renderExpenseList(){
       <td><button class="btn-sm btn-warn" onclick="delExpense('${e.id}')">刪除</button></td>
     </tr>`).join('')+'</tbody></table>';
 }
+
+// ── 記住登入(7天)：存本機、不上雲端(非 rm_ 鍵)；不存密碼 ──
+function saveSession(cu){try{if(cu&&cu.username)localStorage.setItem('gt_session',JSON.stringify({username:cu.username,name:cu.name,role:cu.role,phone:cu.phone||'',ts:Date.now()}));}catch(e){}}
+function clearSession(){try{localStorage.removeItem('gt_session');}catch(e){}}
+function tryAutoLogin(){
+  try{
+    var raw=localStorage.getItem('gt_session'); if(!raw) return false;
+    var s=JSON.parse(raw);
+    if(!s||!s.username||!s.role) return false;
+    if(Date.now()-(s.ts||0) > 7*24*3600*1000){ clearSession(); return false; }   // 超過7天要重登
+    CU={name:s.name,username:s.username,role:s.role,phone:s.phone||''};
+    enterApp();   // 直接進場，免登入畫面/免連線驗證
+    return true;
+  }catch(e){ try{clearSession();}catch(_){}; return false; }
+}
+tryAutoLogin();   // 開 App 時若 7 天內登入過就直接進
 </script>
 </body>
 </html>
