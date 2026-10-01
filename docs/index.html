@@ -2191,15 +2191,43 @@ async function authApi(body){
 async function apiGet(type,params){
   return _postSync(Object.assign({type:type,key:GT_KEY,auth:GT_KEY},params||{}));
 }
-// 大型唯讀查詢的共用快取（避免同一份資料被多個分頁/函式重複抓，讀取更快）。資料異動時呼叫 invalidateQ 清除。
-var _qCache={};
+// 大型唯讀查詢的共用快取：記憶體＋磁碟(localStorage)，依門市分開存。
+// 策略 stale-while-revalidate：有舊資料就「先秒回上次的、背景再抓最新、內容有變就自動重畫目前分頁」→ 讀取體感變快。
+// 寫入(結帳/進貨…)後呼叫 invalidateQ 清掉，下次讀取會抓到最新(不會顯示沒有剛寫入那筆的舊快取)。
+var _qCache={};var _qInflight={};var QC_PREFIX='qc_';
+function _qcKey(type){return QC_PREFIX+curStore()+'_'+type;}
+function _qcHydrate(type){
+  if(_qCache[type])return _qCache[type];
+  try{var raw=localStorage.getItem(_qcKey(type));if(raw){var o=JSON.parse(raw);if(o&&o.d){_qCache[type]={t:o.t||0,d:o.d};return _qCache[type];}}}catch(e){}
+  return null;
+}
+function _qcSave(type,d,t){
+  _qCache[type]={t:t,d:d};
+  try{localStorage.setItem(_qcKey(type),JSON.stringify({t:t,d:d}));}catch(e){}   // 空間滿就只留記憶體，不影響功能
+}
 function apiGetCached(type,ttl){
   ttl=ttl||45000;
-  var c=_qCache[type];
-  if(c&&(Date.now()-c.t<ttl))return Promise.resolve(c.d);
-  return apiGet(type).then(function(d){if(d&&(d.status==='ok'||d.status==='success'))_qCache[type]={t:Date.now(),d:d};return d;});
+  var c=_qCache[type]||_qcHydrate(type);
+  if(c&&(Date.now()-c.t<ttl))return Promise.resolve(c.d);   // 夠新：直接用
+  if(_qInflight[type])return (c&&c.d)?Promise.resolve(c.d):_qInflight[type];   // 已在抓：別重複發
+  var p=apiGet(type).then(function(d){
+    if(d&&(d.status==='ok'||d.status==='success')){
+      var changed=!c||JSON.stringify(d)!==JSON.stringify(c.d);
+      _qcSave(type,d,Date.now());
+      if(changed&&c&&typeof _reloadCurTab==='function')_reloadCurTab();   // 有舊畫面且內容變了→背景換新後重畫
+    }
+    return d;
+  });
+  p.catch(function(){}).then(function(){delete _qInflight[type];});
+  _qInflight[type]=p;
+  if(c&&c.d)return Promise.resolve(c.d);   // 有舊資料(含上次開App留在磁碟的)：先秒回舊的
+  return p;                                 // 完全沒有才等網路
 }
-function invalidateQ(type){if(type){delete _qCache[type];if(type==='query_purchase')delete _qCache['query_purchase_recent'];}else _qCache={};}
+function invalidateQ(type){
+  function _del(t){delete _qCache[t];try{localStorage.removeItem(_qcKey(t));}catch(e){}}
+  if(type){_del(type);if(type==='query_purchase')_del('query_purchase_recent');}
+  else{_qCache={};try{for(var i=localStorage.length-1;i>=0;i--){var k=localStorage.key(i);if(k&&k.indexOf(QC_PREFIX)===0)localStorage.removeItem(k);}}catch(e){}}
+}
 
 // ── AUTH TABS ──
 function switchAuthTab(tab, btn) {
@@ -2354,7 +2382,7 @@ function initApp() {
   // load data
   if(tabs.some(t=>t.id==='reports')) loadReports();
   if(tabs.some(t=>t.id==='accounts')){loadPending();loadAccounts();}
-  if(tabs[0]&&tabs[0].id==='home') renderHome();
+  if(tabs[0]&&tabs[0].id==='home'){window._curTab='home';renderHome();}
   if(!window._homeResizeWired){window._homeResizeWired=true;window.addEventListener('resize',()=>{const h=$('tab-home');if(h&&h.classList.contains('active'))renderHome();});}
 }
 
@@ -2364,6 +2392,12 @@ function switchTab(name,btn) {
   document.querySelectorAll('.nav-btn').forEach(b=>b.classList.remove('active'));
   $('tab-'+name).classList.add('active');
   btn.classList.add('active');
+  window._curTab=name;
+  _runTabLoader(name);
+  document.querySelectorAll('.drawer-item').forEach(b=>b.classList.toggle('active',b.dataset.tab===name));
+}
+// 各分頁的載入器（抽出來，背景快取更新後可用 _reloadCurTab 重跑、不影響切換狀態）
+function _runTabLoader(name){
   if(name==='revenue')fillRvNoteSelect();
   if(name==='reports')loadReports();
   if(name==='menucost')loadMenuCost();
@@ -2386,8 +2420,9 @@ function switchTab(name,btn) {
   if(name==='handover')renderHandover();
   if(name==='home')renderHome();
   if(name==='bully')renderBully();
-  document.querySelectorAll('.drawer-item').forEach(b=>b.classList.toggle('active',b.dataset.tab===name));
 }
+// 背景快取抓到新資料時重畫目前分頁（_curTab 由 switchTab 設定；只重跑載入器）
+function _reloadCurTab(){try{if(window._curTab)_runTabLoader(window._curTab);}catch(e){}}
 function goTab(id){const b=[...document.querySelectorAll('.nav-btn')].find(x=>x.dataset.tab===id);if(b)b.click();}
 function openDrawer(){const d=$('nav-drawer');if(d)d.classList.add('open');}
 function closeDrawer(){const d=$('nav-drawer');if(d)d.classList.remove('open');}
