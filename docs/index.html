@@ -1831,7 +1831,7 @@ html,body,button,input,select,textarea,
 
     <!-- HOME TAB -->
     <div class="tab-panel" id="tab-home">
-      <div class="c-card"><div class="home-stage" id="home-stage"></div></div>
+      <div class="home-stage" id="home-stage"></div>
       <div id="home-cal"></div>
     </div>
 
@@ -1861,19 +1861,6 @@ html,body,button,input,select,textarea,
     </div>
 
     <!-- TASKS TAB -->
-    <div class="tab-panel" id="tab-tasks">
-      <div class="sec-header"><div class="sec-title">任務中心</div><div class="divider"></div><div class="sec-sub">完成任務拍照上傳，主管審核後獲得經驗值</div></div>
-      <input type="file" id="task-file-input" accept="image/*" multiple style="display:none">
-      <div id="recommend-wrap"></div>
-      <div id="quiz-wrap"></div>
-      <div id="mgr-review-wrap"></div>
-      <div class="c-card"><div class="c-card-title">🎯 可接任務</div><div id="task-list"></div></div>
-      <div class="c-card"><div class="c-card-title">📸 我的上傳紀錄</div><div id="my-subs"></div></div>
-      <div id="task-admin-wrap"></div>
-      <div id="quiz-admin-wrap"></div>
-    </div>
-
-    <!-- REWARDS TAB -->
     <!-- BOM TAB -->
     <div class="tab-panel" id="tab-bom">
       <div class="sec-header"><div class="sec-title">BOM 成本表</div><div class="divider"></div><div class="sec-sub">食譜食材組成 × 進貨單位成本 = 各品項成本與總成本</div></div>
@@ -1888,7 +1875,7 @@ html,body,button,input,select,textarea,
 
     <!-- HANDOVER TAB -->
     <div class="tab-panel" id="tab-handover">
-      <div class="sec-header"><div class="sec-title">交接表</div><div class="divider"></div><div class="sec-sub">交班填寫、接班查看（完成 +25 XP／每日一次）</div></div>
+      <div class="sec-header"><div class="sec-title">交接表</div><div class="divider"></div><div class="sec-sub">交班填寫、接班查看</div></div>
       <div class="c-card">
         <div class="c-card-title">✍️ 填寫交接</div>
         <div class="form-group"><label class="form-label">營業日</label><input class="form-input" id="ho-date" type="date"></div>
@@ -1941,40 +1928,8 @@ html,body,button,input,select,textarea,
       <div id="bully-admin-wrap"></div>
     </div>
 
-    <!-- LEADERBOARD TAB -->
-    <div class="tab-panel" id="tab-leaderboard">
-      <div class="sec-header"><div class="sec-title">排行榜</div><div class="divider"></div><div class="sec-sub">依累積經驗值排名</div></div>
-      <div id="lb-champion"></div>
-      <div class="c-card"><div class="muted-note">☁️ 已雲端同步，顯示全店員工（每位員工登入過即會出現）。</div><div id="lb-list"></div></div>
-    </div>
-
-    <!-- CHARACTER TAB -->
-    <div class="tab-panel" id="tab-character">
-      <div class="sec-header"><div class="sec-title">我的角色</div><div class="divider"></div><div class="sec-sub">換裝試穿 ・ 升級</div></div>
-      <div class="c-card" style="padding:14px">
-        <div class="dress-top">
-          <div class="dress-scene" id="dress-scene"></div>
-          <div class="dcat-row" id="dcat-row"></div>
-        </div>
-        <div id="dress-options"></div>
-      </div>
-      <input type="file" id="skin-file-input" accept="image/*" style="display:none">
-      <div id="skin-admin-wrap"></div>
-    </div>
-
   </div><!-- /content -->
 </div><!-- /app -->
-
-<!-- ═══════════════ 建立角色 overlay ═══════════════ -->
-<div id="char-create">
-  <div class="cc-badge">STEP 1 ・ 建立你的角色</div>
-  <div class="cc-title" id="cc-title">建立你的角色 🎮</div>
-  <div class="cc-sub" id="cc-sub">挑你喜歡的造型，完成後就能開始！</div>
-  <div class="dress-scene cc-scene" id="cc-scene"></div>
-  <div class="dcat-row" id="cc-cats" style="justify-content:center"></div>
-  <div id="cc-options" style="max-width:560px;width:100%"></div>
-  <button class="btn-action cc-confirm" onclick="confirmCharCreate()">✓ 就決定是你了，開始吧！</button>
-</div>
 
 <div id="rec-modal" class="subform-overlay">
   <div class="subform-card">
@@ -2107,7 +2062,7 @@ html,body,button,input,select,textarea,
 
 <script>
 // ── 自動更新：開啟時比對版本，有新版就自動重載（免無痕）──
-const APP_VER='20261001120000';
+const APP_VER='20261001160000';
 const GT_KEY='gtk_9F3xQ7Lz_pW2rM8kT';  // 後台共用密鑰（兩家店共用同一把）
 // ════════ 多門市：切換門市（各店自己的後端＋試算表，帳務完全分開）════════
 const STORES={
@@ -2323,7 +2278,6 @@ async function enterApp() {
   initApp();
   $('app').classList.add('visible');
   startSyncPoll();
-  if(!getChar().chosen) showCharCreate();
   hideAppLoading();   // 準備好後淡出（至少顯示 5 秒）
   // 背景把資料抓齊並刷新目前畫面（含照片），慢的雲端不再擋住登入
   if(syncOn())setTimeout(function(){
@@ -2357,11 +2311,11 @@ function initApp() {
   const labels={BOSS:'老闆',MGR:'店長',EMP:'員工'};
   roleTag.textContent=labels[CU.role]||CU.role;
   roleTag.className='role-tag role-'+CU.role;
-  seedGame();ensureSalesTask();ensurePsaleTask();wireTaskInput();wirePartInput();recordName(CU.username,CU.name);oneTimePointsReset();updateGameChip();fillRvNoteSelect();fillPuUnitSelect();fillPuPackuSelect();
+  recordName(CU.username,CU.name);fillRvNoteSelect();fillPuUnitSelect();fillPuPackuSelect();
 
   // build nav
   // 員工與店長暫時只開放：每日結帳／進貨記錄／BOM成本／交接表（老闆維持全部）。要復原把此白名單移除即可。
-  const NONBOSS_TABS=['revenue','purchase','bom','handover','calendar','schedule','bully'];
+  const NONBOSS_TABS=['home','revenue','purchase','bom','handover','calendar','schedule','bully'];
   // 期末盤點/食材率依角色 roles 開放給非老闆（endinv 給店長+員工、foodcost 只給店長）
   const tabs=(CU.role==='BOSS')?ALL_TABS.filter(t=>t.roles.includes(CU.role)):ALL_TABS.filter(t=>NONBOSS_TABS.indexOf(t.id)>=0||(['endinv','foodcost'].indexOf(t.id)>=0&&t.roles.includes(CU.role))||(['reports','menucost'].indexOf(t.id)>=0&&CU.role==='MGR'));   // 數據報表/菜單毛利開放給店長(MGR)
   $('main-nav').innerHTML=tabs.map((t,i)=>
@@ -2411,12 +2365,7 @@ function _runTabLoader(name){
   if(name==='accounts'){loadPending();loadAccounts();}
   if(name==='audit')renderAudit();
   if(name==='settings')renderSettings();
-  if(name==='focuscfg')renderFocusCfg();
-  if(name==='revthr')renderRevThreshold();
   if(name==='expense')renderExpenseList();
-  if(name==='tasks')renderTasks();
-  if(name==='character')renderCharacter();
-  if(name==='leaderboard'){renderLeaderboard();refreshActiveUsers();}
   if(name==='handover')renderHandover();
   if(name==='home')renderHome();
   if(name==='bully')renderBully();
@@ -4917,9 +4866,6 @@ const ALL_TABS=[
   {id:'handover',icon:'📋',label:'交接表',roles:['BOSS','MGR','EMP']},
   {id:'calendar',icon:'📅',label:'行事曆',roles:['BOSS','MGR','EMP']},
   {id:'schedule',icon:'📅',label:'排班表',roles:['BOSS','MGR','EMP']},
-  {id:'tasks',icon:'✅',label:'任務',roles:['BOSS','MGR','EMP']},
-  {id:'leaderboard',icon:'🏆',label:'排行榜',roles:['BOSS','MGR','EMP']},
-  {id:'character',icon:'🎮',label:'我的角色',roles:['BOSS','MGR','EMP']},
   {id:'bully',icon:'🛡️',label:'霸凌申訴',roles:['BOSS','MGR','EMP']},
   {id:'accounts',icon:'👥',label:'帳號管理',roles:['BOSS']},
   {id:'audit',icon:'🔍',label:'稽核紀錄',roles:['BOSS']},
@@ -5119,6 +5065,7 @@ function charDelta(user,dxp,dpoints,dtasks,reason,meta){
 
 // 給某員工加經驗值＋點數（裝備依等級即時推算，不需解鎖清單）。tasksInc：完成任務件數增量（審核通過時+1）
 function awardXp(username,amt,tasksInc,reason,meta){
+  return {xp:0,points:0,levelUp:false,leveledUp:false};   // 遊戲化已移除：不再給點數/經驗值
   username=username||(CU&&CU.username);
   const c=getChar(username);
   const before=levelOf(c.xp);
@@ -5204,7 +5151,8 @@ function isMgr(){return CU&&(CU.role==='BOSS'||CU.role==='MGR');}
 
 // 頂部角色小徽章
 function updateGameChip(){
-  if(!CU)return;
+  var _gc=document.getElementById('game-chip');if(_gc&&_gc.parentNode)_gc.parentNode.removeChild(_gc);
+  return;   // 遊戲化已移除：不再顯示點數晶片
   const c=getChar();const lv=levelOf(c.xp);
   let chip=$('game-chip');
   if(!chip){
@@ -5380,19 +5328,62 @@ function wirePartInput(){
 }
 
 // ── 首頁（角色置中 + 漂浮按鈕）──
+function _homeDateStr(){var d=new Date();var wd=['日','一','二','三','四','五','六'][d.getDay()];return (d.getMonth()+1)+'/'+d.getDate()+'（'+wd+'）';}
 function renderHome(){
   const stage=$('home-stage');if(!stage||!CU)return;
-  const c=getChar();const lv=levelOf(c.xp);
-  const cur=cumXp(lv),next=cumXp(lv+1);
-  const pct=Math.min(100,Math.round((c.xp-cur)/(next-cur)*100));
-  const center=`<div class="home-center">
-      <div class="home-avatar">${renderAvatar(c.avatar,lv)}</div>
-      <div class="home-name">${CU.name}</div>
-      <div class="xp-text" style="color:#111111!important;font-weight:700">🎁 成長點 ${(c.points||0).toLocaleString()}</div>
-    </div>`;
+  var store='';try{store=STORES[curStore()].name;}catch(e){}
   stage.className='home-stage stack';
-  stage.innerHTML=center;   // 首頁只留角色卡；今日必做／同事叮嚀／表揚卡片已移除
+  stage.innerHTML=`
+    <div class="c-card" style="text-align:center;padding:16px">
+      <div style="font-size:21px;font-weight:800;color:#111111">${esc(CU.name)}</div>
+      <div style="color:#666;font-weight:600;margin-top:4px">${esc(store)} · ${_homeDateStr()}</div>
+    </div>
+    <div class="c-card"><div class="c-card-title">📅 今日班表</div><div id="home-sched"><div class="muted-note">載入中…</div></div></div>
+    <div class="c-card"><div class="c-card-title">📋 今日交接</div><div id="home-ho"></div></div>`;
   try{ if($('home-cal'))$('home-cal').innerHTML=calHomeHtml(); }catch(e){}
+  renderHomeSched();
+  renderHomeHandover();
+}
+// 首頁「今日班表」卡：用與排班頁相同的 _schData（apiGetCached query_schedule），只顯示今天、標出自己
+function renderHomeSched(){
+  var el=$('home-sched');if(!el)return;
+  var today=(typeof _calToday==='function')?_calToday():'';
+  var me=(typeof _schMe==='function')?_schMe():((CU&&CU.name)||'');
+  function paint(){
+    var el=$('home-sched');if(!el)return;
+    if(!_schData){el.innerHTML='<div class="muted-note">暫無排班資料</div>';return;}
+    var todays=_schData.shifts.filter(function(x){return x.date===today;}).sort(function(a,b){return String(a.role).localeCompare(String(b.role));});
+    if(!todays.length){el.innerHTML='<div class="muted-note">今天沒有排班</div>';return;}
+    el.innerHTML=todays.map(function(x){
+      var isMe=(x.name===me);
+      var span=(typeof _schSpan==='function'&&_schSpan(x))?(' · '+_schSpan(x)):'';
+      return '<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 11px;border-radius:9px;margin-bottom:5px;background:'+(isMe?'#fff6e0':'#f6f6f7')+';border:1px solid '+(isMe?'#e8c86a':'#ececec')+'">'
+        +'<span style="color:#111111;font-weight:700">'+esc(x.name)+(isMe?' <span style="color:#b4690e">（我）</span>':'')+'</span>'
+        +'<span style="color:#555;font-size:13px">'+esc(x.role)+span+'</span></div>';
+    }).join('');
+  }
+  if(_schData){paint();}
+  else if(typeof loadSchedule==='function'){loadSchedule().then(paint).catch(function(){var e=$('home-sched');if(e)e.innerHTML='<div class="muted-note">班表載入失敗</div>';});}
+  else{el.innerHTML='<div class="muted-note">暫無排班資料</div>';}
+}
+// 首頁「今日交接」卡：讀本機 rm_handovers，找今天營業日(bizDay)的交接
+function renderHomeHandover(){
+  var el=$('home-ho');if(!el)return;
+  var today=(typeof bizDay==='function')?bizDay():'';
+  var list=(LS.get('rm_handovers',[])||[]);
+  var todays=list.filter(function(h){return String(h.date||'').slice(0,10)===today;}).sort(function(a,b){return (b.ts||0)-(a.ts||0);});
+  if(!todays.length){
+    el.innerHTML='<div style="color:#b4690e;font-weight:700">⚠️ 今日尚未交接</div>'
+      +'<button class="btn-sm btn-neutral" style="margin-top:8px;padding:8px 14px" onclick="goTab(\'handover\')">去填交接表 ›</button>';
+    return;
+  }
+  var h=todays[0];var bits=[];
+  if(h.stock)bits.push('🧺 '+esc(String(h.stock)));
+  if(h.complaint&&String(h.complaint)!=='無')bits.push('🗣️ 客訴：'+esc(String(h.complaint)));
+  if(h.waste)bits.push('🗑️ 耗棄：'+esc(String(h.waste)));
+  el.innerHTML='<div style="color:#06863a;font-weight:700">✓ 已交接　<span style="color:#666;font-weight:500">by '+esc(h.by||h.byUser||'')+'</span></div>'
+    +(bits.length?'<div class="muted-note" style="margin-top:7px;line-height:1.7">'+bits.slice(0,3).join('<br>')+'</div>':'')
+    +'<button class="btn-sm btn-neutral" style="margin-top:9px;padding:8px 14px" onclick="goTab(\'handover\')">查看交接 ›</button>';
 }
 function fillBoardColleagues(){
   const names=LS.get('rm_names',{})||{};
@@ -6064,9 +6055,7 @@ function submitHandover(){
   if(!LS.set('rm_handovers',list))return;
   // 寫入雲端 Sheet（永久保存、跨手機共用）
   if(syncOn())authApi({type:'handover_write',row:entry}).then(()=>{renderHandover();}).catch(()=>{});
-  const c=getChar();let msg='✓ 交接表已送出';
-  if(c.lastHandover!==bizDay()){c.lastHandover=bizDay();saveChar(c);const r=awardXp(CU.username,HANDOVER_XP,0,'交接表');updateGameChip();msg+=`，+${HANDOVER_XP} 點`;}
-  toast(msg,'gold');
+  toast('✓ 交接表已送出','gold');
   document.querySelectorAll('.ho-keyout-cb:checked').forEach(function(cb){cb.checked=false;});
   ['ho-restock','ho-complaint','ho-equip','ho-note'].forEach(id=>{if($(id))$(id).value='';});
   _renderWasteRows([]);
