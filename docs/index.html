@@ -1160,12 +1160,23 @@ html,body,button,input,select,textarea,
 <div class="login-bg-caption">光頭餐飲集團 · 員工系統</div>
 
 <!-- ═══════════════════════════════ AUTH ═══════════════════════════════ -->
+<style>
+#store-switch{display:flex;gap:8px;justify-content:center;margin:2px 0 16px;}
+#store-switch .store-pill{flex:1;max-width:150px;padding:9px 8px;border-radius:12px;border:1.5px solid #e2e2e6;background:#f5f5f7;color:#666;font-weight:800;font-size:14px;cursor:pointer;transition:.15s;}
+#store-switch .store-pill.active{border-color:#C8A24B;background:linear-gradient(135deg,#f5e4b6,#e7c768);color:#3a2c08;box-shadow:0 2px 8px rgba(200,162,75,.35);}
+#store-badge{position:fixed;left:10px;bottom:10px;z-index:9999;padding:6px 11px;border-radius:999px;background:#ffffff;border:1.5px solid #C8A24B;color:#3a2c08;font-weight:800;font-size:12px;box-shadow:0 2px 8px rgba(0,0,0,.18);cursor:pointer;user-select:none;}
+</style>
+<div id="store-badge" onclick="storeBadgeTap()" title="點我切換門市">🍣 生魚片</div>
 <div id="auth-screen">
   <div class="auth-wrap">
     <div class="brand-header">
       <div class="brand-icon"><img src="logo.png" alt="光頭餐飲集團"></div>
       <div class="brand-name">光頭餐飲集團</div>
       <div class="brand-sub">Operations Command Center</div>
+    </div>
+    <div id="store-switch">
+      <button type="button" class="store-pill" data-store="sashimi" onclick="switchStore('sashimi')">🍣 生魚片</button>
+      <button type="button" class="store-pill" data-store="hotpot" onclick="switchStore('hotpot')">🍲 火鍋店</button>
     </div>
     <div class="glass-card">
       <div class="auth-tabs-row">
@@ -2096,8 +2107,39 @@ html,body,button,input,select,textarea,
 
 <script>
 // ── 自動更新：開啟時比對版本，有新版就自動重載（免無痕）──
-const APP_VER='20260929130000';
-const GT_KEY='gtk_9F3xQ7Lz_pW2rM8kT';  // 後台共用密鑰（階段A：前端帶上；階段B：後台驗證）
+const APP_VER='20261001120000';
+const GT_KEY='gtk_9F3xQ7Lz_pW2rM8kT';  // 後台共用密鑰（兩家店共用同一把）
+// ════════ 多門市：切換門市（各店自己的後端＋試算表，帳務完全分開）════════
+const STORES={
+  sashimi:{name:'🍣 生魚片',url:'https://script.google.com/macros/s/AKfycbw2V4lNiaj3ETVMlVkOClwouuE8a5bEx5MGoJikzaUKYqK8AVaJUPJUMLT8eKY2NUro9g/exec'},
+  hotpot:{name:'🍲 火鍋店',url:'https://script.google.com/macros/s/AKfycbw1bji8wZLjeZOmmloix38qvVUtolapSe-Gp22jZ8IImc4WkjlrNnVRliuygS9AtTj33g/exec'}
+};
+function curStore(){try{var s=localStorage.getItem('gt_store');return STORES[s]?s:'sashimi';}catch(e){return 'sashimi';}}
+function switchStore(id){
+  if(!STORES[id]||id===curStore())return;
+  // 切換門市＝換一本帳。清掉本機所有「會隨門市不同」的快取(rm_同步資料/照片快取/記住登入)，
+  // reload 後改用新門市的後端重新同步，避免把另一家店的資料混進來(火鍋店 KV 是空的，不清會看到生魚片的舊快取)。
+  try{
+    var del=[];
+    for(var i=0;i<localStorage.length;i++){var k=localStorage.key(i);
+      if(k&&(k.indexOf('rm_')===0||k.indexOf('imgc_')===0||k==='gt_session'))del.push(k);}
+    del.forEach(function(k){try{localStorage.removeItem(k);}catch(e){}});
+    localStorage.setItem('gt_store',id);
+  }catch(e){}
+  location.reload();
+}
+function storeBadgeTap(){
+  var other=curStore()==='sashimi'?'hotpot':'sashimi';
+  if(confirm('要切換到「'+STORES[other].name.replace(/^[^\s]+\s/,'')+'」嗎？\n會重新載入並登出，改看該店的帳務。')) switchStore(other);
+}
+function paintStoreUI(){
+  try{
+    var cs=curStore();
+    var b=document.getElementById('store-badge'); if(b)b.textContent=STORES[cs].name;
+    var ps=document.querySelectorAll('#store-switch .store-pill');
+    for(var i=0;i<ps.length;i++){ps[i].classList.toggle('active',ps[i].getAttribute('data-store')===cs);}
+  }catch(e){}
+}
 // 是否有「打到一半、還沒送出」的資料（結帳/進貨/交接/申訴的輸入框有值）→ 有的話先別強制重載，免得清掉
 function _hasTypedData(){try{var els=document.querySelectorAll('#tab-revenue input,#tab-revenue textarea,#tab-purchase input,#tab-purchase textarea,#tab-handover input,#tab-handover textarea,#tab-bully input,#tab-bully textarea');for(var i=0;i<els.length;i++){var el=els[i];if(el.type==='date'||el.type==='hidden')continue;if((el.value||'').trim())return true;}return false;}catch(e){return false;}}
 // 有新版時先記下來；只有在「沒有正在輸入、也沒有未送出資料」時才真的重載，避免打到一半被清空
@@ -4658,7 +4700,7 @@ const LS={
 };
 
 // ════════ 跨裝置同步層（填上 SYNC_URL 才啟動）════════
-const SYNC_URL='https://script.google.com/macros/s/AKfycbw2V4lNiaj3ETVMlVkOClwouuE8a5bEx5MGoJikzaUKYqK8AVaJUPJUMLT8eKY2NUro9g/exec';  // 後端改指向 o6t4(已把 SSOZDN 非照片資料搬過來；o6t4 已部署新版無鎖程式，快)
+const SYNC_URL=STORES[curStore()].url;  // 依「目前選到的門市」決定後端(生魚片/火鍋店各自一套，帳務分開)。切換門市見 switchStore()
 function syncOn(){return !!SYNC_URL;}
 function kv(type,extra){return fetch(SYNC_URL,{method:'POST',body:JSON.stringify(Object.assign({type:type,key:GT_KEY,auth:GT_KEY},extra||{})),headers:{'Content-Type':'text/plain'}}).then(r=>r.json());}
 let _pushTimers={};
@@ -6302,6 +6344,7 @@ function tryAutoLogin(){
     return true;
   }catch(e){ try{clearSession();}catch(_){}; return false; }
 }
+paintStoreUI();   // 標出目前門市(徽章＋登入頁門市鈕)
 tryAutoLogin();   // 開 App 時若 7 天內登入過就直接進
 </script>
 </body>
