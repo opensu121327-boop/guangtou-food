@@ -1,0 +1,199 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>今日交接表</title>
+<script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+<style>
+@font-face{font-family:'Huninn';src:url('../jf-openhuninn.ttf') format('truetype');font-display:swap}
+:root{
+  --bg:#FFF4E6;--card:#FFFFFF;--soft:#FFF0DF;
+  --burgundy:#800020;--gold:#C9A96E;--gold-deep:#9A7A4A;--orange:#FF7A1A;
+  --text:#3A2417;--text-2:rgba(58,36,23,.66);--text-3:rgba(58,36,23,.42);
+  --line:rgba(255,138,61,.30);--line-soft:rgba(120,80,40,.14);
+  --red:#C0392B;--green:#2E7D4F;
+  --r-card:22px;--r-field:16px;--r-pill:99px;
+  --shadow:0 10px 26px -14px rgba(180,90,20,.28),0 2px 0 rgba(255,138,61,.05);
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;background:var(--bg);color:var(--text);font-family:'Huninn','Noto Sans TC',system-ui,sans-serif}
+body{padding:16px 16px calc(96px + env(safe-area-inset-bottom))}
+header{padding:4px 2px 14px}
+.eyebrow{font-size:12px;letter-spacing:.12em;color:var(--gold-deep)}
+h1{margin:4px 0 2px;font-size:26px;color:var(--burgundy);font-weight:700}
+.meta{font-size:13px;color:var(--text-2)}
+.card{background:var(--card);border:1px solid var(--line);border-radius:var(--r-card);padding:16px;margin-bottom:12px;box-shadow:var(--shadow);position:relative;overflow:hidden}
+.card::before{content:"";position:absolute;left:16px;right:16px;top:0;height:1px;background:linear-gradient(90deg,transparent,rgba(201,169,110,.6),transparent)}
+.ref{background:var(--soft);border-style:dashed;box-shadow:none}
+.ref .t{font-size:12px;color:var(--gold-deep);margin-bottom:4px}
+.ref .v{font-size:14px;line-height:1.6;color:var(--text-2)}
+.row{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px}
+label{font-size:16px;font-weight:700}
+.none{border:1px solid var(--line-soft);background:transparent;color:var(--text-2);font:inherit;font-size:13px;padding:5px 12px;border-radius:var(--r-pill)}
+.none.on{background:var(--text);color:#fff;border-color:var(--text)}
+textarea,input[type=date]{width:100%;border:1px solid var(--line-soft);background:#FFFCF7;border-radius:var(--r-field);padding:12px 14px;font:inherit;font-size:16px;color:var(--text);outline:none;resize:none}
+textarea{min-height:76px;line-height:1.55}
+textarea:focus,input[type=date]:focus{border-color:var(--gold);box-shadow:0 0 0 3px rgba(201,169,110,.22)}
+.chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}
+.chip{border:1px solid var(--line);background:var(--soft);color:var(--text);font:inherit;font-size:13px;padding:6px 11px;border-radius:var(--r-pill)}
+.chip.on{background:var(--burgundy);border-color:var(--burgundy);color:#fff}
+.hint{font-size:12px;color:var(--text-3);margin-top:6px}
+.notice{font-size:13px;color:var(--gold-deep);background:var(--soft);border-radius:12px;padding:10px 12px;margin-bottom:12px}
+.bar{position:fixed;left:0;right:0;bottom:0;padding:12px 16px calc(12px + env(safe-area-inset-bottom));background:linear-gradient(180deg,rgba(255,244,230,0),var(--bg) 30%)}
+.submit{width:100%;border:0;border-radius:var(--r-pill);padding:15px;font:inherit;font-size:17px;font-weight:700;color:#fff;background:var(--burgundy);box-shadow:0 10px 24px -10px rgba(128,0,32,.6)}
+.submit:disabled{opacity:.5}
+.state{text-align:center;padding:64px 16px;color:var(--text-2);line-height:1.7}
+.state .big{font-size:40px;margin-bottom:8px}
+.state.err{color:var(--red)}
+.hidden{display:none}
+</style>
+</head>
+<body>
+<div id="loading" class="state"><div class="big">⏳</div>載入中…</div>
+<div id="error" class="state err hidden"></div>
+<div id="done" class="state hidden"><div class="big">✅</div><div id="doneMsg">交接已送出</div></div>
+
+<form id="form" class="hidden" autocomplete="off">
+  <header>
+    <div class="eyebrow">光頭生魚片｜交接表</div>
+    <h1>今日交接</h1>
+    <div class="meta" id="who"></div>
+  </header>
+
+  <div id="dupNotice" class="notice hidden">今天已經有人填過交接表，仍可再送一份補充。</div>
+
+  <div class="card">
+    <div class="row"><label for="date">營業日</label></div>
+    <input type="date" id="date" required>
+  </div>
+
+  <div id="lastCard" class="card ref hidden">
+    <div class="t" id="lastTitle"></div>
+    <div class="v" id="lastMissing"></div>
+  </div>
+
+  <div class="card" data-field="missing">
+    <div class="row"><label for="missing">缺貨</label><button type="button" class="none">無</button></div>
+    <textarea id="missing" placeholder="例：金桔、洗碗精、外帶小菜盒"></textarea>
+    <div class="chips" id="chips"></div>
+    <div class="hint" id="chipHint">點選常缺品項可快速加入</div>
+  </div>
+
+  <div class="card" data-field="complaint">
+    <div class="row"><label for="complaint">客訴與處理</label><button type="button" class="none">無</button></div>
+    <textarea id="complaint" placeholder="發生什麼事、怎麼處理"></textarea>
+  </div>
+
+  <div class="card" data-field="equipment">
+    <div class="row"><label for="equipment">設備狀況與問題</label><button type="button" class="none">無</button></div>
+    <textarea id="equipment" placeholder="例：外場冷氣不涼"></textarea>
+  </div>
+
+  <div class="card" data-field="waste">
+    <div class="row"><label for="waste">今日耗棄食材</label><button type="button" class="none">無</button></div>
+    <textarea id="waste" placeholder="品項、數量、原因"></textarea>
+  </div>
+
+  <div class="card" data-field="note">
+    <div class="row"><label for="note">其他備註</label><button type="button" class="none">無</button></div>
+    <textarea id="note" placeholder="給下一班或老闆的話"></textarea>
+  </div>
+
+  <div class="bar"><button type="submit" class="submit" id="submitBtn">送出交接</button></div>
+</form>
+
+<script>
+// ── 部署設定 ──
+const LIFF_ID = '2012008092-vkRqnXqQ';
+const GAS_URL = 'https://script.google.com/macros/s/AKfycbzc58gQ0ttfjeqHNV1OYLdDZNyl5JqVvNPvO8tYqg8_Dgezslqp8BRuFR9cSeNjwDaT/exec';
+const FIELDS = ['missing', 'complaint', 'equipment', 'waste', 'note'];
+
+const $ = id => document.getElementById(id);
+function show(id) { ['loading', 'error', 'done', 'form'].forEach(x => $(x).classList.toggle('hidden', x !== id)); }
+function fail(msg) { $('error').textContent = msg; show('error'); }
+
+async function api(action, data) {
+  const res = await fetch(GAS_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+    body: JSON.stringify({ action, idToken: liff.getIDToken(), data }) });
+  return res.json();
+}
+
+function setupNoneButtons() {
+  document.querySelectorAll('[data-field]').forEach(card => {
+    const btn = card.querySelector('.none'), ta = card.querySelector('textarea');
+    btn.addEventListener('click', () => {
+      const on = !btn.classList.contains('on');
+      btn.classList.toggle('on', on);
+      ta.value = on ? '無' : '';
+      ta.disabled = on;
+      if (card.dataset.field === 'missing') document.querySelectorAll('.chip.on').forEach(c => c.classList.remove('on'));
+    });
+  });
+}
+
+function renderChips(list) {
+  const box = $('chips');
+  if (!list || !list.length) { $('chipHint').classList.add('hidden'); return; }
+  list.forEach(name => {
+    const b = document.createElement('button');
+    b.type = 'button'; b.className = 'chip'; b.textContent = name;
+    b.addEventListener('click', () => {
+      const ta = $('missing');
+      if (ta.disabled) return;
+      const items = ta.value.split(/[、,，]\s*/).map(s => s.trim()).filter(Boolean);
+      const i = items.indexOf(name);
+      if (i >= 0) { items.splice(i, 1); b.classList.remove('on'); } else { items.push(name); b.classList.add('on'); }
+      ta.value = items.join('、');
+    });
+    box.appendChild(b);
+  });
+}
+
+async function main() {
+  try {
+    await liff.init({ liffId: LIFF_ID });
+    if (!liff.isLoggedIn()) { liff.login({ redirectUri: location.href }); return; }
+    const info = await api('liff_handover_init');
+    if (!info.ok) return fail(info.error || '載入失敗');
+    $('who').textContent = info.today + '（' + info.weekday + '）｜填寫人：' + info.name;
+    $('date').value = info.today.replace(/\//g, '-');
+    if (info.done) $('dupNotice').classList.remove('hidden');
+    if (info.last && info.last.missing) {
+      $('lastTitle').textContent = '上一份交接（' + info.last.date + '｜' + info.last.name + '）的缺貨';
+      $('lastMissing').textContent = info.last.missing;
+      $('lastCard').classList.remove('hidden');
+    }
+    renderChips(info.chips);
+    setupNoneButtons();
+    show('form');
+  } catch (e) {
+    fail('無法開啟表單：' + (e && e.message || e) + '\n請關閉後從 LINE 重新開啟。');
+  }
+}
+
+$('form').addEventListener('submit', async ev => {
+  ev.preventDefault();
+  const data = { date: $('date').value.replace(/-/g, '/') };
+  FIELDS.forEach(f => data[f] = $(f).value.trim());
+  if (FIELDS.every(f => !data[f])) {
+    if (!confirm('所有欄位都是空的，確定要送出嗎？')) return;
+  }
+  const btn = $('submitBtn');
+  btn.disabled = true; btn.textContent = '送出中…';
+  try {
+    const r = await api('liff_handover_submit', data);
+    if (!r.ok) throw new Error(r.error || '送出失敗');
+    $('doneMsg').textContent = r.pushed ? '交接已送出，並已通知員工群組' : '交接已送出';
+    show('done');
+    setTimeout(() => { if (liff.isInClient()) liff.closeWindow(); }, 1500);
+  } catch (e) {
+    alert(e.message || e);
+    btn.disabled = false; btn.textContent = '送出交接';
+  }
+});
+
+main();
+</script>
+</body>
+</html>
