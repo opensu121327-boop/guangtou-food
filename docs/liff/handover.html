@@ -34,6 +34,10 @@ label{font-size:16px;font-weight:700}
 .none.on{background:var(--text);color:#fff;border-color:var(--text)}
 textarea,input[type=date]{width:100%;border:1px solid var(--line-soft);background:#FFFCF7;border-radius:var(--r-field);padding:12px 14px;font:inherit;font-size:16px;color:var(--text);outline:none;resize:none}
 textarea{min-height:76px;line-height:1.55}
+/* iOS 日期欄位：取消原生外觀，避免超出卡片、高度不一、文字置中 */
+input[type=date]{-webkit-appearance:none;appearance:none;display:block;max-width:100%;min-width:0;height:48px;line-height:22px;text-align:left}
+input[type=date]::-webkit-date-and-time-value{text-align:left;margin:0}
+input[type=date]::-webkit-calendar-picker-indicator{opacity:.55}
 textarea:focus,input[type=date]:focus{border-color:var(--gold);box-shadow:0 0 0 3px rgba(201,169,110,.22)}
 .chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}
 .chip{border:1px solid var(--line);background:var(--soft);color:var(--text);font:inherit;font-size:13px;padding:6px 11px;border-radius:var(--r-pill)}
@@ -154,6 +158,15 @@ async function main() {
   try {
     await liff.init({ liffId: LIFF_ID });
     if (!liff.isLoggedIn()) { liff.login({ redirectUri: location.href }); return; }
+    // 拿不到身分憑證（授權不完整）→ 自動重新授權一次；仍失敗則顯示診斷資訊
+    if (!liff.getIDToken() && !liff.getAccessToken()) {
+      let tried = false;
+      try { tried = sessionStorage.getItem('gt_relogin') === '1'; sessionStorage.setItem('gt_relogin', '1'); } catch (e) {}
+      // LINE App 內無法 login/logout，只有外部瀏覽器才重新授權
+      if (!tried && !liff.isInClient()) { liff.logout(); liff.login({ redirectUri: location.href }); return; }
+      return fail('LINE 沒有提供身分憑證。\n（在LINE內：' + liff.isInClient() + '｜系統：' + liff.getOS() + '｜LINE版本：' + (liff.getLineVersion() || '—') + '）\n請截圖給老闆。');
+    }
+    try { sessionStorage.removeItem('gt_relogin'); } catch (e) {}
     const info = await api('liff_handover_init');
     if (!info.ok) return fail(info.error || '載入失敗');
     $('who').textContent = info.today + '（' + info.weekday + '）｜填寫人：' + info.name;
