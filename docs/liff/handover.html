@@ -52,6 +52,9 @@ textarea:focus,input[type=date]:focus{border-color:var(--gold);box-shadow:0 0 0 
 .state .big{font-size:40px;margin-bottom:8px}
 .state.err{color:var(--red)}
 .hidden{display:none}
+.seg{display:flex;gap:8px}
+.seg button{flex:1;border:1px solid var(--line-soft);background:#FFFCF7;color:var(--text);font:inherit;font-size:16px;padding:12px;border-radius:var(--r-field)}
+.seg button.on{background:var(--burgundy);border-color:var(--burgundy);color:#fff;font-weight:700}
 </style>
 </head>
 <body>
@@ -61,10 +64,15 @@ textarea:focus,input[type=date]:focus{border-color:var(--gold);box-shadow:0 0 0 
 
 <form id="form" class="hidden" autocomplete="off">
   <header>
-    <div class="eyebrow">光頭生魚片｜交接表</div>
+    <div class="eyebrow" id="eyebrow">交接表</div>
     <h1>今日交接</h1>
     <div class="meta" id="who"></div>
   </header>
+
+  <div id="storeCard" class="card hidden">
+    <div class="row"><label>哪一家店</label></div>
+    <div class="seg" id="storeSeg"></div>
+  </div>
 
   <div id="dupNotice" class="notice hidden">今天已經有人填過交接表，仍可再送一份補充。</div>
 
@@ -115,12 +123,19 @@ const GAS_URL = 'https://script.google.com/macros/s/AKfycbzc58gQ0ttfjeqHNV1OYLdD
 const FIELDS = ['missing', 'complaint', 'equipment', 'waste', 'note'];
 
 const $ = id => document.getElementById(id);
+// 店別：LINE 卡片連結帶 ?store=gt|sz；跨店人員可在表單上切換
+let STORE = (function () {
+  const q = new URLSearchParams(location.search);
+  if (q.get('store')) return q.get('store');
+  const st = q.get('liff.state');   // 首次開啟時 LIFF 會把參數包在 liff.state 裡
+  return st ? (new URLSearchParams(st.replace(/^[^?]*\?/, '')).get('store') || '') : '';
+})();
 function show(id) { ['loading', 'error', 'done', 'form'].forEach(x => $(x).classList.toggle('hidden', x !== id)); }
 function fail(msg) { $('error').textContent = msg; show('error'); }
 
 async function api(action, data) {
   const res = await fetch(GAS_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-    body: JSON.stringify({ action, idToken: liff.getIDToken(), accessToken: liff.getAccessToken(), data }) });
+    body: JSON.stringify({ action, store: STORE, idToken: liff.getIDToken(), accessToken: liff.getAccessToken(), data }) });
   return res.json();
 }
 
@@ -147,7 +162,9 @@ function setupNoneButtons() {
 
 function renderChips(list) {
   const box = $('chips');
-  if (!list || !list.length) { $('chipHint').classList.add('hidden'); return; }
+  box.innerHTML = '';
+  $('chipHint').classList.toggle('hidden', !list || !list.length);
+  if (!list || !list.length) return;
   list.forEach(name => {
     const b = document.createElement('button');
     b.type = 'button'; b.className = 'chip'; b.textContent = name;
@@ -163,6 +180,36 @@ function renderChips(list) {
   });
 }
 
+/** 載入（或切換）店別資料：抬頭、上一份缺貨、常缺品項 */
+async function loadStore(key) {
+  STORE = key;
+  const info = await api('liff_handover_init');
+  if (!info.ok) { fail(info.error || '載入失敗'); return null; }
+  STORE = info.store;
+  const cur = info.stores.find(s => s.key === info.store) || info.stores[0];
+  $('eyebrow').textContent = cur.name + '｜交接表';
+  $('who').textContent = info.today + '（' + info.weekday + '）｜填寫人：' + info.name;
+  if (info.stores.length > 1) {
+    const seg = $('storeSeg'); seg.innerHTML = '';
+    info.stores.forEach(s => {
+      const b = document.createElement('button');
+      b.type = 'button'; b.textContent = s.name; b.className = s.key === info.store ? 'on' : '';
+      b.addEventListener('click', () => { if (s.key !== STORE) loadStore(s.key); });
+      seg.appendChild(b);
+    });
+    $('storeCard').classList.remove('hidden');
+  }
+  $('dupNotice').classList.toggle('hidden', !info.done);
+  const hasLast = info.last && info.last.missing;
+  $('lastCard').classList.toggle('hidden', !hasLast);
+  if (hasLast) {
+    $('lastTitle').textContent = '上一份交接（' + info.last.date + '｜' + info.last.name + '）的缺貨';
+    $('lastMissing').textContent = info.last.missing;
+  }
+  renderChips(info.chips);
+  return info;
+}
+
 async function main() {
   try {
     await liff.init({ liffId: LIFF_ID });
@@ -176,19 +223,11 @@ async function main() {
       return fail('LINE 沒有提供身分憑證。\n（在LINE內：' + liff.isInClient() + '｜系統：' + liff.getOS() + '｜LINE版本：' + (liff.getLineVersion() || '—') + '）\n請截圖給老闆。');
     }
     try { sessionStorage.removeItem('gt_relogin'); } catch (e) {}
-    const info = await api('liff_handover_init');
-    if (!info.ok) return fail(info.error || '載入失敗');
-    $('who').textContent = info.today + '（' + info.weekday + '）｜填寫人：' + info.name;
+    const info = await loadStore(STORE);
+    if (!info) return;
     $('date').value = info.today.replace(/\//g, '-');
     showDate();
     $('date').addEventListener('change', showDate);
-    if (info.done) $('dupNotice').classList.remove('hidden');
-    if (info.last && info.last.missing) {
-      $('lastTitle').textContent = '上一份交接（' + info.last.date + '｜' + info.last.name + '）的缺貨';
-      $('lastMissing').textContent = info.last.missing;
-      $('lastCard').classList.remove('hidden');
-    }
-    renderChips(info.chips);
     setupNoneButtons();
     show('form');
   } catch (e) {
@@ -208,7 +247,7 @@ $('form').addEventListener('submit', async ev => {
   try {
     const r = await api('liff_handover_submit', data);
     if (!r.ok) throw new Error(r.error || '送出失敗');
-    $('doneMsg').textContent = r.pushed ? '交接已送出，並已通知員工群組' : '交接已送出';
+    $('doneMsg').textContent = '【' + (r.store || '') + '】' + (r.pushed ? '交接已送出，並已通知員工群組' : '交接已送出');
     show('done');
     setTimeout(() => { if (liff.isInClient()) liff.closeWindow(); }, 1500);
   } catch (e) {
