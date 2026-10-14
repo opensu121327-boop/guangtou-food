@@ -34,10 +34,11 @@ label{font-size:16px;font-weight:700}
 .none.on{background:var(--text);color:#fff;border-color:var(--text)}
 textarea,input[type=date]{width:100%;border:1px solid var(--line-soft);background:#FFFCF7;border-radius:var(--r-field);padding:12px 14px;font:inherit;font-size:16px;color:var(--text);outline:none;resize:none}
 textarea{min-height:76px;line-height:1.55}
-/* iOS 日期欄位：取消原生外觀，避免超出卡片、高度不一、文字置中 */
-input[type=date]{-webkit-appearance:none;appearance:none;display:block;max-width:100%;min-width:0;height:48px;line-height:22px;text-align:left}
-input[type=date]::-webkit-date-and-time-value{text-align:left;margin:0}
-input[type=date]::-webkit-calendar-picker-indicator{opacity:.55}
+/* 日期欄位：顯示自繪外框，原生 date 透明疊在上方（iOS 原生框會超出卡片、無法靠左） */
+.datebox{position:relative;display:flex;align-items:center;justify-content:space-between;height:50px;border:1px solid var(--line-soft);background:#FFFCF7;border-radius:var(--r-field);padding:0 14px;font-size:16px;color:var(--text)}
+.datebox .cal{font-size:13px;color:var(--gold-deep)}
+.datebox input[type=date]{position:absolute;inset:0;width:100%;height:100%;opacity:0;border:0;padding:0;margin:0;-webkit-appearance:none;appearance:none}
+.datebox:focus-within{border-color:var(--gold);box-shadow:0 0 0 3px rgba(201,169,110,.22)}
 textarea:focus,input[type=date]:focus{border-color:var(--gold);box-shadow:0 0 0 3px rgba(201,169,110,.22)}
 .chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}
 .chip{border:1px solid var(--line);background:var(--soft);color:var(--text);font:inherit;font-size:13px;padding:6px 11px;border-radius:var(--r-pill)}
@@ -69,7 +70,7 @@ textarea:focus,input[type=date]:focus{border-color:var(--gold);box-shadow:0 0 0 
 
   <div class="card">
     <div class="row"><label for="date">營業日</label></div>
-    <input type="date" id="date" required>
+    <div class="datebox"><span id="dateText"></span><span class="cal">更改日期 ▾</span><input type="date" id="date" required aria-label="營業日"></div>
   </div>
 
   <div id="lastCard" class="card ref hidden">
@@ -123,6 +124,14 @@ async function api(action, data) {
   return res.json();
 }
 
+function showDate() {
+  const v = $('date').value;
+  if (!v) { $('dateText').textContent = '請選擇日期'; return; }
+  const [y, m, d] = v.split('-').map(Number);
+  const wk = '日一二三四五六'.charAt(new Date(y, m - 1, d).getDay());
+  $('dateText').textContent = y + '/' + String(m).padStart(2, '0') + '/' + String(d).padStart(2, '0') + '（週' + wk + '）';
+}
+
 function setupNoneButtons() {
   document.querySelectorAll('[data-field]').forEach(card => {
     const btn = card.querySelector('.none'), ta = card.querySelector('textarea');
@@ -171,6 +180,8 @@ async function main() {
     if (!info.ok) return fail(info.error || '載入失敗');
     $('who').textContent = info.today + '（' + info.weekday + '）｜填寫人：' + info.name;
     $('date').value = info.today.replace(/\//g, '-');
+    showDate();
+    $('date').addEventListener('change', showDate);
     if (info.done) $('dupNotice').classList.remove('hidden');
     if (info.last && info.last.missing) {
       $('lastTitle').textContent = '上一份交接（' + info.last.date + '｜' + info.last.name + '）的缺貨';
