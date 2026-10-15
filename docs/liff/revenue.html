@@ -1,0 +1,236 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>記營收</title>
+<script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+<style>
+@font-face{font-family:'Huninn';src:url('../jf-openhuninn.ttf') format('truetype');font-display:swap}
+:root{
+  --bg:#FFF4E6;--card:#FFFFFF;--soft:#FFF0DF;
+  --burgundy:#800020;--gold:#C9A96E;--gold-deep:#9A7A4A;
+  --text:#3A2417;--text-2:rgba(58,36,23,.66);--text-3:rgba(58,36,23,.42);
+  --line:rgba(255,138,61,.30);--line-soft:rgba(120,80,40,.14);
+  --red:#C0392B;--green:#2E7D4F;
+  --r-card:22px;--r-field:16px;--r-pill:99px;
+  --shadow:0 10px 26px -14px rgba(180,90,20,.28),0 2px 0 rgba(255,138,61,.05);
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;background:var(--bg);color:var(--text);font-family:'Huninn','Noto Sans TC',system-ui,sans-serif}
+body{padding:16px 16px calc(96px + env(safe-area-inset-bottom))}
+header{padding:4px 2px 14px}
+.eyebrow{font-size:12px;letter-spacing:.12em;color:var(--gold-deep)}
+h1{margin:4px 0 2px;font-size:26px;color:var(--burgundy);font-weight:700}
+.meta{font-size:13px;color:var(--text-2)}
+.card{background:var(--card);border:1px solid var(--line);border-radius:var(--r-card);padding:16px;margin-bottom:12px;box-shadow:var(--shadow);position:relative;overflow:hidden}
+.card::before{content:"";position:absolute;left:16px;right:16px;top:0;height:1px;background:linear-gradient(90deg,transparent,rgba(201,169,110,.6),transparent)}
+.ttl{font-size:16px;font-weight:700;margin-bottom:10px}
+.seg{display:flex;gap:8px}
+.seg button{flex:1;border:1px solid var(--line-soft);background:#FFFCF7;color:var(--text);font:inherit;font-size:16px;padding:12px;border-radius:var(--r-field)}
+.seg button.on{background:var(--burgundy);border-color:var(--burgundy);color:#fff;font-weight:700}
+.need{border:2px dashed var(--red)}
+.hint{font-size:12px;color:var(--text-3);margin-top:6px}
+.warn{font-size:13px;color:var(--red);background:#FDECEA;border-radius:12px;padding:10px 12px;margin-bottom:12px}
+.datebox{position:relative;display:flex;align-items:center;justify-content:space-between;height:50px;border:1px solid var(--line-soft);background:#FFFCF7;border-radius:var(--r-field);padding:0 14px;font-size:16px}
+.datebox .cal{font-size:13px;color:var(--gold-deep)}
+.datebox input{position:absolute;inset:0;width:100%;height:100%;opacity:0;border:0;padding:0;margin:0;-webkit-appearance:none;appearance:none}
+.money{display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--line-soft)}
+.money:last-child{border-bottom:0}
+.money label{flex:0 0 96px;font-size:16px}
+.money .fee{font-size:11px;color:var(--text-3);display:block}
+.money .in{flex:1;display:flex;align-items:center;border:1px solid var(--line-soft);background:#FFFCF7;border-radius:12px;padding:0 12px;height:46px}
+.money .in:focus-within{border-color:var(--gold);box-shadow:0 0 0 3px rgba(201,169,110,.22)}
+.money .in span{color:var(--text-3);margin-right:6px}
+.money input{flex:1;min-width:0;border:0;background:transparent;font:inherit;font-size:18px;color:var(--text);outline:none;text-align:right}
+.chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+.chip{border:1px solid var(--line);background:var(--soft);color:var(--text);font:inherit;font-size:13px;padding:6px 11px;border-radius:var(--r-pill)}
+.chip.on{background:var(--burgundy);border-color:var(--burgundy);color:#fff}
+.text{width:100%;border:1px solid var(--line-soft);background:#FFFCF7;border-radius:var(--r-field);padding:12px 14px;font:inherit;font-size:16px;color:var(--text);outline:none}
+.sum{background:var(--soft);border-style:dashed;box-shadow:none}
+.sum .row{display:flex;justify-content:space-between;padding:4px 0;font-size:15px}
+.sum .big{font-size:24px;font-weight:700;color:var(--burgundy)}
+.bar{position:fixed;left:0;right:0;bottom:0;padding:12px 16px calc(12px + env(safe-area-inset-bottom));background:linear-gradient(180deg,rgba(255,244,230,0),var(--bg) 30%)}
+.submit{width:100%;border:0;border-radius:var(--r-pill);padding:15px;font:inherit;font-size:17px;font-weight:700;color:#fff;background:var(--burgundy);box-shadow:0 10px 24px -10px rgba(128,0,32,.6)}
+.submit:disabled{opacity:.45}
+.state{text-align:center;padding:56px 16px;color:var(--text-2);line-height:1.8}
+.state .big{font-size:40px;margin-bottom:8px}
+.state.err{color:var(--red)}
+.hidden{display:none}
+</style>
+</head>
+<body>
+<div id="loading" class="state"><div class="big">⏳</div>載入中…</div>
+<div id="error" class="state err hidden"></div>
+<div id="done" class="state hidden"><div class="big">✅</div><div id="doneMsg"></div></div>
+
+<form id="form" class="hidden" autocomplete="off">
+  <header>
+    <div class="eyebrow" id="eyebrow">記營收</div>
+    <h1>記營收</h1>
+    <div class="meta" id="who"></div>
+  </header>
+
+  <div id="storeCard" class="card hidden">
+    <div class="ttl">哪一家店</div>
+    <div class="seg" id="storeSeg"></div>
+    <div class="hint" id="storeHint">請先選擇店別</div>
+  </div>
+
+  <div class="card">
+    <div class="ttl">營業日</div>
+    <div class="datebox"><span id="dateText"></span><span class="cal">更改日期 ▾</span><input type="date" id="date" aria-label="營業日"></div>
+  </div>
+
+  <div id="dupWarn" class="warn hidden"></div>
+
+  <div class="card">
+    <div class="ttl">各通路金額</div>
+    <div class="money"><label for="cash">現金</label><div class="in"><span>$</span><input id="cash" inputmode="numeric" placeholder="0"></div></div>
+    <div class="money"><label for="card">刷卡<span class="fee" id="feeCard"></span></label><div class="in"><span>$</span><input id="card" inputmode="numeric" placeholder="0"></div></div>
+    <div class="money"><label for="twqr">TWQR<span class="fee" id="feeTwqr"></span></label><div class="in"><span>$</span><input id="twqr" inputmode="numeric" placeholder="0"></div></div>
+    <div class="money"><label for="fp">Foodpanda<span class="fee" id="feeFp"></span></label><div class="in"><span>$</span><input id="fp" inputmode="numeric" placeholder="0"></div></div>
+    <div class="money"><label for="ue">UberEats<span class="fee" id="feeUe"></span></label><div class="in"><span>$</span><input id="ue" inputmode="numeric" placeholder="0"></div></div>
+    <div class="money"><label for="off">非帳內<span class="fee">不計入營業額</span></label><div class="in"><span>$</span><input id="off" inputmode="numeric" placeholder="0"></div></div>
+  </div>
+
+  <div class="card">
+    <div class="ttl">備註</div>
+    <input id="note" class="text" placeholder="例：颱風、母親節活動（可空白）">
+    <div class="chips" id="noteChips"></div>
+  </div>
+
+  <div class="card sum">
+    <div class="row"><span>當日總營業額</span><span class="big" id="sTotal">$0</span></div>
+    <div class="row"><span>手續費合計</span><span id="sFee">$0</span></div>
+    <div class="row"><span>平台預計匯款</span><span id="sRemit">$0</span></div>
+  </div>
+
+  <div class="bar"><button type="submit" class="submit" id="submitBtn">送出營收</button></div>
+</form>
+
+<script>
+const LIFF_ID = '2012008092-aiaNzKZr';
+const GAS_URL = 'https://script.google.com/macros/s/AKfycbzc58gQ0ttfjeqHNV1OYLdDZNyl5JqVvNPvO8tYqg8_Dgezslqp8BRuFR9cSeNjwDaT/exec';
+const CH = ['cash', 'card', 'twqr', 'fp', 'ue'];
+
+const $ = id => document.getElementById(id);
+let STORE = (function () {
+  const q = new URLSearchParams(location.search);
+  if (q.get('store')) return q.get('store');
+  const st = q.get('liff.state');
+  return st ? (new URLSearchParams(st.replace(/^[^?]*\?/, '')).get('store') || '') : '';
+})();
+let INFO = null;
+const money = n => '$' + Math.round(n || 0).toLocaleString('en-US');
+const val = id => { const n = Number(String($(id).value).replace(/[,\s$]/g, '')); return isFinite(n) && n > 0 ? n : 0; };
+function show(id) { ['loading', 'error', 'done', 'form'].forEach(x => $(x).classList.toggle('hidden', x !== id)); }
+function fail(msg) { $('error').textContent = msg; show('error'); }
+
+async function api(action, data) {
+  const res = await fetch(GAS_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+    body: JSON.stringify({ action, store: STORE, idToken: liff.getIDToken(), accessToken: liff.getAccessToken(), data }) });
+  return res.json();
+}
+
+function showDate() {
+  const v = $('date').value;
+  if (!v) { $('dateText').textContent = '請選擇日期'; return; }
+  const [y, m, d] = v.split('-').map(Number);
+  $('dateText').textContent = y + '/' + String(m).padStart(2, '0') + '/' + String(d).padStart(2, '0') + '（週' + '日一二三四五六'.charAt(new Date(y, m - 1, d).getDay()) + '）';
+  checkDup();
+}
+
+function checkDup() {
+  const key = $('date').value.replace(/-/g, '/');
+  const hit = (INFO && INFO.recent || []).filter(r => r.date === key);
+  const tot = hit.reduce((s, r) => s + r.total, 0);
+  $('dupWarn').textContent = hit.length ? '⚠️ 這天已經記過營收（' + money(tot) + '），送出會「再新增一筆」。確定不是重複嗎？' : '';
+  $('dupWarn').classList.toggle('hidden', !hit.length);
+}
+
+function calc() {
+  const f = INFO ? INFO.fees : { card: .022, twqr: .022, delivery: .31 };
+  const card = val('card'), twqr = val('twqr'), del = val('fp') + val('ue');
+  const total = CH.reduce((s, k) => s + val(k), 0);
+  const fee = card * f.card + twqr * f.twqr + del * f.delivery;
+  $('sTotal').textContent = money(total);
+  $('sFee').textContent = money(fee);
+  $('sRemit').textContent = money(card + twqr + del - fee);
+  return { total, fee };
+}
+
+function renderStores() {
+  const many = INFO.stores.length > 1;
+  $('storeCard').classList.toggle('hidden', !many);
+  const cur = INFO.stores.find(s => s.key === STORE);
+  $('eyebrow').textContent = (cur ? cur.name + '｜' : '') + '記營收';
+  $('storeHint').classList.toggle('hidden', !!STORE);
+  $('storeCard').classList.toggle('need', many && !STORE);
+  const seg = $('storeSeg'); seg.innerHTML = '';
+  INFO.stores.forEach(s => {
+    const b = document.createElement('button');
+    b.type = 'button'; b.textContent = s.name; b.className = s.key === STORE ? 'on' : '';
+    b.addEventListener('click', () => load(s.key));
+    seg.appendChild(b);
+  });
+  $('submitBtn').disabled = !STORE;
+  $('submitBtn').textContent = STORE ? '送出營收' : '請先選擇店別';
+}
+
+async function load(key) {
+  STORE = key || '';
+  const info = await api('liff_rev_init');
+  if (!info.ok) return fail(info.error || '載入失敗');
+  INFO = info; STORE = info.store || '';
+  $('who').textContent = info.today + '（' + info.weekday + '）營業日｜填寫人：' + info.name;
+  const f = info.fees;
+  $('feeCard').textContent = '手續費 ' + (f.card * 100).toFixed(1) + '%';
+  $('feeTwqr').textContent = '手續費 ' + (f.twqr * 100).toFixed(1) + '%';
+  $('feeFp').textContent = $('feeUe').textContent = '抽成 ' + Math.round(f.delivery * 100) + '%';
+  if (!$('date').value) $('date').value = info.today.replace(/\//g, '-');
+  renderStores(); showDate(); calc();
+  return info;
+}
+
+async function main() {
+  try {
+    await liff.init({ liffId: LIFF_ID });
+    if (!liff.isLoggedIn()) { liff.login({ redirectUri: location.href }); return; }
+    if (!liff.getIDToken() && !liff.getAccessToken()) return fail('LINE 沒有提供身分憑證，請關閉後重新開啟。');
+    if (!(await load(STORE))) return;
+    ['平日', '假日', '颱風', '活動'].forEach(w => {
+      const b = document.createElement('button'); b.type = 'button'; b.className = 'chip'; b.textContent = w;
+      b.addEventListener('click', () => { $('note').value = w; });
+      $('noteChips').appendChild(b);
+    });
+    CH.concat(['off']).forEach(k => $(k).addEventListener('input', calc));
+    $('date').addEventListener('change', showDate);
+    show('form');
+  } catch (e) { fail('無法開啟表單：' + (e && e.message || e)); }
+}
+
+$('form').addEventListener('submit', async ev => {
+  ev.preventDefault();
+  if (!STORE) return alert('請先選擇店別');
+  const { total, fee } = calc();
+  if (!total) return alert('營業額不能是 0');
+  const store = INFO.stores.find(s => s.key === STORE).name;
+  if (!confirm('【' + store + '】' + $('dateText').textContent + '\n總營業額 ' + money(total) + '（手續費 ' + money(fee) + '）\n確定送出？')) return;
+  const btn = $('submitBtn'); btn.disabled = true; btn.textContent = '送出中…';
+  try {
+    const data = { date: $('date').value, note: $('note').value.trim(), off: val('off') };
+    CH.forEach(k => data[k] = val(k));
+    const r = await api('liff_rev_submit', data);
+    if (!r.ok) throw new Error(r.error || '送出失敗');
+    $('doneMsg').innerHTML = '【' + r.store + '】' + r.date + ' 營收已入帳<br><b style="font-size:24px;color:#800020">' + money(r.total) +
+      '</b><br>本月累計 ' + money(r.mtd) + '（' + r.mtdDays + ' 天）<br><span style="font-size:12px">打錯了？30 分鐘內在聊天室輸入「撤回」</span>';
+    show('done');
+    setTimeout(() => { if (liff.isInClient()) liff.closeWindow(); }, 4000);
+  } catch (e) { alert(e.message || e); btn.disabled = false; btn.textContent = '送出營收'; }
+});
+
+main();
+</script>
+</body>
+</html>
