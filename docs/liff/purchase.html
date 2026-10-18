@@ -1,0 +1,379 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>記進貨</title>
+<script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+<style>
+@font-face{font-family:'Huninn';src:url('../jf-openhuninn.ttf') format('truetype');font-display:swap}
+:root{
+  --bg:#FFF4E6;--card:#FFFFFF;--soft:#FFF0DF;
+  --burgundy:#800020;--gold:#C9A96E;--gold-deep:#9A7A4A;
+  --text:#3A2417;--text-2:rgba(58,36,23,.66);--text-3:rgba(58,36,23,.42);
+  --line:rgba(255,138,61,.30);--line-soft:rgba(120,80,40,.14);
+  --red:#C0392B;--green:#2E7D4F;
+  --r-card:22px;--r-field:16px;--r-pill:99px;
+  --shadow:0 10px 26px -14px rgba(180,90,20,.28),0 2px 0 rgba(255,138,61,.05);
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;background:var(--bg);color:var(--text);font-family:'Huninn','Noto Sans TC',system-ui,sans-serif}
+body{padding:16px 16px calc(96px + env(safe-area-inset-bottom))}
+header{padding:4px 2px 14px}
+.eyebrow{font-size:12px;letter-spacing:.12em;color:var(--gold-deep)}
+h1{margin:4px 0 2px;font-size:26px;color:var(--burgundy);font-weight:700}
+.meta{font-size:13px;color:var(--text-2)}
+.card{background:var(--card);border:1px solid var(--line);border-radius:var(--r-card);padding:16px;margin-bottom:12px;box-shadow:var(--shadow);position:relative}
+.card::before{content:"";position:absolute;left:16px;right:16px;top:0;height:1px;background:linear-gradient(90deg,transparent,rgba(201,169,110,.6),transparent)}
+.ttl{font-size:16px;font-weight:700;margin-bottom:10px;display:flex;justify-content:space-between;align-items:center}
+.seg{display:flex;gap:8px}
+.seg button{flex:1;border:1px solid var(--line-soft);background:#FFFCF7;color:var(--text);font:inherit;font-size:16px;padding:12px;border-radius:var(--r-field)}
+.seg button.on{background:var(--burgundy);border-color:var(--burgundy);color:#fff;font-weight:700}
+.need{border:2px dashed var(--red)}
+.hint{font-size:12px;color:var(--text-3);margin-top:6px}
+.datebox{position:relative;display:flex;align-items:center;justify-content:space-between;height:50px;border:1px solid var(--line-soft);background:#FFFCF7;border-radius:var(--r-field);padding:0 14px;font-size:16px}
+.datebox .cal{font-size:13px;color:var(--gold-deep)}
+.datebox input{position:absolute;inset:0;width:100%;height:100%;opacity:0;border:0;padding:0;margin:0;-webkit-appearance:none;appearance:none}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chip{border:1px solid var(--line);background:var(--soft);color:var(--text);font:inherit;font-size:13px;padding:6px 11px;border-radius:var(--r-pill)}
+.chip.on{background:var(--burgundy);border-color:var(--burgundy);color:#fff}
+.chip small{color:var(--text-3);margin-left:4px}
+.chip.on small{color:rgba(255,255,255,.7)}
+.text{width:100%;border:1px solid var(--line-soft);background:#FFFCF7;border-radius:12px;padding:11px 12px;font:inherit;font-size:16px;color:var(--text);outline:none}
+.text:focus{border-color:var(--gold);box-shadow:0 0 0 3px rgba(201,169,110,.22)}
+.mt{margin-top:10px}
+.field label{display:block;font-size:13px;color:var(--text-2);margin-bottom:4px}
+.three{display:grid;grid-template-columns:1fr .8fr 1.2fr;gap:8px;margin-top:8px}
+.three .field{min-width:0}
+.search{position:relative}
+.sug{position:absolute;left:0;right:0;top:100%;z-index:20;background:#fff;border:1px solid var(--line);border-radius:12px;margin-top:4px;box-shadow:0 12px 28px -12px rgba(120,60,10,.4);max-height:260px;overflow:auto}
+.sug div{padding:10px 12px;border-bottom:1px solid var(--line-soft);font-size:15px}
+.sug div:last-child{border-bottom:0}
+.sug small{color:var(--text-3);margin-left:6px;font-size:12px}
+.sug .new{color:var(--burgundy)}
+.tag{display:inline-block;font-size:12px;color:var(--gold-deep);background:var(--soft);border-radius:8px;padding:2px 8px;margin-top:6px}
+.tag.newtag{color:var(--red);background:#FDECEA}
+.price{font-size:13px;margin-top:6px;color:var(--text-2)}
+.price.up{color:var(--red)}.price.down{color:var(--green)}
+.del{border:0;background:transparent;color:var(--text-3);font:inherit;font-size:13px}
+.adds{display:flex;gap:8px;margin-bottom:12px}
+.add{flex:1;border:1px dashed var(--gold);background:transparent;color:var(--gold-deep);font:inherit;font-size:15px;padding:13px;border-radius:var(--r-field)}
+.item.adj{border-color:rgba(192,57,43,.35)}
+.sum{background:var(--soft);border-style:dashed;box-shadow:none;display:flex;justify-content:space-between;align-items:center}
+.sum b{font-size:24px;color:var(--burgundy)}
+.bar{position:fixed;left:0;right:0;bottom:0;padding:12px 16px calc(12px + env(safe-area-inset-bottom));background:linear-gradient(180deg,rgba(255,244,230,0),var(--bg) 30%);z-index:30}
+.submit{width:100%;border:0;border-radius:var(--r-pill);padding:15px;font:inherit;font-size:17px;font-weight:700;color:#fff;background:var(--burgundy);box-shadow:0 10px 24px -10px rgba(128,0,32,.6)}
+.submit:disabled{opacity:.45}
+.state{text-align:center;padding:56px 16px;color:var(--text-2);line-height:1.8}
+.state .big{font-size:40px;margin-bottom:8px}
+.state.err{color:var(--red)}
+.hidden{display:none}
+</style>
+</head>
+<body>
+<div id="loading" class="state"><div class="big">⏳</div>載入中…</div>
+<div id="error" class="state err hidden"></div>
+<div id="done" class="state hidden"><div class="big">✅</div><div id="doneMsg"></div></div>
+
+<form id="form" class="hidden" autocomplete="off">
+  <header>
+    <div class="eyebrow" id="eyebrow">記進貨</div>
+    <h1>記進貨</h1>
+    <div class="meta" id="who"></div>
+  </header>
+
+  <div id="storeCard" class="card hidden">
+    <div class="ttl">哪一家店</div>
+    <div class="seg" id="storeSeg"></div>
+    <div class="hint" id="storeHint">請先選擇店別</div>
+  </div>
+
+  <div id="mainArea">
+    <div class="card">
+      <div class="ttl">營業日</div>
+      <div class="datebox"><span id="dateText"></span><span class="cal">更改日期 ▾</span><input type="date" id="date" aria-label="營業日"></div>
+    </div>
+
+    <div class="card">
+      <div class="ttl">供應商</div>
+      <div class="chips" id="supChips"></div>
+      <input id="supplier" class="text mt" placeholder="或直接輸入供應商名稱">
+    </div>
+
+    <div id="usualCard" class="card hidden">
+      <div class="ttl"><span id="usualTtl">常叫品項</span><span class="hint" style="margin:0">點一下加入</span></div>
+      <div class="chips" id="usual"></div>
+    </div>
+
+    <div id="items"></div>
+    <div class="adds">
+      <button type="button" class="add" id="addBtn">＋ 加一個品項</button>
+      <button type="button" class="add" id="adjBtn">＋ 折讓／退貨</button>
+    </div>
+
+    <div class="card sum"><span id="sCount">0 項</span><b id="sTotal">$0</b></div>
+  </div>
+
+  <div class="bar"><button type="submit" class="submit" id="submitBtn">送出進貨</button></div>
+</form>
+
+<template id="itemTpl">
+  <div class="card item">
+    <div class="ttl"><span class="no"></span><button type="button" class="del">刪除</button></div>
+    <div class="field search"><label>品名</label><input class="text name" placeholder="輸入關鍵字搜尋，例：鮭魚"><div class="sug hidden"></div></div>
+    <div class="info"></div>
+    <div class="newcat hidden field mt"><label>新品項分類</label><select class="text cat"></select></div>
+    <div class="three">
+      <div class="field qtyF"><label>數量</label><input class="text qty" inputmode="decimal" placeholder="0"></div>
+      <div class="field unitF"><label>單位</label><input class="text unit" placeholder="包"></div>
+      <div class="field"><label>金額</label><input class="text total" inputmode="numeric" placeholder="0"></div>
+    </div>
+    <div class="price"></div>
+  </div>
+</template>
+
+<script>
+const LIFF_ID = '2012008092-It0758FA';
+const GAS_URL = 'https://script.google.com/macros/s/AKfycbzc58gQ0ttfjeqHNV1OYLdDZNyl5JqVvNPvO8tYqg8_Dgezslqp8BRuFR9cSeNjwDaT/exec';
+
+const $ = id => document.getElementById(id);
+let STORE = (function () {
+  const q = new URLSearchParams(location.search);
+  if (q.get('store')) return q.get('store');
+  const st = q.get('liff.state');
+  return st ? (new URLSearchParams(st.replace(/^[^?]*\?/, '')).get('store') || '') : '';
+})();
+let INFO = null, MATS = [];
+const money = n => (n < 0 ? '-$' : '$') + Math.abs(Math.round(n || 0)).toLocaleString('en-US');
+const num = s => { const n = Number(String(s).replace(/[,\s$]/g, '')); return isFinite(n) ? n : 0; };
+const key = s => String(s || '').toLowerCase().replace(/\s|[()（）\[\]【】]/g, '');
+const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+function show(id) { ['loading', 'error', 'done', 'form'].forEach(x => $(x).classList.toggle('hidden', x !== id)); }
+function fail(msg) { $('error').textContent = msg; show('error'); }
+
+async function api(action, data) {
+  const res = await fetch(GAS_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+    body: JSON.stringify({ action, store: STORE, idToken: liff.getIDToken(), accessToken: liff.getAccessToken(), data }) });
+  return res.json();
+}
+
+function showDate() {
+  const v = $('date').value;
+  if (!v) { $('dateText').textContent = '請選擇日期'; return; }
+  const [y, m, d] = v.split('-').map(Number);
+  $('dateText').textContent = y + '/' + String(m).padStart(2, '0') + '/' + String(d).padStart(2, '0') + '（週' + '日一二三四五六'.charAt(new Date(y, m - 1, d).getDay()) + '）';
+}
+
+/* ── 供應商 & 常叫品項 ── */
+function renderSuppliers() {
+  const box = $('supChips'); box.innerHTML = '';
+  (INFO.suppliers || []).forEach(s => {
+    const b = document.createElement('button'); b.type = 'button'; b.className = 'chip'; b.textContent = s;
+    b.addEventListener('click', () => { $('supplier').value = s; renderUsual(); });
+    box.appendChild(b);
+  });
+}
+function renderUsual() {
+  const sup = $('supplier').value.trim();
+  document.querySelectorAll('#supChips .chip').forEach(c => c.classList.toggle('on', c.textContent === sup));
+  const list = sup ? MATS.filter(m => m.s && (m.s === sup || m.s.indexOf(sup) >= 0)).slice(0, 18) : MATS.slice(0, 12);
+  $('usualTtl').textContent = sup ? sup + ' 常叫品項' : '最常叫的品項';
+  $('usualCard').classList.toggle('hidden', !list.length);
+  const box = $('usual'); box.innerHTML = '';
+  list.forEach(m => {
+    const b = document.createElement('button'); b.type = 'button'; b.className = 'chip';
+    b.append(m.n); if (m.u) { const s = document.createElement('small'); s.textContent = m.u; b.appendChild(s); }
+    b.addEventListener('click', () => addItem({ mat: m }));
+    box.appendChild(b);
+  });
+}
+
+/* ── 品項列 ── */
+function setMat(card, m, typed) {
+  card._mat = m || null;
+  const info = card.querySelector('.info');
+  info.innerHTML = '';
+  card.querySelector('.newcat').classList.toggle('hidden', !!m || !typed);
+  if (m) {
+    card.querySelector('.name').value = m.n;
+    if (m.u) card.querySelector('.unit').value = m.u;
+    const t = document.createElement('span'); t.className = 'tag'; t.textContent = (m.c || '—') + '｜' + (m.k || '未分類') + (m.p ? '｜上次單價 $' + m.p : '');
+    info.appendChild(t);
+  } else if (typed) {
+    const t = document.createElement('span'); t.className = 'tag newtag'; t.textContent = '🆕 新品項（請選分類）'; info.appendChild(t);
+  }
+  updatePrice(card);
+}
+function search(q) {
+  const k = key(q); if (!k) return [];
+  const sup = $('supplier').value.trim();
+  return MATS.map(m => {
+    const mk = key(m.n); if (mk.indexOf(k) < 0) return null;
+    let score = (mk === k ? 100 : mk.indexOf(k) === 0 ? 50 : 20) + Math.min(m.f, 30) + (sup && m.s && m.s.indexOf(sup) >= 0 ? 40 : 0);
+    return { m, score };
+  }).filter(Boolean).sort((a, b) => b.score - a.score).slice(0, 8).map(x => x.m);
+}
+function updatePrice(card) {
+  const adj = card.classList.contains('adj');
+  const qty = num(card.querySelector('.qty').value), total = num(card.querySelector('.total').value);
+  const el = card.querySelector('.price'); el.className = 'price'; el.textContent = '';
+  if (!adj && qty > 0 && total > 0) {
+    const up = total / qty;
+    let txt = '單價 $' + (Math.round(up * 100) / 100) + ' / ' + (card.querySelector('.unit').value || '單位');
+    const m = card._mat;
+    if (m && m.p && (!card.querySelector('.unit').value || card.querySelector('.unit').value === m.u)) {
+      const diff = (up - m.p) / m.p;
+      if (Math.abs(diff) >= 0.15) { txt += (diff > 0 ? '　🔺比上次貴 ' : '　🔻比上次便宜 ') + Math.round(Math.abs(diff) * 100) + '%'; el.classList.add(diff > 0 ? 'up' : 'down'); }
+    }
+    el.textContent = txt;
+  }
+  calc();
+}
+function renumber() {
+  const cards = [...document.querySelectorAll('#items .item')];
+  cards.forEach((c, i) => c.querySelector('.no').textContent = (c.classList.contains('adj') ? '折讓／退貨' : '第 ' + (i + 1) + ' 項'));
+  calc();
+}
+function addItem(opt) {
+  opt = opt || {};
+  const card = $('itemTpl').content.firstElementChild.cloneNode(true);
+  const nameEl = card.querySelector('.name'), sug = card.querySelector('.sug');
+  const sel = card.querySelector('.cat');
+  (INFO.cats || []).forEach(c => { const o = document.createElement('option'); o.value = o.textContent = c; sel.appendChild(o); });
+  if (opt.adj) {
+    card.classList.add('adj');
+    nameEl.value = '折讓'; nameEl.placeholder = '折讓／退貨說明';
+    card.querySelector('.qtyF').classList.add('hidden'); card.querySelector('.unitF').classList.add('hidden');
+    card.querySelector('.three').style.gridTemplateColumns = '1fr';
+    card.querySelector('.total').placeholder = '折讓金額（填正數，自動記為負）';
+  } else {
+    nameEl.addEventListener('input', () => {
+      card._mat = null; card.querySelector('.info').innerHTML = ''; card.querySelector('.newcat').classList.add('hidden');
+      const q = nameEl.value.trim(), list = search(q);
+      sug.innerHTML = '';
+      list.forEach(m => {
+        const d = document.createElement('div'); d.innerHTML = esc(m.n) + '<small>' + esc((m.u || '') + (m.s ? '｜' + m.s : '')) + '</small>';
+        d.addEventListener('mousedown', e => { e.preventDefault(); setMat(card, m); sug.classList.add('hidden'); card.querySelector('.qty').focus(); });
+        sug.appendChild(d);
+      });
+      if (q) {
+        const d = document.createElement('div'); d.className = 'new'; d.textContent = '＋ 新品項「' + q + '」';
+        d.addEventListener('mousedown', e => { e.preventDefault(); setMat(card, null, true); sug.classList.add('hidden'); });
+        sug.appendChild(d);
+      }
+      sug.classList.toggle('hidden', !q);
+    });
+    nameEl.addEventListener('blur', () => setTimeout(() => {
+      sug.classList.add('hidden');
+      if (!card._mat && nameEl.value.trim()) {   // 打完沒點選：完全同名就自動對應，否則視為新品項
+        const exact = MATS.find(m => key(m.n) === key(nameEl.value));
+        setMat(card, exact || null, !exact);
+      }
+    }, 150));
+  }
+  ['qty', 'unit', 'total'].forEach(c => card.querySelector('.' + c).addEventListener('input', () => updatePrice(card)));
+  card.querySelector('.del').addEventListener('click', () => { card.remove(); renumber(); });
+  // 用常叫品項加入時，若最後一列還空著就填進去
+  const cards = [...document.querySelectorAll('#items .item:not(.adj)')], last = cards[cards.length - 1];
+  if (opt.mat && last && !last.querySelector('.name').value && !last.querySelector('.total').value) {
+    setMat(last, opt.mat); last.querySelector('.qty').focus(); return;
+  }
+  $('items').appendChild(card);
+  if (opt.mat) { setMat(card, opt.mat); card.querySelector('.qty').focus(); }
+  renumber();
+}
+function calc() {
+  const cards = [...document.querySelectorAll('#items .item')];
+  const t = cards.reduce((s, c) => s + (c.classList.contains('adj') ? -Math.abs(num(c.querySelector('.total').value)) : num(c.querySelector('.total').value)), 0);
+  $('sTotal').textContent = money(t);
+  $('sCount').textContent = cards.filter(c => c.querySelector('.name').value.trim()).length + ' 項';
+  return t;
+}
+
+/* ── 店別 ── */
+function renderStores() {
+  const many = INFO.stores.length > 1;
+  $('storeCard').classList.toggle('hidden', !many);
+  const cur = INFO.stores.find(s => s.key === STORE);
+  $('eyebrow').textContent = (cur ? cur.name + '｜' : '') + '記進貨';
+  $('storeHint').classList.toggle('hidden', !!STORE);
+  $('storeCard').classList.toggle('need', many && !STORE);
+  $('mainArea').classList.toggle('hidden', !STORE);
+  const seg = $('storeSeg'); seg.innerHTML = '';
+  INFO.stores.forEach(s => {
+    const b = document.createElement('button');
+    b.type = 'button'; b.textContent = s.name; b.className = s.key === STORE ? 'on' : '';
+    b.addEventListener('click', () => { if (s.key !== STORE) { const t0 = document.querySelector('#items .item .total'); if (t0 && t0.value && !confirm('切換店別會清空已填的品項，確定？')) return; load(s.key); } });
+    seg.appendChild(b);
+  });
+  $('submitBtn').disabled = !STORE;
+  $('submitBtn').textContent = STORE ? '送出進貨' : '請先選擇店別';
+}
+async function load(k) {
+  STORE = k || '';
+  const info = await api('liff_pur_init');
+  if (!info.ok) { fail(info.error || '載入失敗'); return null; }
+  INFO = info; STORE = info.store || ''; MATS = info.mats || [];
+  $('who').textContent = info.today + '（' + info.weekday + '）營業日｜填寫人：' + info.name;
+  if (!$('date').value) { $('date').value = info.today.replace(/\//g, '-'); showDate(); }
+  renderStores();
+  if (STORE) {
+    renderSuppliers(); renderUsual();
+    $('items').innerHTML = ''; addItem();
+  }
+  return info;
+}
+
+async function main() {
+  try {
+    await liff.init({ liffId: LIFF_ID });
+    if (!liff.isLoggedIn()) { liff.login({ redirectUri: location.href }); return; }
+    if (!liff.getIDToken() && !liff.getAccessToken()) return fail('LINE 沒有提供身分憑證，請關閉後重新開啟。');
+    if (!(await load(STORE))) return;
+    $('date').addEventListener('change', showDate);
+    $('supplier').addEventListener('input', renderUsual);
+    $('addBtn').addEventListener('click', () => addItem());
+    $('adjBtn').addEventListener('click', () => addItem({ adj: true }));
+    show('form');
+  } catch (e) { fail('無法開啟表單：' + (e && e.message || e)); }
+}
+
+$('form').addEventListener('submit', async ev => {
+  ev.preventDefault();
+  if (!STORE) return alert('請先選擇店別');
+  const supplier = $('supplier').value.trim();
+  if (!supplier) return alert('請選擇或輸入供應商');
+  const cards = [...document.querySelectorAll('#items .item')];
+  const items = cards.map(c => ({
+    adj: c.classList.contains('adj'), name: c.querySelector('.name').value.trim(), qty: num(c.querySelector('.qty').value),
+    unit: c.querySelector('.unit').value.trim(), total: Math.abs(num(c.querySelector('.total').value)),
+    cat: !c._mat && !c.classList.contains('adj') ? c.querySelector('.cat').value : ''
+  })).filter(x => x.name || x.total);
+  if (!items.length) return alert('請至少填一個品項');
+  for (let i = 0; i < items.length; i++) {
+    const x = items[i], no = '第 ' + (i + 1) + ' 項';
+    if (!x.name) return alert(no + '請填品名');
+    if (!x.total) return alert(no + '請填金額');
+    if (!x.adj && !(x.qty > 0)) return alert(no + '請填數量');
+    if (!x.adj && !x.unit) return alert(no + '請填單位');
+  }
+  const store = INFO.stores.find(s => s.key === STORE).name;
+  if (!confirm('【' + store + '】' + $('dateText').textContent + '｜' + supplier + '\n共 ' + items.length + ' 項，合計 ' + money(calc()) + '\n確定送出？')) return;
+  const btn = $('submitBtn'); btn.disabled = true; btn.textContent = '送出中…';
+  try {
+    const r = await api('liff_pur_submit', { date: $('date').value, supplier, items });
+    if (!r.ok) throw new Error(r.error || '送出失敗');
+    const list = r.items.map(x => esc(x.name) + ' ' + (x.total > 0 ? x.qty + esc(x.unit) + ' ' : '') + money(x.total) + (x.alert ? '<br><span style="color:#C0392B;font-size:12px">' + esc(x.alert) + '</span>' : '')).join('<br>');
+    $('doneMsg').innerHTML = '【' + esc(r.store) + '】' + r.date + '｜' + esc(r.supplier) + '<br>進貨已入帳<br><b style="font-size:24px;color:#800020">' + money(r.total) +
+      '</b><br><span style="font-size:13px">' + list + '</span>' +
+      (r.news.length ? '<br><span style="font-size:12px;color:#9A7A4A">新品項請老闆到物料總表補建：' + esc(r.news.join('、')) + '</span>' : '') +
+      '<br><span style="font-size:12px">打錯了？30 分鐘內在聊天室輸入「撤回」</span>';
+    show('done');
+    setTimeout(() => { if (liff.isInClient()) liff.closeWindow(); }, 6000);
+  } catch (e) { alert(e.message || e); btn.disabled = false; btn.textContent = '送出進貨'; }
+});
+
+main();
+</script>
+</body>
+</html>
