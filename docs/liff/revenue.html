@@ -242,7 +242,7 @@ async function main() {
     if (!liff.isLoggedIn()) { liff.login({ redirectUri: location.href }); return; }
     if (!liff.getIDToken() && !liff.getAccessToken()) return fail('LINE 沒有提供身分憑證，請關閉後重新開啟。');
     if (!(await load(STORE))) return;
-    ['平日', '假日', '颱風', '活動'].forEach(w => {
+    ['正常', '假日(含國定)', '下大雨', '天氣活動備註'].forEach(w => {
       const b = document.createElement('button'); b.type = 'button'; b.className = 'chip'; b.textContent = w;
       b.addEventListener('click', () => { $('note').value = w; });
       $('noteChips').appendChild(b);
