@@ -56,6 +56,12 @@ h1{margin:4px 0 2px;font-size:26px;color:var(--burgundy);font-weight:700}
 .sug div:last-child{border-bottom:0}
 .sug small{color:var(--text-3);margin-left:6px;font-size:12px}
 .sug .new{color:var(--burgundy)}
+/* 供應商下拉：排在輸入框下方（不浮動，避免被卡片裁掉） */
+.suplist{border:1px solid var(--line);border-radius:12px;margin-top:6px;max-height:240px;overflow:auto;background:#fff}
+.suplist div{padding:11px 12px;border-bottom:1px solid var(--line-soft);font-size:15px}
+.suplist div:last-child{border-bottom:0}
+.suplist .new{color:var(--burgundy)}
+.suplist .empty{color:var(--text-3);font-size:13px}
 .tag{display:inline-block;font-size:12px;color:var(--gold-deep);background:var(--soft);border-radius:8px;padding:2px 8px;margin-top:6px}
 .tag.newtag{color:var(--red);background:#FDECEA}
 .price{font-size:13px;margin-top:6px;color:var(--text-2)}
@@ -106,7 +112,8 @@ h1{margin:4px 0 2px;font-size:26px;color:var(--burgundy);font-weight:700}
     <div class="card">
       <div class="ttl">供應商</div>
       <div class="chips" id="supChips"></div>
-      <input id="supplier" class="text mt" placeholder="或直接輸入供應商名稱">
+      <input id="supplier" class="text mt" placeholder="點這裡選擇或輸入供應商">
+      <div id="supList" class="suplist hidden"></div>
     </div>
 
     <div id="usualCard" class="card hidden">
@@ -176,11 +183,51 @@ function showDate() {
 /* ── 供應商 & 常叫品項 ── */
 function renderSuppliers() {
   const box = $('supChips'); box.innerHTML = '';
-  (INFO.suppliers || []).forEach(s => {
+  const top = (INFO.supTop && INFO.supTop.length ? INFO.supTop : (INFO.suppliers || []).slice(0, 8));
+  top.forEach(s => {
     const b = document.createElement('button'); b.type = 'button'; b.className = 'chip'; b.textContent = s;
-    b.addEventListener('click', () => { $('supplier').value = s; renderUsual(); });
+    b.addEventListener('click', () => pickSupplier(s));
     box.appendChild(b);
   });
+}
+function pickSupplier(s) {
+  $('supplier').value = s;
+  $('supplier').dispatchEvent(new Event('input'));
+  $('supList').classList.add('hidden');
+}
+// 所有推送過的供應商：點輸入框就列出，打字即篩選
+function renderSupList() {
+  const q = $('supplier').value.trim().toLowerCase(), all = INFO.suppliers || [];
+  const list = (q ? all.filter(s => s.toLowerCase().includes(q)) : all).slice(0, 60);
+  const box = $('supList'); box.innerHTML = '';
+  list.forEach(s => {
+    const d = document.createElement('div'); d.textContent = s;
+    d.addEventListener('mousedown', e => { e.preventDefault(); pickSupplier(s); });
+    box.appendChild(d);
+  });
+  if (q && !all.some(s => s.toLowerCase() === q)) {
+    const d = document.createElement('div'); d.className = 'new'; d.textContent = '＋ 新供應商「' + $('supplier').value.trim() + '」';
+    d.addEventListener('mousedown', e => { e.preventDefault(); pickSupplier($('supplier').value.trim()); });
+    box.appendChild(d);
+  }
+  if (!box.children.length) box.innerHTML = '<div class="empty">還沒有供應商紀錄，直接輸入名稱即可</div>';
+  box.classList.remove('hidden');
+}
+// 依品名猜分類（只是預選，可改）
+const CAT_GUESS = [
+  [/魚|蝦|蟹|貝|蚵|蠔|花枝|章魚|透抽|魷|鮭|鮪|鰻|干貝|海膽|卵|海鮮|蛤|蜆|螺/, /水產|海鮮/],
+  [/豬|牛|雞|鴨|羊|肉|培根|火腿|香腸|內臟|肥腸/, /肉/],
+  [/菜|菇|蔥|蒜|薑|椒|瓜|蘿蔔|洋蔥|番茄|檸檬|金桔|水果|筍|豆芽|生菜|香菜|九層塔/, /蔬菜|蔬果/],
+  [/酒|啤|飲|茶|汁|可樂|汽水|咖啡|礦泉水|雪碧|可爾必思/, /酒水|飲料/],
+  [/醬|油|醋|鹽|糖|味噌|味醂|胡椒|粉|調味|芥末|哇沙比|山葵/, /調味/],
+  [/米|麵|飯|烏龍|拉麵/, /米|麵/],
+  [/盒|袋|杯|筷|紙|膜|吸管|包材|叉|匙/, /包材/],
+  [/清潔|洗碗精|漂白|菜瓜布|手套|垃圾袋|抹布/, /清潔/]
+];
+function guessCat(name) {
+  const cats = INFO.cats || [];
+  for (const [re, catRe] of CAT_GUESS) if (re.test(name)) { const c = cats.find(x => catRe.test(x)); if (c) return c; }
+  return '';
 }
 function renderUsual() {
   const sup = $('supplier').value.trim();
@@ -203,6 +250,7 @@ function setMat(card, m, typed) {
   const info = card.querySelector('.info');
   info.innerHTML = '';
   card.querySelector('.newcat').classList.toggle('hidden', !!m || !typed);
+  if (!m && typed) { const sel = card.querySelector('.cat'); if (!sel.value) sel.value = guessCat(card.querySelector('.name').value); }
   if (m) {
     card.querySelector('.name').value = m.n;
     if (m.u) card.querySelector('.unit').value = m.u;
@@ -248,6 +296,7 @@ function addItem(opt) {
   const card = $('itemTpl').content.firstElementChild.cloneNode(true);
   const nameEl = card.querySelector('.name'), sug = card.querySelector('.sug');
   const sel = card.querySelector('.cat');
+  sel.innerHTML = '<option value="">請選分類</option>';
   (INFO.cats || []).forEach(c => { const o = document.createElement('option'); o.value = o.textContent = c; sel.appendChild(o); });
   if (opt.adj) {
     card.classList.add('adj');
@@ -340,7 +389,9 @@ async function main() {
     if (!liff.getIDToken() && !liff.getAccessToken()) return fail('LINE 沒有提供身分憑證，請關閉後重新開啟。');
     if (!(await load(STORE))) return;
     $('date').addEventListener('change', showDate);
-    $('supplier').addEventListener('input', renderUsual);
+    $('supplier').addEventListener('input', () => { renderUsual(); renderSupList(); });
+    $('supplier').addEventListener('focus', renderSupList);
+    $('supplier').addEventListener('blur', () => setTimeout(() => $('supList').classList.add('hidden'), 150));
     $('addBtn').addEventListener('click', () => addItem());
     $('adjBtn').addEventListener('click', () => addItem({ adj: true }));
     show('form');
@@ -380,6 +431,8 @@ $('form').addEventListener('submit', async ev => {
     if (!adj && !(x.qty > 0)) return flag(f('.qty'), c, '請填數量');
     if (!adj && !x.unit) return flag(f('.unit'), c, '請填單位（例如 斤、包、箱）');
     if (!x.total) return flag(f('.total'), c, '請填金額');
+    if (!adj && !c._mat) c._mat = MATS.find(m => m.n === x.name) || null; // 打字打出既有品名也算舊品項
+    if (!adj && !c._mat && !x.cat) { f('.newcat').classList.remove('hidden'); return flag(f('.cat'), c, '新品項請選分類'); }
     items.push(x);
   }
   if (!items.length) {
@@ -396,7 +449,7 @@ $('form').addEventListener('submit', async ev => {
     const list = r.items.map(x => esc(x.name) + ' ' + (x.total > 0 ? x.qty + esc(x.unit) + ' ' : '') + money(x.total) + (x.alert ? '<br><span style="color:#C0392B;font-size:12px">' + esc(x.alert) + '</span>' : '')).join('<br>');
     $('doneMsg').innerHTML = '【' + esc(r.store) + '】' + r.date + '｜' + esc(r.supplier) + '<br>進貨已入帳<br><b style="font-size:24px;color:#800020">' + money(r.total) +
       '</b><br><span style="font-size:13px">' + list + '</span>' +
-      (r.news.length ? '<br><span style="font-size:12px;color:#9A7A4A">新品項請老闆到物料總表補建：' + esc(r.news.join('、')) + '</span>' : '') +
+      (r.news.length ? '<br><span style="font-size:12px;color:#9A7A4A">新品項已自動建檔到物料總表：' + esc(r.news.join('、')) + '</span>' : '') +
       '<br><span style="font-size:12px">打錯了？30 分鐘內在聊天室輸入「撤回」</span>';
     show('done');
     setTimeout(() => { if (liff.isInClient()) liff.closeWindow(); }, 6000);
