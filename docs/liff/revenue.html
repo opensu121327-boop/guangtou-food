@@ -17,6 +17,11 @@
   --shadow:0 10px 26px -14px rgba(180,90,20,.28),0 2px 0 rgba(255,138,61,.05);
 }
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+/* 一頁式：所有元素限制在螢幕寬度內，只上下捲動 */
+html,body{max-width:100%;overflow-x:hidden}
+input,select,textarea,button{min-width:0;max-width:100%}
+::placeholder{color:#C4B5A0;opacity:1}
+img,svg{max-width:100%}
 html,body{margin:0;background:var(--bg);color:var(--text);font-family:'Huninn','Noto Sans TC',system-ui,sans-serif}
 body{padding:16px 16px calc(96px + env(safe-area-inset-bottom))}
 header{padding:4px 2px 14px}
@@ -39,7 +44,7 @@ h1{margin:4px 0 2px;font-size:26px;color:var(--burgundy);font-weight:700}
 .money:last-child{border-bottom:0}
 .money label{flex:0 0 96px;font-size:16px}
 .money .fee{font-size:11px;color:var(--text-3);display:block}
-.money .in{flex:1;display:flex;align-items:center;border:1px solid var(--line-soft);background:#FFFCF7;border-radius:12px;padding:0 12px;height:46px}
+.money .in{flex:1;min-width:0;display:flex;align-items:center;border:1px solid var(--line-soft);background:#FFFCF7;border-radius:12px;padding:0 12px;height:46px}
 .money .in:focus-within{border-color:var(--gold);box-shadow:0 0 0 3px rgba(201,169,110,.22)}
 .money .in span{color:var(--text-3);margin-right:6px}
 .money input{flex:1;min-width:0;border:0;background:transparent;font:inherit;font-size:18px;color:var(--text);outline:none;text-align:right}
@@ -57,6 +62,14 @@ h1{margin:4px 0 2px;font-size:26px;color:var(--burgundy);font-weight:700}
 .state .big{font-size:40px;margin-bottom:8px}
 .state.err{color:var(--red)}
 .hidden{display:none}
+.exist{font-size:14px;background:#FFFCF7;border:1px solid var(--line);border-radius:16px;padding:12px 14px;margin-bottom:12px}
+.exist .t{font-weight:700;margin-bottom:6px}
+.exist .r{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:8px 0;border-top:1px solid var(--line-soft)}
+.exist .r:first-of-type{border-top:0}
+.exist .r small{display:block;font-size:12px;color:var(--text-3)}
+.ebtn{flex:0 0 auto;border:1px solid var(--burgundy);background:#fff;color:var(--burgundy);font:inherit;font-size:14px;padding:7px 14px;border-radius:var(--r-pill)}
+.editing{background:var(--burgundy);color:#fff;border-radius:16px;padding:12px 14px;margin-bottom:12px;font-size:14px;display:flex;align-items:center;justify-content:space-between;gap:8px}
+.editing button{flex:0 0 auto;border:1px solid rgba(255,255,255,.6);background:transparent;color:#fff;font:inherit;font-size:13px;padding:6px 12px;border-radius:var(--r-pill)}
 </style>
 </head>
 <body>
@@ -82,7 +95,8 @@ h1{margin:4px 0 2px;font-size:26px;color:var(--burgundy);font-weight:700}
     <div class="datebox"><span id="dateText"></span><span class="cal">更改日期 ▾</span><input type="date" id="date" aria-label="營業日"></div>
   </div>
 
-  <div id="dupWarn" class="warn hidden"></div>
+  <div id="editBar" class="editing hidden"><span id="editText"></span><button type="button" id="cancelEdit">取消修改</button></div>
+  <div id="dupWarn" class="exist hidden"></div>
 
   <div class="card">
     <div class="ttl">各通路金額</div>
@@ -141,12 +155,41 @@ function showDate() {
   checkDup();
 }
 
-function checkDup() {
-  const key = $('date').value.replace(/-/g, '/');
-  const hit = (INFO && INFO.recent || []).filter(r => r.date === key);
-  const tot = hit.reduce((s, r) => s + r.total, 0);
-  $('dupWarn').textContent = hit.length ? '⚠️ 這天已經記過營收（' + money(tot) + '），送出會「再新增一筆」。確定不是重複嗎？' : '';
-  $('dupWarn').classList.toggle('hidden', !hit.length);
+// 這天已有的營收：列出來，可修改的給「修改這筆」按鈕
+let EDIT = null, DUPSEQ = 0;
+const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+async function checkDup() {
+  const box = $('dupWarn');
+  if (!STORE || !$('date').value) { box.classList.add('hidden'); return; }
+  const seq = ++DUPSEQ, date = $('date').value;
+  let r;
+  try { r = await api('liff_rev_get', { date }); } catch (e) { return; }
+  if (seq !== DUPSEQ) return; // 已換日期／店別
+  const rows = (r && r.ok ? r.rows : []).filter(x => !EDIT || x.row !== EDIT.row);
+  if (!rows.length) { box.classList.add('hidden'); box.innerHTML = ''; return; }
+  box.innerHTML = '<div class="t">這天已經記過營收</div>' + rows.map((x, i) =>
+    '<div class="r"><div>' + money(x.total) + (x.note ? '｜' + esc(x.note) : '') + '<small>填表人：' + esc(x.by || '未記錄') + '</small></div>' +
+    (x.canEdit ? '<button type="button" class="ebtn" data-i="' + i + '">修改這筆</button>' : '<small>只有填表人或店長可修改</small>') + '</div>').join('') +
+    (EDIT ? '' : '<div class="hint">要補記另一筆才按下方送出；打錯請按「修改這筆」。</div>');
+  box.querySelectorAll('.ebtn').forEach(b => b.addEventListener('click', () => startEdit(rows[+b.dataset.i])));
+  box.classList.remove('hidden');
+}
+
+function startEdit(x) {
+  EDIT = { row: x.row, date: x.date, total: x.total };
+  CH.concat(['off']).forEach(k => { $(k).value = x[k] ? x[k] : ''; });
+  $('note').value = x.note || '';
+  $('editText').textContent = '正在修改 ' + x.date + ' 的營收（原本 ' + money(x.total) + '）';
+  $('editBar').classList.remove('hidden');
+  $('submitBtn').textContent = '儲存修改';
+  calc(); checkDup();
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+function cancelEdit() {
+  EDIT = null;
+  CH.concat(['off', 'note']).forEach(k => { $(k).value = ''; });
+  $('editBar').classList.add('hidden');
+  renderStores(); calc(); checkDup();
 }
 
 function calc() {
@@ -171,11 +214,11 @@ function renderStores() {
   INFO.stores.forEach(s => {
     const b = document.createElement('button');
     b.type = 'button'; b.textContent = s.name; b.className = s.key === STORE ? 'on' : '';
-    b.addEventListener('click', () => load(s.key));
+    b.addEventListener('click', () => { if (EDIT) cancelEdit(); load(s.key); });
     seg.appendChild(b);
   });
   $('submitBtn').disabled = !STORE;
-  $('submitBtn').textContent = STORE ? '送出營收' : '請先選擇店別';
+  $('submitBtn').textContent = !STORE ? '請先選擇店別' : EDIT ? '儲存修改' : '送出營收';
 }
 
 async function load(key) {
@@ -206,6 +249,7 @@ async function main() {
     });
     CH.concat(['off']).forEach(k => $(k).addEventListener('input', calc));
     $('date').addEventListener('change', showDate);
+    $('cancelEdit').addEventListener('click', cancelEdit);
     show('form');
   } catch (e) { fail('無法開啟表單：' + (e && e.message || e)); }
 }
@@ -216,18 +260,22 @@ $('form').addEventListener('submit', async ev => {
   const { total, fee } = calc();
   if (!total) return alert('營業額不能是 0');
   const store = INFO.stores.find(s => s.key === STORE).name;
-  if (!confirm('【' + store + '】' + $('dateText').textContent + '\n總營業額 ' + money(total) + '（手續費 ' + money(fee) + '）\n確定送出？')) return;
-  const btn = $('submitBtn'); btn.disabled = true; btn.textContent = '送出中…';
+  const head = '【' + store + '】' + $('dateText').textContent + '\n';
+  if (!confirm(EDIT ? head + '營業額 ' + money(EDIT.total) + ' → ' + money(total) + '\n確定修改？'
+    : head + '總營業額 ' + money(total) + '（手續費 ' + money(fee) + '）\n確定送出？')) return;
+  const btn = $('submitBtn'), label = btn.textContent; btn.disabled = true; btn.textContent = '送出中…';
   try {
     const data = { date: $('date').value, note: $('note').value.trim(), off: val('off') };
     CH.forEach(k => data[k] = val(k));
+    if (EDIT) { data.editRow = EDIT.row; data.origDate = EDIT.date; }
     const r = await api('liff_rev_submit', data);
     if (!r.ok) throw new Error(r.error || '送出失敗');
-    $('doneMsg').innerHTML = '【' + r.store + '】' + r.date + ' 營收已入帳<br><b style="font-size:24px;color:#800020">' + money(r.total) +
-      '</b><br>本月累計 ' + money(r.mtd) + '（' + r.mtdDays + ' 天）<br><span style="font-size:12px">打錯了？30 分鐘內在聊天室輸入「撤回」</span>';
+    $('doneMsg').innerHTML = '【' + r.store + '】' + r.date + (r.edited ? ' 營收已修改<br><span style="font-size:14px">' + money(r.before) + ' → </span>' : ' 營收已入帳<br>') +
+      '<b style="font-size:24px;color:#800020">' + money(r.total) + '</b><br>本月累計 ' + money(r.mtd) + '（' + r.mtdDays + ' 天）' +
+      (r.edited ? '<br><span style="font-size:12px">修改紀錄已留存</span>' : '<br><span style="font-size:12px">打錯了？可再開表單選同一天按「修改這筆」</span>');
     show('done');
     setTimeout(() => { if (liff.isInClient()) liff.closeWindow(); }, 4000);
-  } catch (e) { alert(e.message || e); btn.disabled = false; btn.textContent = '送出營收'; }
+  } catch (e) { alert(e.message || e); btn.disabled = false; btn.textContent = label; }
 });
 
 main();

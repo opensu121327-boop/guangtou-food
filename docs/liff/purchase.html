@@ -17,6 +17,11 @@
   --shadow:0 10px 26px -14px rgba(180,90,20,.28),0 2px 0 rgba(255,138,61,.05);
 }
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+/* 一頁式：所有元素限制在螢幕寬度內，只上下捲動 */
+html,body{max-width:100%;overflow-x:hidden}
+input,select,textarea,button{min-width:0;max-width:100%}
+::placeholder{color:#C4B5A0;opacity:1}
+img,svg{max-width:100%}
 html,body{margin:0;background:var(--bg);color:var(--text);font-family:'Huninn','Noto Sans TC',system-ui,sans-serif}
 body{padding:16px 16px calc(96px + env(safe-area-inset-bottom))}
 header{padding:4px 2px 14px}
@@ -43,7 +48,7 @@ h1{margin:4px 0 2px;font-size:26px;color:var(--burgundy);font-weight:700}
 .text:focus{border-color:var(--gold);box-shadow:0 0 0 3px rgba(201,169,110,.22)}
 .mt{margin-top:10px}
 .field label{display:block;font-size:13px;color:var(--text-2);margin-bottom:4px}
-.three{display:grid;grid-template-columns:1fr .8fr 1.2fr;gap:8px;margin-top:8px}
+.three{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,.8fr) minmax(0,1.2fr);gap:8px;margin-top:8px}
 .three .field{min-width:0}
 .search{position:relative}
 .sug{position:absolute;left:0;right:0;top:100%;z-index:20;background:#fff;border:1px solid var(--line);border-radius:12px;margin-top:4px;box-shadow:0 12px 28px -12px rgba(120,60,10,.4);max-height:260px;overflow:auto}
@@ -59,6 +64,10 @@ h1{margin:4px 0 2px;font-size:26px;color:var(--burgundy);font-weight:700}
 .adds{display:flex;gap:8px;margin-bottom:12px}
 .add{flex:1;border:1px dashed var(--gold);background:transparent;color:var(--gold-deep);font:inherit;font-size:15px;padding:13px;border-radius:var(--r-field)}
 .item.adj{border-color:rgba(192,57,43,.35)}
+/* 未填欄位：紅框＋提示文字 */
+.bad{border-color:var(--red)!important;box-shadow:0 0 0 3px rgba(192,57,43,.15)!important}
+.errmsg{font-size:13px;color:var(--red);margin-top:6px}
+.card.badcard{border-color:var(--red)}
 .sum{background:var(--soft);border-style:dashed;box-shadow:none;display:flex;justify-content:space-between;align-items:center}
 .sum b{font-size:24px;color:var(--burgundy)}
 .bar{position:fixed;left:0;right:0;bottom:0;padding:12px 16px calc(12px + env(safe-area-inset-bottom));background:linear-gradient(180deg,rgba(255,244,230,0),var(--bg) 30%);z-index:30}
@@ -125,7 +134,7 @@ h1{margin:4px 0 2px;font-size:26px;color:var(--burgundy);font-weight:700}
     <div class="newcat hidden field mt"><label>新品項分類</label><select class="text cat"></select></div>
     <div class="three">
       <div class="field qtyF"><label>數量</label><input class="text qty" inputmode="decimal" placeholder="0"></div>
-      <div class="field unitF"><label>單位</label><input class="text unit" placeholder="包"></div>
+      <div class="field unitF"><label>單位 <span style="color:var(--red)">*</span></label><input class="text unit" placeholder="必填"></div>
       <div class="field"><label>金額</label><input class="text total" inputmode="numeric" placeholder="0"></div>
     </div>
     <div class="price"></div>
@@ -341,21 +350,42 @@ async function main() {
 $('form').addEventListener('submit', async ev => {
   ev.preventDefault();
   if (!STORE) return alert('請先選擇店別');
-  const supplier = $('supplier').value.trim();
-  if (!supplier) return alert('請選擇或輸入供應商');
+  // 清掉上一次的紅框
+  document.querySelectorAll('.bad').forEach(el => el.classList.remove('bad'));
+  document.querySelectorAll('.errmsg').forEach(el => el.remove());
+  // 在欄位下方標紅提示，並捲到該處
+  const flag = (el, box, msg) => {
+    el.classList.add('bad');
+    const m = document.createElement('div'); m.className = 'errmsg'; m.textContent = msg;
+    box.appendChild(m);
+    el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    setTimeout(() => el.focus({ preventScroll: true }), 300);
+    el.addEventListener('input', () => { el.classList.remove('bad'); m.remove(); }, { once: true });
+  };
+  const supEl = $('supplier'), supplier = supEl.value.trim();
+  if (!supplier) return flag(supEl, supEl.parentElement, '請選擇或輸入供應商');
   const cards = [...document.querySelectorAll('#items .item')];
-  const items = cards.map(c => ({
-    adj: c.classList.contains('adj'), name: c.querySelector('.name').value.trim(), qty: num(c.querySelector('.qty').value),
-    unit: c.querySelector('.unit').value.trim(), total: Math.abs(num(c.querySelector('.total').value)),
-    cat: !c._mat && !c.classList.contains('adj') ? c.querySelector('.cat').value : ''
-  })).filter(x => x.name || x.total);
-  if (!items.length) return alert('請至少填一個品項');
-  for (let i = 0; i < items.length; i++) {
-    const x = items[i], no = '第 ' + (i + 1) + ' 項';
-    if (!x.name) return alert(no + '請填品名');
-    if (!x.total) return alert(no + '請填金額');
-    if (!x.adj && !(x.qty > 0)) return alert(no + '請填數量');
-    if (!x.adj && !x.unit) return alert(no + '請填單位');
+  const items = [];
+  for (const c of cards) {
+    const adj = c.classList.contains('adj');
+    const f = s => c.querySelector(s);
+    const x = {
+      adj, name: f('.name').value.trim(), qty: num(f('.qty').value),
+      unit: f('.unit').value.trim(), total: Math.abs(num(f('.total').value)),
+      cat: !c._mat && !adj ? f('.cat').value : ''
+    };
+    // 整張空白就略過（折讓列預設名稱「折讓」，沒填金額也算空白）
+    if ((!x.name || (adj && x.name === '折讓')) && !x.total && !(x.qty > 0)) continue;
+    if (!x.name) return flag(f('.name'), c, '請填品名');
+    if (!adj && !(x.qty > 0)) return flag(f('.qty'), c, '請填數量');
+    if (!adj && !x.unit) return flag(f('.unit'), c, '請填單位（例如 斤、包、箱）');
+    if (!x.total) return flag(f('.total'), c, '請填金額');
+    items.push(x);
+  }
+  if (!items.length) {
+    if (!cards.length) addItem();
+    const c0 = document.querySelector('#items .item');
+    return flag(c0.querySelector('.name'), c0, '請至少填一個品項');
   }
   const store = INFO.stores.find(s => s.key === STORE).name;
   if (!confirm('【' + store + '】' + $('dateText').textContent + '｜' + supplier + '\n共 ' + items.length + ' 項，合計 ' + money(calc()) + '\n確定送出？')) return;

@@ -17,6 +17,11 @@
   --shadow:0 10px 26px -14px rgba(180,90,20,.28),0 2px 0 rgba(255,138,61,.05);
 }
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+/* 一頁式：所有元素限制在螢幕寬度內，只上下捲動 */
+html,body{max-width:100%;overflow-x:hidden}
+input,select,textarea,button{min-width:0;max-width:100%}
+::placeholder{color:#C4B5A0;opacity:1}
+img,svg{max-width:100%}
 html,body{margin:0;background:var(--bg);color:var(--text);font-family:'Huninn','Noto Sans TC',system-ui,sans-serif}
 body{padding:16px 16px calc(96px + env(safe-area-inset-bottom))}
 header{padding:4px 2px 14px}
