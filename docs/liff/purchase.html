@@ -56,6 +56,7 @@ h1{margin:4px 0 2px;font-size:26px;color:var(--burgundy);font-weight:700}
 .sug div:last-child{border-bottom:0}
 .sug small{color:var(--text-3);margin-left:6px;font-size:12px}
 .sug .new{color:var(--burgundy)}
+.sug .hd{font-size:12px;color:var(--text-3);padding:6px 12px;background:var(--soft)}
 /* 供應商下拉：排在輸入框下方（不浮動，避免被卡片裁掉） */
 .suplist{border:1px solid var(--line);border-radius:12px;margin-top:6px;max-height:240px;overflow:auto;background:#fff}
 .suplist div{padding:11px 12px;border-bottom:1px solid var(--line-soft);font-size:15px}
@@ -246,6 +247,13 @@ function renderUsual() {
 
 /* ── 品項列 ── */
 function setMat(card, m, typed) {
+  const from = m && m.o;
+  if (m && m.o) {   // 另一家店的品項：帶入名稱/單位/分類，在本店視為新品項建檔
+    card.querySelector('.name').value = m.n;
+    if (m.u) card.querySelector('.unit').value = m.u;
+    const sel = card.querySelector('.cat'); if (m.k && [...sel.options].some(o => o.value === m.k)) sel.value = m.k;
+    m = null; typed = true;
+  }
   card._mat = m || null;
   const info = card.querySelector('.info');
   info.innerHTML = '';
@@ -257,18 +265,28 @@ function setMat(card, m, typed) {
     const t = document.createElement('span'); t.className = 'tag'; t.textContent = (m.c || '—') + '｜' + (m.k || '未分類') + (m.p ? '｜上次單價 $' + m.p : '');
     info.appendChild(t);
   } else if (typed) {
-    const t = document.createElement('span'); t.className = 'tag newtag'; t.textContent = '🆕 新品項（請選分類）'; info.appendChild(t);
+    const t = document.createElement('span'); t.className = 'tag newtag'; t.textContent = from ? from + '叫過｜本店第一次進貨，確認分類即可' : '🆕 新品項（請選分類）'; info.appendChild(t);
   }
   updatePrice(card);
 }
+// 品名記憶：打 1–2 個字就列出叫過的品項（連續字優先，跳字也找得到；另一家店叫過的也列出）
+function subseq(mk, k) { let i = 0; for (const ch of mk) if (ch === k[i]) i++; return i === k.length; }
 function search(q) {
-  const k = key(q); if (!k) return [];
-  const sup = $('supplier').value.trim();
-  return MATS.map(m => {
-    const mk = key(m.n); if (mk.indexOf(k) < 0) return null;
-    let score = (mk === k ? 100 : mk.indexOf(k) === 0 ? 50 : 20) + Math.min(m.f, 30) + (sup && m.s && m.s.indexOf(sup) >= 0 ? 40 : 0);
+  const k = key(q), sup = $('supplier').value.trim();
+  const own = new Set(MATS.map(m => key(m.n)));
+  const pool = MATS.concat((INFO.otherMats || []).filter(m => !own.has(key(m.n))));
+  return pool.map(m => {
+    const mk = key(m.n);
+    let score;
+    if (!k) score = 0;
+    else if (mk === k) score = 100;
+    else if (mk.indexOf(k) === 0) score = 60;
+    else if (mk.indexOf(k) > 0) score = 40;
+    else if (k.length >= 2 && subseq(mk, k)) score = 15;
+    else return null;
+    score += Math.min(m.f || 0, 30) + (sup && m.s && m.s.indexOf(sup) >= 0 ? 40 : 0) - (m.o ? 25 : 0);
     return { m, score };
-  }).filter(Boolean).sort((a, b) => b.score - a.score).slice(0, 8).map(x => x.m);
+  }).filter(Boolean).sort((a, b) => b.score - a.score).slice(0, k ? 10 : 8).map(x => x.m);
 }
 function updatePrice(card) {
   const adj = card.classList.contains('adj');
@@ -305,12 +323,12 @@ function addItem(opt) {
     card.querySelector('.three').style.gridTemplateColumns = '1fr';
     card.querySelector('.total').placeholder = '折讓金額（填正數，自動記為負）';
   } else {
-    nameEl.addEventListener('input', () => {
-      card._mat = null; card.querySelector('.info').innerHTML = ''; card.querySelector('.newcat').classList.add('hidden');
+    const showSug = () => {
       const q = nameEl.value.trim(), list = search(q);
       sug.innerHTML = '';
+      if (!q && list.length) { const h = document.createElement('div'); h.className = 'hd'; h.textContent = $('supplier').value.trim() ? '這家常叫' : '最常叫'; sug.appendChild(h); }
       list.forEach(m => {
-        const d = document.createElement('div'); d.innerHTML = esc(m.n) + '<small>' + esc((m.u || '') + (m.s ? '｜' + m.s : '')) + '</small>';
+        const d = document.createElement('div'); d.innerHTML = esc(m.n) + '<small>' + esc((m.u || '') + (m.s ? '｜' + m.s : '') + (m.o ? '｜' + m.o + '叫過' : '')) + '</small>';
         d.addEventListener('mousedown', e => { e.preventDefault(); setMat(card, m); sug.classList.add('hidden'); card.querySelector('.qty').focus(); });
         sug.appendChild(d);
       });
@@ -319,8 +337,13 @@ function addItem(opt) {
         d.addEventListener('mousedown', e => { e.preventDefault(); setMat(card, null, true); sug.classList.add('hidden'); });
         sug.appendChild(d);
       }
-      sug.classList.toggle('hidden', !q);
+      sug.classList.toggle('hidden', !sug.children.length);
+    };
+    nameEl.addEventListener('input', () => {
+      card._mat = null; card.querySelector('.info').innerHTML = ''; card.querySelector('.newcat').classList.add('hidden');
+      showSug();
     });
+    nameEl.addEventListener('focus', () => { if (!card._mat) showSug(); });
     nameEl.addEventListener('blur', () => setTimeout(() => {
       sug.classList.add('hidden');
       if (!card._mat && nameEl.value.trim()) {   // 打完沒點選：完全同名就自動對應，否則視為新品項
